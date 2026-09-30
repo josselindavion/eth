@@ -7,7 +7,7 @@
    Markdown Preview Enhanced ne recharge ce fichier que lorsque
    .crossnote/style.less est réenregistré (ou l'aperçu rouvert).
 
-   Les sections Objectif, Déroulé et Notes, Prochaine étape et Références ont chacune
+   Les sections Objective, Progress and Notes, Next Steps et References ont chacune
    leur propre mise en forme ; elles sont reconnues par l'identifiant de leur
    titre de niveau 2, donc ces titres ne doivent pas être renommés. */
 
@@ -238,7 +238,7 @@ body.vscode-body,
 
 /* ---------- Objectif : énoncé mis en avant ---------- */
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objectif"] ~ :is(p, ul, ol):not(h2[id^="objectif"] ~ h2 ~ *) {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objective"] ~ :is(p, ul, ol):not(h2[id^="objective"] ~ h2 ~ *) {
     margin: 0 0 0.5em;
     padding: 0.1em 0 0.1em 0.9em;
     border-left: 3px solid var(--accent);
@@ -247,29 +247,29 @@ body.vscode-body,
     text-align: left;
 }
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objectif"] ~ :is(ul, ol):not(h2[id^="objectif"] ~ h2 ~ *) {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objective"] ~ :is(ul, ol):not(h2[id^="objective"] ~ h2 ~ *) {
     padding-left: 2.1em;
 }
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objectif"] ~ :is(ul, ol):not(h2[id^="objectif"] ~ h2 ~ *) li {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objective"] ~ :is(ul, ol):not(h2[id^="objective"] ~ h2 ~ *) li {
     text-align: left;
 }
 
 /* ---------- Déroulé et Notes : corps réduit, texte courant dense ---------- */
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="d"][id*="et-notes"] ~ :is(p, ul, ol, blockquote, table, pre):not(h2[id^="d"][id*="et-notes"] ~ h2 ~ *) {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="progress"] ~ :is(p, ul, ol, blockquote, table, pre):not(h2[id^="progress"] ~ h2 ~ *) {
     font-size: 0.88em;
     line-height: 1.45;
     color: var(--soft);
 }
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="d"][id*="et-notes"] ~ p:not(h2[id^="d"][id*="et-notes"] ~ h2 ~ *) {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="progress"] ~ p:not(h2[id^="progress"] ~ h2 ~ *) {
     margin-bottom: 0.6em;
 }
 
 /* ---------- Prochaine étape : encadré ---------- */
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] + p {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="next"] + p {
     position: relative;
     margin: 0 0 0.8em;
     padding: 0.65em 1em 0.65em 2.5em;
@@ -279,7 +279,7 @@ body.vscode-body,
     text-align: left;
 }
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] + p::after {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="next"] + p::after {
     content: "\2192";
     position: absolute;
     top: 0.65em;
@@ -289,7 +289,7 @@ body.vscode-body,
 }
 
 /* Liste d'actions : une flèche par puce, dans le même encadré */
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] ~ ul:not(h2[id^="prochaine"] ~ h2 ~ *) {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="next"] ~ ul:not(h2[id^="next"] ~ h2 ~ *) {
     margin: 0 0 0.8em;
     padding: 0.5em 1em 0.5em 0.9em;
     border: 0.8px solid var(--rule);
@@ -298,14 +298,14 @@ body.vscode-body,
     list-style: none;
 }
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] ~ ul:not(h2[id^="prochaine"] ~ h2 ~ *) > li {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="next"] ~ ul:not(h2[id^="next"] ~ h2 ~ *) > li {
     position: relative;
     margin: 0.3em 0;
     padding-left: 1.6em;
     text-align: left;
 }
 
-:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] ~ ul:not(h2[id^="prochaine"] ~ h2 ~ *) > li::after {
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="next"] ~ ul:not(h2[id^="next"] ~ h2 ~ *) > li::after {
     content: "\2192";
     position: absolute;
     top: 0;
