@@ -1,0 +1,506 @@
+/* Style « LaTeX » pour l'aperçu Markdown (journal de bord).
+
+   Chargé par les deux aperçus :
+   - Markdown Preview Enhanced, via .crossnote/style.less (qui importe ce fichier) ;
+   - l'aperçu intégré de VS Code, via "markdown.styles" dans .vscode/settings.json.
+
+   Markdown Preview Enhanced ne recharge ce fichier que lorsque
+   .crossnote/style.less est réenregistré (ou l'aperçu rouvert).
+
+   Les sections Objectif, Notes, Prochaine étape et Références ont chacune
+   leur propre mise en forme ; elles sont reconnues par l'identifiant de leur
+   titre de niveau 2, donc ces titres ne doivent pas être renommés. */
+
+/* ---------- Polices Computer Modern ---------- */
+
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunrm.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunbx.woff") format("woff");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunti.woff") format("woff");
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunbi.woff") format("woff");
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Sans";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Sans/cmunss.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Sans";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Sans/cmunsx.woff") format("woff");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Sans";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Sans/cmunsi.woff") format("woff");
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Sans";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Sans/cmunso.woff") format("woff");
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Typewriter";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Typewriter/cmuntt.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Typewriter";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Typewriter/cmuntb.woff") format("woff");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Computer Modern Typewriter";
+    src: url("https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Typewriter/cmunit.woff") format("woff");
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+:root {
+    --paper: #fffefb;
+    --ink: #1a1a1a;
+    --soft: #3f3f3f;
+    --muted: #6b6b6b;
+    --rule: #1a1a1a;
+    --hairline: #cfcfcf;
+    --accent: #7a1f1f;
+    --tint: rgba(122, 31, 31, 0.045);
+    --desk: #e9e7e2;
+    --serif: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Cambria, Georgia, serif;
+    --sans: "Computer Modern Sans", "Latin Modern Sans", "CMU Sans Serif", "Segoe UI", sans-serif;
+    --mono: "Computer Modern Typewriter", "Latin Modern Mono", Consolas, monospace;
+}
+
+/* ---------- Page ---------- */
+
+html,
+html body.preview-container {
+    background: var(--desk);
+}
+
+body.vscode-body,
+.preview-container .crossnote.markdown-preview[data-for="preview"] {
+    box-sizing: border-box;
+    max-width: 21cm;
+    min-height: 29.7cm;
+    margin: 1.5rem auto;
+    padding: 2.4cm 2.6cm 2.8cm;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 8px 28px rgba(0, 0, 0, 0.12);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    font-variant-ligatures: common-ligatures;
+    counter-reset: section;
+}
+
+/* Sommaire latéral de Markdown Preview Enhanced ouvert : la page se centre dans l'espace restant */
+.preview-container.show-sidebar-toc .crossnote.markdown-preview[data-for="preview"] {
+    margin-left: max(0px, calc((100% - var(--sidebar-toc-width, 280px) - 21cm) / 2));
+    margin-right: 0;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) :is(p, li) {
+    text-align: justify;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) p {
+    margin: 0 0 0.75em;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) strong {
+    color: inherit;
+}
+
+/* ---------- Titre : la date (façon \maketitle) ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h1 {
+    margin: 0 0 1.8em;
+    padding: 0 0 1.1em;
+    border: none;
+    border-bottom: 0.8px solid var(--rule);
+    text-align: center;
+    font-family: var(--serif);
+    font-size: 1.9em;
+    font-weight: normal;
+    letter-spacing: 0.05em;
+    font-variant-numeric: lining-nums;
+    line-height: 1.25;
+    color: var(--ink);
+}
+
+/* ---------- Titres de section ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) :is(h2, h3, h4) {
+    position: relative;
+    border: none;
+    font-family: var(--sans);
+    font-weight: bold;
+    line-height: 1.3;
+    text-align: left;
+    color: var(--ink);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2 {
+    margin: 1.9em 0 0.65em;
+    padding: 0 0 0 1.7em;
+    font-size: 1.2em;
+    counter-increment: section;
+    counter-reset: subsection;
+}
+
+/* Numéros en ::after : VS Code réserve ::before au repère de ligne active */
+:is(.vscode-body, .markdown-preview.markdown-preview) h2::after {
+    content: counter(section);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h3 {
+    margin: 1.3em 0 0.5em;
+    padding: 0 0 0 2.4em;
+    font-size: 1em;
+    counter-increment: subsection;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h3::after {
+    content: counter(section) "." counter(subsection);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h4 {
+    margin: 1.1em 0 0.4em;
+    padding: 0;
+    font-family: var(--serif);
+    font-size: 1em;
+    font-style: italic;
+    font-weight: normal;
+}
+
+/* Sections secondaires : titre discret en capitales espacées */
+:is(.vscode-body, .markdown-preview.markdown-preview) h2:is([id^="notes"], [id^="r"][id*="rences"]) {
+    padding-left: 2.55em;
+    font-size: 0.8em;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+/* ---------- Objectif : énoncé mis en avant ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objectif"] ~ :is(p, ul, ol):not(h2[id^="objectif"] ~ h2 ~ *) {
+    margin: 0 0 0.5em;
+    padding: 0.1em 0 0.1em 0.9em;
+    border-left: 3px solid var(--accent);
+    font-size: 1.22em;
+    line-height: 1.38;
+    text-align: left;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objectif"] ~ :is(ul, ol):not(h2[id^="objectif"] ~ h2 ~ *) {
+    padding-left: 2.1em;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="objectif"] ~ :is(ul, ol):not(h2[id^="objectif"] ~ h2 ~ *) li {
+    text-align: left;
+}
+
+/* ---------- Notes : corps réduit, texte courant dense ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="notes"] ~ :is(p, ul, ol, blockquote, table, pre):not(h2[id^="notes"] ~ h2 ~ *) {
+    font-size: 0.88em;
+    line-height: 1.45;
+    color: var(--soft);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="notes"] ~ p:not(h2[id^="notes"] ~ h2 ~ *) {
+    margin-bottom: 0.6em;
+}
+
+/* ---------- Prochaine étape : encadré ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] + p {
+    position: relative;
+    margin: 0 0 0.8em;
+    padding: 0.65em 1em 0.65em 2.5em;
+    border: 0.8px solid var(--rule);
+    background: var(--tint);
+    font-size: 1.05em;
+    text-align: left;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="prochaine"] + p::after {
+    content: "\2192";
+    position: absolute;
+    top: 0.65em;
+    left: 0.9em;
+    color: var(--accent);
+    font-weight: bold;
+}
+
+/* ---------- Références : bibliographie ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] {
+    margin-top: 3em;
+    padding-top: 1.3em;
+    border-top: 0.8px solid var(--hairline);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"]::after {
+    top: 1.3em;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] ~ :is(p, ul, ol):not(h2[id^="r"][id*="rences"] ~ h2 ~ *) {
+    font-size: 0.86em;
+    line-height: 1.42;
+    text-align: left;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] ~ ul:not(h2[id^="r"][id*="rences"] ~ h2 ~ *) {
+    padding-left: 0;
+    list-style: none;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] ~ ul:not(h2[id^="r"][id*="rences"] ~ h2 ~ *) > li {
+    position: relative;
+    margin: 0.55em 0;
+    padding-left: 5.4em;
+    text-align: left;
+}
+
+/* Étiquette de type : code en ligne placé en tête d'entrée (`Article`, `Web`…) */
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] ~ ul:not(h2[id^="r"][id*="rences"] ~ h2 ~ *) > li > code:first-child,
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] ~ ul:not(h2[id^="r"][id*="rences"] ~ h2 ~ *) > li > p:first-child > code:first-child {
+    position: absolute;
+    top: 0.22em;
+    left: 0;
+    box-sizing: border-box;
+    width: 5.6em;
+    padding: 0.08em 0 0;
+    border: 0.7px solid var(--accent);
+    border-radius: 0;
+    background: none;
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: 0.78em;
+    font-weight: bold;
+    letter-spacing: 0.09em;
+    line-height: 1.35;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) h2[id^="r"][id*="rences"] ~ ul:not(h2[id^="r"][id*="rences"] ~ h2 ~ *) a {
+    font-family: var(--mono);
+    font-size: 0.96em;
+    overflow-wrap: anywhere;
+}
+
+/* ---------- Listes ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) :is(ul, ol) {
+    margin: 0 0 0.8em;
+    padding-left: 1.6em;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) li {
+    margin: 0.2em 0;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) li::marker {
+    color: var(--muted);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) .task-list-item input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+
+/* ---------- Encadrés (remarques) ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) blockquote {
+    margin: 1em 0;
+    padding: 0.6em 1em;
+    border: none;
+    border-left: 2.5px solid var(--accent);
+    border-radius: 0;
+    background: var(--tint);
+    color: var(--ink);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* ---------- Tableaux (façon booktabs) ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) table {
+    display: table;
+    width: auto;
+    margin: 1.2em auto;
+    border-collapse: collapse;
+    border-top: 1.6px solid var(--rule);
+    border-bottom: 1.6px solid var(--rule);
+    font-size: 0.95em;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) table :is(th, td) {
+    padding: 0.35em 0.9em;
+    border: none;
+    color: inherit;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) table thead th {
+    border-bottom: 0.8px solid var(--rule);
+    font-family: var(--sans);
+    font-weight: bold;
+}
+
+/* ---------- Code ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) :is(code, pre) {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) pre code {
+    font-size: 1em;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) :not(pre) > code {
+    padding: 0 0.15em;
+    background: none;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) :not(pre) > code::before,
+:is(.vscode-body, .markdown-preview.markdown-preview) :not(pre) > code::after {
+    content: none;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) pre {
+    margin: 1em 0;
+    padding: 0.8em 1em;
+    border: 0.8px solid var(--hairline);
+    border-radius: 0;
+    background: #faf9f5;
+    line-height: 1.35;
+    overflow-x: auto;
+}
+
+/* La page reste claire : sous un thème sombre, la coloration syntaxique
+   prévue pour fond noir serait illisible. */
+body:is(.vscode-dark, .vscode-high-contrast) pre code * {
+    color: var(--ink) !important;
+}
+
+/* ---------- Divers ---------- */
+
+:is(.vscode-body, .markdown-preview.markdown-preview) a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) hr {
+    height: 0;
+    margin: 1.8em auto;
+    width: 40%;
+    border: none;
+    border-top: 0.8px solid var(--rule);
+    background: none;
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) img {
+    display: block;
+    max-width: 100%;
+    margin: 1.2em auto 0.5em;
+}
+
+/* Légende : texte en italique placé seul sous une image */
+:is(.vscode-body, .markdown-preview.markdown-preview) p:has(> img) + p > em:only-child {
+    display: block;
+    margin-bottom: 1.2em;
+    text-align: center;
+    font-size: 0.93em;
+    color: var(--muted);
+}
+
+:is(.vscode-body, .markdown-preview.markdown-preview) .katex-display {
+    margin: 1em 0;
+}
+
+@media (max-width: 800px) {
+    body.vscode-body,
+    .preview-container .crossnote.markdown-preview[data-for="preview"] {
+        margin: 0;
+        padding: 1.5rem 1.4rem 2.5rem;
+        box-shadow: none;
+    }
+}
+
+@media print {
+    html,
+    html body.preview-container {
+        background: none;
+    }
+
+    body.vscode-body,
+    .preview-container .crossnote.markdown-preview[data-for="preview"] {
+        margin: 0;
+        box-shadow: none;
+    }
+}

@@ -5,12 +5,24 @@ foam_template:
 ---
 # ${FOAM_DATE_YEAR}-${FOAM_DATE_MONTH}-${FOAM_DATE_DATE}
 
-## Objectif du jour
+## Objectif
 
-
+Résultat visé en fin de journée, formulé en une phrase vérifiable.
 
 ## Déroulé
 
+Étapes réalisées dans l'ordre chronologique, avec les paramètres, fichiers et commandes utilisés.
 
+## Notes
+
+Observations, résultats intermédiaires, difficultés rencontrées et questions ouvertes.
 
 ## Prochaine étape
+
+Première action à mener à la reprise du travail.
+
+## Références
+
+- `Article` **Roth, C. C. & Mohr, D.** (2014). *Effect of strain rate on ductile fracture initiation in advanced high strength steel sheets: Experiments and modeling.* International Journal of Plasticity, 56, 19–44. [doi:10.1016/j.ijplas.2014.01.003](https://doi.org/10.1016/j.ijplas.2014.01.003) · [PDF](../literature/papers/Effect_of_strain_rate_on_ductile_fracture_initiation_in_advanced_high_strength_steel_sheets_experiments_and_modeling.pdf)
+- `Web` **Auteur ou organisme.** *Titre de la page.* [exemple.org/page](https://exemple.org/page) · consulté le ${FOAM_DATE_DATE}/${FOAM_DATE_MONTH}/${FOAM_DATE_YEAR}.
+- `Fichier` *Description du fichier ou du résultat produit.* [task1/results/](../task1/results/) · créé le ${FOAM_DATE_DATE}/${FOAM_DATE_MONTH}/${FOAM_DATE_YEAR}.

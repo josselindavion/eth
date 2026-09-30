@@ -1,4 +1,7 @@
 {
-    "foam.openDailyNote.directory": "logbook",
-    "foam.openDailyNote.filenameFormat": "yyyy-mm-dd"
+    "foam.openDailyNote.directory": "journal",
+    "foam.openDailyNote.filenameFormat": "yyyy-mm-dd",
+    "markdown.styles": [
+        ".vscode/journal.css"
+    ]
 }
