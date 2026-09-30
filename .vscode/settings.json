@@ -1,0 +1,4 @@
+{
+    "foam.openDailyNote.directory": "logbook",
+    "foam.openDailyNote.filenameFormat": "yyyy-mm-dd"
+}
