@@ -1,0 +1,34 @@
+# Abaqus : sorties et fichiers temporaires
+*.odb
+*.dat
+*.msg
+*.sta
+*.lck
+*.com
+*.prt
+*.sim
+*.res
+*.mdl
+*.stt
+*.abq
+*.pac
+*.sel
+*.023
+*.rpy*
+*.log
+
+# Images et vidéos brutes (caméra rapide / DIC)
+*.tif
+*.tiff
+*.avi
+*.cine
+*.raw
+*.mp4
+
+# MATLAB
+*.asv
+
+# Système
+.DS_Store
+Thumbs.db
+desktop.ini
