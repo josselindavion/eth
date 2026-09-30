@@ -9,17 +9,14 @@ foam_template:
 
 Résultat visé en fin de journée, formulé en une phrase vérifiable.
 
-## Déroulé
+## Déroulé et Notes
 
-Étapes réalisées dans l'ordre chronologique, avec les paramètres, fichiers et commandes utilisés.
-
-## Notes
-
-Observations, résultats intermédiaires, difficultés rencontrées et questions ouvertes.
+Étapes réalisées dans l'ordre chronologique, avec les paramètres, fichiers et commandes utilisés, puis observations, résultats intermédiaires et questions ouvertes.
 
 ## Prochaine étape
 
-Première action à mener à la reprise du travail.
+- Première action à mener à la reprise du travail.
+- Action suivante.
 
 ## Références
 
