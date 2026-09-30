@@ -9,10 +9,8 @@ Travail en cours : **Task I** — équilibre quasi-statique d'éprouvettes UT su
 ## Dossiers
 
 - `literature/` — articles et thèses de référence, avec la liste des références.
-- `notes/` — notes de compréhension, un fichier par concept.
 - `logbook/` — carnet de bord, un fichier par jour.
-- `task1_equilibrium/` — simulations, essais et résultats de la Task I.
-- `report/` — rapport de stage.
+- `task1/` — simulations, essais et résultats de la Task I.
 
 ## Règles
 
