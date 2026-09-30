@@ -32,3 +32,8 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Markdown Preview Enhanced : fichiers générés automatiquement
+.crossnote/config.js
+.crossnote/head.html
+.crossnote/parser.js
