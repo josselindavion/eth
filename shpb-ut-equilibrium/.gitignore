@@ -7,6 +7,28 @@
 *.prt
 *.lck
 *.rpy*
+*.ipm
+*.log
+*.sim
+*.res
+*.mdl
+*.stt
+*.abq
+*.pac
+*.sel
+*.023
+
+# Abaqus/CAE : bases de modèles et journaux (regénérés par scripts/cae/)
+*.cae
+*.jnl
+*.rec
+
+# Python
+__pycache__/
+*.pyc
+
+# SolidWorks : fichiers temporaires
+~$*
 
 # Les .dat de matériaux sont des sources, pas des sorties Abaqus
 !model/materials/*.dat
