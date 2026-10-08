@@ -1,0 +1,15 @@
+# Abaqus : sorties et fichiers temporaires
+*.odb
+*.sta
+*.msg
+*.dat
+*.com
+*.prt
+*.lck
+*.rpy*
+
+# Les .dat de matériaux sont des sources, pas des sorties Abaqus
+!model/materials/*.dat
+
+# Calculs générés par scripts/pre
+runs/
