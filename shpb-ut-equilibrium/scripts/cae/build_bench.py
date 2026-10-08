@@ -6,7 +6,8 @@ Refait automatiquement ce qui a ete fait a la main :
   1. importe les pieces STEP (pusher, barre de sortie, eprouvette)
   2. cree le striker et la barre d'entree (cylindres)
   3. place les 5 instances dans le repere global
-  4. sauvegarde le modele .cae
+  4. (option) ne garde que la moitie X >= 0 : demi-modele, symetrie au plan X = 0
+  5. sauvegarde le modele .cae
 
 Repere global : Y = axe des barres / traction, Z = vers le haut,
                 X = largeur de l'eprouvette. Unites : mm.
@@ -42,6 +43,10 @@ Z_INPUT_AXIS  = 7.85                     # centre de la face du pusher (20 x 15.
 Z_OUTPUT_AXIS = Z_INPUT_AXIS + 21.5      # = 29.35, decalage des axes (fig. 5a)
 Y_OUTPUT_BAR  = 155.713                  # avance de la barre de sortie
 SPECIMEN_TRANSLATION = (356.2728, -1357.7622, 28.6)   # eprouvette centree dans les logements
+
+# Demi-modele : True = on coupe tout au plan X = 0 et on garde X >= 0
+# (comme le labo : Beerli et al. 2026, Roth et al. 2015)
+HALF_MODEL = True
 
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
@@ -88,6 +93,41 @@ def place(assembly, part, inst_name, rot_axis=None, angle=0.0, vector=None):
         assembly.translate(instanceList=(inst_name,), vector=vector)
 
 
+def make_box(model, part_name, xmin, xmax, ymin, ymax, depth):
+    """Cree une boite : rectangle dans le plan XY, extrude selon +Z."""
+    s = model.ConstrainedSketch(name='__profile__',
+                                sheetSize=2.0 * max(abs(ymin), abs(ymax), abs(xmin), abs(xmax)))
+    s.rectangle(point1=(xmin, ymin), point2=(xmax, ymax))
+    p = model.Part(name=part_name, dimensionality=THREE_D, type=DEFORMABLE_BODY)
+    p.BaseSolidExtrude(sketch=s, depth=depth)
+    del model.sketches['__profile__']
+    return p
+
+
+def cut_half(model, assembly, cutter_part, full_inst_name, half_part_name, z_min):
+    """Retire la moitie X < 0 d'une instance avec une boite de decoupe.
+
+    Abaqus cree une nouvelle part (half_part_name), definie dans le repere
+    global, et son instance half_part_name + '-1'. L'instance d'origine et la
+    boite sont supprimees.
+    """
+    cutter_name = 'CUTTER_' + half_part_name
+    assembly.Instance(name=cutter_name, part=cutter_part, dependent=ON)
+    assembly.translate(instanceList=(cutter_name,), vector=(0.0, 0.0, z_min))
+    assembly.InstanceFromBooleanCut(name=half_part_name,
+                                    instanceToBeCut=assembly.instances[full_inst_name],
+                                    cuttingInstances=(assembly.instances[cutter_name],),
+                                    originalInstances=DELETE)
+
+
+def report_x_range(model, part_names):
+    """Affiche l'etendue en X de chaque part (verification du demi-modele)."""
+    print('Etendue en X des parts (demi-modele : X min doit valoir 0) :')
+    for n in part_names:
+        xs = [v.pointOn[0][0] for v in model.parts[n].vertices]
+        print('  %-11s X min = %9.4f   X max = %9.4f' % (n, min(xs), max(xs)))
+
+
 # ============================================================
 # CONSTRUCTION
 # ============================================================
@@ -97,11 +137,14 @@ if MODEL_NAME in mdb.models.keys():
 model = mdb.Model(name=MODEL_NAME, modelType=STANDARD_EXPLICIT)
 
 # --- 1. Parts ---
-pusher     = import_step_part(model, 'PUSHER',     STEP_PUSHER)
-output_bar = import_step_part(model, 'OUTPUT_BAR', STEP_OUTPUT_BAR)
-specimen   = import_step_part(model, 'UT19',       STEP_SPECIMEN)
-striker    = make_cylinder(model, 'STRIKER',   BAR_RADIUS, STRIKER_LENGTH)
-input_bar  = make_cylinder(model, 'INPUT_BAR', BAR_RADIUS, INPUT_BAR_LENGTH)
+# En demi-modele, les parts completes s'appellent *_FULL ; les demi-parts
+# finales (creees a l'etape 3) prennent les noms definitifs.
+SUFFIX = '_FULL' if HALF_MODEL else ''
+pusher     = import_step_part(model, 'PUSHER' + SUFFIX,     STEP_PUSHER)
+output_bar = import_step_part(model, 'OUTPUT_BAR' + SUFFIX, STEP_OUTPUT_BAR)
+specimen   = import_step_part(model, 'UT19' + SUFFIX,       STEP_SPECIMEN)
+striker    = make_cylinder(model, 'STRIKER' + SUFFIX,   BAR_RADIUS, STRIKER_LENGTH)
+input_bar  = make_cylinder(model, 'INPUT_BAR' + SUFFIX, BAR_RADIUS, INPUT_BAR_LENGTH)
 
 # --- 2. Assemblage ---
 a = model.rootAssembly
@@ -109,13 +152,30 @@ a.DatumCsysByDefault(CARTESIAN)
 X_AXIS = (1.0, 0.0, 0.0)
 Z_AXIS = (0.0, 0.0, 1.0)
 
-place(a, pusher,     'PUSHER-1',     X_AXIS, 90.0, None)
-place(a, input_bar,  'INPUT_BAR-1',  X_AXIS, 90.0, (0.0, 0.0, Z_INPUT_AXIS))
-place(a, output_bar, 'OUTPUT_BAR-1', X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS))
-place(a, specimen,   'UT19-1',       Z_AXIS, 90.0, SPECIMEN_TRANSLATION)
-place(a, striker,    'STRIKER-1',    X_AXIS, 90.0, (0.0, -INPUT_BAR_LENGTH, Z_INPUT_AXIS))
+place(a, pusher,     'PUSHER'     + SUFFIX + '-1', X_AXIS, 90.0, None)
+place(a, input_bar,  'INPUT_BAR'  + SUFFIX + '-1', X_AXIS, 90.0, (0.0, 0.0, Z_INPUT_AXIS))
+place(a, output_bar, 'OUTPUT_BAR' + SUFFIX + '-1', X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS))
+place(a, specimen,   'UT19'       + SUFFIX + '-1', Z_AXIS, 90.0, SPECIMEN_TRANSLATION)
+place(a, striker,    'STRIKER'    + SUFFIX + '-1', X_AXIS, 90.0, (0.0, -INPUT_BAR_LENGTH, Z_INPUT_AXIS))
 
-# --- 3. Sauvegarde ---
+PART_NAMES = ['STRIKER', 'INPUT_BAR', 'PUSHER', 'UT19', 'OUTPUT_BAR']
+
+# --- 3. Demi-modele : coupe au plan X = 0 ---
+if HALF_MODEL:
+    # Boite qui englobe toute la zone X < 0 du banc (Y de -11 200 a +400 mm, Z de -100 a +100 mm)
+    CUT_Z_MIN = -100.0
+    cutter = make_box(model, 'CUTTER', xmin=-200.0, xmax=0.0,
+                      ymin=-INPUT_BAR_LENGTH - STRIKER_LENGTH - 200.0, ymax=400.0,
+                      depth=200.0)
+    for name in PART_NAMES:
+        cut_half(model, a, cutter, name + '_FULL-1', name, CUT_Z_MIN)
+    # Menage : les parts completes et la boite ne servent plus
+    for name in PART_NAMES:
+        del model.parts[name + '_FULL']
+    del model.parts['CUTTER']
+    report_x_range(model, PART_NAMES)
+
+# --- 4. Sauvegarde ---
 # Supprime le modele vide 'Model-1' cree par defaut, s'il est inutilise
 if 'Model-1' in mdb.models.keys() and len(mdb.models['Model-1'].parts) == 0:
     del mdb.models['Model-1']
