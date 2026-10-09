@@ -1,0 +1,67 @@
+*HEADING
+SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
+**
+** ==========================================================================
+** SHPB_UT_main.inp -- MODELE PRINCIPAL (gabarit)
+** ==========================================================================
+** Ce fichier est un GABARIT : scripts/pre/ le copie dans runs/<case_id>/ en
+** remplacant les jetons suivants :
+**     __SPEC__     nom de l'eprouvette   (UT19 ou UT40)
+**     __CASE_ID__  nom du calcul         (ex. UT19_R0500_00)
+** Tous les fichiers inclus (*.geo, *.dat) sont copies a cote du .inp :
+** les *INCLUDE n'ont donc pas de chemin.
+**
+** Unites : mm, N, s, MPa, t/mm^3
+** Demi-modele : symetrie par rapport au plan X = 0
+**
+** ==========================================================================
+** 1. MAILLAGE  (un .geo par piece, genere par scripts/pre/inp_to_geo.py)
+** ==========================================================================
+** Noeuds et elements sont deja en coordonnees globales.
+** Labels : piece n -> n*1 000 000 + ...  (STRIKER 1M, INPUT_BAR 2M, ...)
+**
+*INCLUDE, INPUT=STRIKER.geo
+*INCLUDE, INPUT=INPUT_BAR.geo
+*INCLUDE, INPUT=PUSHER_ROD.geo
+*INCLUDE, INPUT=PUSHER_HEAD.geo
+*INCLUDE, INPUT=__SPEC__.geo
+*INCLUDE, INPUT=OUTPUT_BAR.geo
+*INCLUDE, INPUT=OUTPUT_HEAD.geo
+**
+** ==========================================================================
+** 2. MATERIAUX  (generes par scripts/pre/make_materials.py)
+** ==========================================================================
+*MATERIAL, NAME=MARAGING
+*INCLUDE, INPUT=MARAGING.dat
+*MATERIAL, NAME=STRIKER_STEEL
+*INCLUDE, INPUT=STRIKER_STEEL.dat
+*MATERIAL, NAME=DP1000
+*INCLUDE, INPUT=DP1000.dat
+**
+** ==========================================================================
+** 3. SECTIONS  (affectation d'un materiau a chaque piece)
+** ==========================================================================
+** Barres, pusher et tetes : maraging (Beerli et al. 2026)
+*SOLID SECTION, ELSET=INPUT_BAR_ALL, MATERIAL=MARAGING
+,
+*SOLID SECTION, ELSET=PUSHER_ROD_ALL, MATERIAL=MARAGING
+,
+*SOLID SECTION, ELSET=PUSHER_HEAD_ALL, MATERIAL=MARAGING
+,
+*SOLID SECTION, ELSET=OUTPUT_BAR_ALL, MATERIAL=MARAGING
+,
+*SOLID SECTION, ELSET=OUTPUT_HEAD_ALL, MATERIAL=MARAGING
+,
+** Striker : acier (c = 4720 m/s mesuree)
+*SOLID SECTION, ELSET=STRIKER_ALL, MATERIAL=STRIKER_STEEL
+,
+** Eprouvette
+*SOLID SECTION, ELSET=__SPEC___ALL, MATERIAL=DP1000
+,
+**
+** ==========================================================================
+** 4. LIAISONS (ties)                                  -> bloc suivant
+** 5. CONTACTS                                        -> a venir
+** 6. CONDITIONS AUX LIMITES ET VITESSE INITIALE      -> a venir
+** 7. STEP DYNAMIC EXPLICIT ET SORTIES                -> a venir
+** ==========================================================================
