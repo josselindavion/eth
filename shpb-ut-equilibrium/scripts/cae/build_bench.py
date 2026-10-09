@@ -204,8 +204,9 @@ def explicit_elem_types(hex_code, wedge_code, tet_code):
                           kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
                           distortionControl=DEFAULT),
             mesh.ElemType(elemCode=wedge_code, elemLibrary=EXPLICIT),
-            mesh.ElemType(elemCode=tet_code, elemLibrary=EXPLICIT,
-                          secondOrderAccuracy=OFF, distortionControl=DEFAULT))
+            # Prisme et tetraedre : uniquement le code et la bibliotheque. Les options
+            # (distortionControl, secondOrderAccuracy...) sont refusees pour C3D10M.
+            mesh.ElemType(elemCode=tet_code, elemLibrary=EXPLICIT))
 
 
 def set_c3d8r(part):
