@@ -5,9 +5,9 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ** SHPB_UT_main.inp -- MODELE PRINCIPAL (gabarit)
 ** ==========================================================================
 ** Ce fichier est un GABARIT : scripts/pre/ le copie dans runs/<case_id>/ en
-** remplacant les jetons suivants :
-**     __SPEC__     nom de l'eprouvette   (UT19 ou UT40)
-**     __CASE_ID__  nom du calcul         (ex. UT19_R0500_00)
+** remplacant deux jetons (mots entoures de deux soulignes "__") :
+**     SPEC     -> nom de l'eprouvette   (UT19 ou UT40)
+**     CASE_ID  -> nom du calcul         (ex. UT19_R0500_00)
 ** Tous les fichiers inclus (*.geo, *.dat) sont copies a cote du .inp :
 ** les *INCLUDE n'ont donc pas de chemin.
 **
