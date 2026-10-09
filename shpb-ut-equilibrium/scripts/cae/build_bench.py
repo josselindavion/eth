@@ -9,7 +9,7 @@ Etapes :
   3. decoupe : demi-modele (on garde X >= 0) et separation des pieces complexes
      en une partie simple (hexaedres) et une tete (tetraedres) :
         PUSHER     -> PUSHER_ROD  (Y <= 125) + PUSHER_HEAD  (Y >= 125)
-        OUTPUT_BAR -> OUTPUT_BAR  (Y <= 100) + OUTPUT_HEAD  (Y >= 100)
+        OUTPUT_BAR -> OUTPUT_BAR  (Y <= 100, cylindre recree) + OUTPUT_HEAD  (Y >= 100, STEP)
      Les interfaces Y = 125 et Y = 100 seront collees par des contraintes TIE.
   4. maille toutes les pieces (Abaqus/Explicit)
   5. sauvegarde le modele .cae
@@ -43,6 +43,10 @@ STEP_SPECIMEN   = 'XMas_UT_t1p5.step'
 BAR_RADIUS        = 10.0      # mm  (diametre 20 mm)
 STRIKER_LENGTH    = 5000.0    # mm
 INPUT_BAR_LENGTH  = 6010.0    # mm
+OUTPUT_BAR_LENGTH = 6000.0    # mm, longueur totale du STEP (tete comprise)
+# La partie ronde de la barre de sortie est recreee en cylindre plein : le STEP a, au bout
+# eloigne, un trou taraude (diametre 8.5 x 27.5 mm) qui empeche le maillage balaye.
+# Ce detail (0.08 % du volume, a 6 m de l'eprouvette) est volontairement supprime.
 
 # Positions (voir docs/assembly.md)
 Z_INPUT_AXIS  = 7.85                     # centre de la face du pusher (20 x 15.7 mm)
@@ -285,6 +289,7 @@ full = {
     'UT19':       import_step_part(model, 'UT19_FULL',       STEP_SPECIMEN),
     'STRIKER':    make_cylinder(model, 'STRIKER_FULL',   BAR_RADIUS, STRIKER_LENGTH),
     'INPUT_BAR':  make_cylinder(model, 'INPUT_BAR_FULL', BAR_RADIUS, INPUT_BAR_LENGTH),
+    'OUTPUT_ROD': make_cylinder(model, 'OUTPUT_ROD_FULL', BAR_RADIUS, OUTPUT_BAR_LENGTH),
 }
 
 # --- 2. Placement : (axe de rotation, angle, translation) ---
@@ -296,6 +301,7 @@ placement = {
     'PUSHER':     (X_AXIS, 90.0, None),
     'UT19':       (Z_AXIS, 90.0, SPECIMEN_TRANSLATION),
     'OUTPUT_BAR': (X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS)),
+    'OUTPUT_ROD': (X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS)),   # meme axe que la barre du STEP
 }
 
 # --- 3. Pieces finales : (nom, part complete, Y min garde, Y max garde) ---
@@ -305,7 +311,7 @@ PIECES = [
     ('PUSHER_ROD',  'PUSHER',     None,           Y_SPLIT_PUSHER),
     ('PUSHER_HEAD', 'PUSHER',     Y_SPLIT_PUSHER, None),
     ('UT19',        'UT19',       None,           None),
-    ('OUTPUT_BAR',  'OUTPUT_BAR', None,           Y_SPLIT_OUTPUT),
+    ('OUTPUT_BAR',  'OUTPUT_ROD', None,           Y_SPLIT_OUTPUT),   # cylindre plein, sans le trou taraude
     ('OUTPUT_HEAD', 'OUTPUT_BAR', Y_SPLIT_OUTPUT, None),
 ]
 for piece_name, src, y_min, y_max in PIECES:

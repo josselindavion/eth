@@ -37,8 +37,13 @@ complexe (dents, évasement). Chacun est séparé en deux parts par un plan perp
 |---|---|---|
 | `PUSHER_ROD` | Y ≤ 125 (corps rectangulaire, qui va jusqu'à Y = 130) | C3D8R balayés, 5 mm / 2 mm |
 | `PUSHER_HEAD` | Y ≥ 125 | C3D10M libres, 2 mm |
-| `OUTPUT_BAR` | Y ≤ 100 (partie ronde, qui commence à Y = 105.05) | C3D8R balayés, 5 mm / 2 mm |
+| `OUTPUT_BAR` | Y ≤ 100 (partie ronde, qui commence à Y = 105.05), **recréée en cylindre plein Ø 20 × 6000 mm** | C3D8R balayés, 5 mm / 2 mm |
 | `OUTPUT_HEAD` | Y ≥ 100 | C3D10M libres, 2 mm |
 
 Les interfaces **Y = 125** (pusher) et **Y = 100** (barre de sortie) devront être collées par des
 contraintes **TIE**. À vérifier dans les résultats : pas de réflexion parasite de l'onde à ces interfaces.
+
+**Défeaturing de la barre de sortie :** le STEP comporte au bout éloigné (Y ≈ −5844) un trou taraudé
+Ø 8,5 × 27,5 mm avec cône de perçage, qui empêche le maillage balayé. La partie ronde est donc recréée
+en cylindre plein sur le même axe (Y de −5844.287 à 100). Le trou représente 0,08 % du volume et n'agit que
+sur la réflexion au bout éloigné, après la fenêtre de mesure (2,33 ms).
