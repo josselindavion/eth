@@ -28,6 +28,7 @@ shpb-ut-equilibrium/
 
 ## Chaîne de calcul
 
+0. `scripts/pre/make_materials.py` : paramètres matériaux → `model/materials/*.dat` (voir `docs/materials.md`)
 1. `scripts/cae/` : STEP (`cad/step/`) → maillage → `model/geometry/*.geo`
 2. `scripts/pre/` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
    (`<case_id>.inp` + `<case_id>_paras.inp`)

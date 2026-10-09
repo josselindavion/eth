@@ -1,0 +1,9 @@
+** Materiau STRIKER_STEEL -- genere par scripts/pre/make_materials.py, NE PAS EDITER A LA MAIN
+** Elastique lineaire. E = rho * c^2 avec c = 4720 m/s (vitesse des ondes mesuree)
+** rho = 7850 kg/m^3, E = 174885 MPa, nu = 0.30
+** Unites : mm, N, s, MPa, t/mm^3
+**
+*Density
+7.8500e-09,
+*Elastic
+174885.4, 0.300
