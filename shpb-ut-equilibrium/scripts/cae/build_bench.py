@@ -7,7 +7,7 @@ Refait automatiquement ce qui a ete fait a la main :
   2. cree le striker et la barre d'entree (cylindres)
   3. place les 5 instances dans le repere global
   4. (option) ne garde que la moitie X >= 0 : demi-modele, symetrie au plan X = 0
-  5. maille les pieces (C3D8R, Abaqus/Explicit) -- pour l'instant : STRIKER, INPUT_BAR
+  5. maille les pieces (C3D8R, Abaqus/Explicit) -- pour l'instant : STRIKER, INPUT_BAR, UT19
   6. sauvegarde le modele .cae
 
 Repere global : Y = axe des barres / traction, Z = vers le haut,
@@ -53,6 +53,10 @@ HALF_MODEL = True
 # Maillage des barres (Roth et al. 2015, Beerli et al. 2026) : hexaedres C3D8R
 BAR_SEED_AXIAL   = 5.0    # mm, taille des elements dans l'axe des barres
 BAR_SEED_SECTION = 2.0    # mm, taille des elements dans la section
+
+# Maillage de l'eprouvette (Roth et al. 2015) : 0.5 mm dans le plan, 4 elements dans l'epaisseur
+SPEC_SEED_INPLANE = 0.5   # mm
+SPEC_N_THICKNESS  = 4     # nombre d'elements dans l'epaisseur
 
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
@@ -168,6 +172,30 @@ def mesh_bar(part, seed_axial, seed_section):
     part.generateMesh()
 
 
+def thickness_edges(part, tol=1.0e-6):
+    """Aretes droites paralleles a Z (dans l'epaisseur de la tole)."""
+    pts = []
+    for e in part.edges:
+        iv = e.getVertices()
+        if len(iv) != 2:
+            continue
+        a = part.vertices[iv[0]].pointOn[0]
+        b = part.vertices[iv[1]].pointOn[0]
+        if abs(a[0] - b[0]) < tol and abs(a[1] - b[1]) < tol and abs(a[2] - b[2]) > tol:
+            pts.append((e.pointOn[0],))
+    return part.edges.findAt(*pts)
+
+
+def mesh_sheet(part, seed_inplane, n_thickness):
+    """Maille une tole (epaisseur selon Z) : quadrangles dans le plan, balayes dans l'epaisseur."""
+    part.setMeshControls(regions=part.cells, elemShape=HEX, technique=SWEEP,
+                         algorithm=ADVANCING_FRONT)
+    part.seedPart(size=seed_inplane, deviationFactor=0.1, minSizeFactor=0.1)
+    part.seedEdgeByNumber(edges=thickness_edges(part), number=n_thickness, constraint=FIXED)
+    set_c3d8r(part)
+    part.generateMesh()
+
+
 def report_mesh(model, part_names):
     """Affiche le nombre de noeuds et d'elements de chaque part maillee."""
     print('Maillage :')
@@ -224,10 +252,10 @@ if HALF_MODEL:
     report_x_range(model, PART_NAMES)
 
 # --- 4. Maillage ---
-MESHED = ['STRIKER', 'INPUT_BAR']
-for name in MESHED:
+for name in ['STRIKER', 'INPUT_BAR']:
     mesh_bar(model.parts[name], BAR_SEED_AXIAL, BAR_SEED_SECTION)
-report_mesh(model, MESHED)
+mesh_sheet(model.parts['UT19'], SPEC_SEED_INPLANE, SPEC_N_THICKNESS)
+report_mesh(model, ['STRIKER', 'INPUT_BAR', 'UT19'])
 
 # --- 5. Sauvegarde ---
 # Supprime le modele vide 'Model-1' cree par defaut, s'il est inutilise
