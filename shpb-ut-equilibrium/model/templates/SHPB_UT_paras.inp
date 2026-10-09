@@ -13,3 +13,16 @@
 V_STRIKER_MS = __V_STRIKER_MS__
 ** ... convertie en mm/s pour Abaqus
 V_STRIKER = V_STRIKER_MS * 1000.0
+**
+** Duree du calcul, en s. Chronologie (barre d'entree c = 4871 m/s) :
+**   onde de l'impact -> pusher (6010 mm)            : ~1,23 ms
+**   duree de l'impulsion (2 x 5000 mm / 4720 m/s)   : ~2,12 ms
+**   => fin du chargement de l'eprouvette            : ~3,4 ms
+T_STEP = 4.0e-3
+**
+** Sorties
+** Historique : un point par microseconde (comme une acquisition a 1 MHz)
+DT_HIST = 1.0e-6
+** Champ : nombre d'images sur la duree du calcul
+N_FRAMES_SPEC = 100
+N_FRAMES_ALL = 20

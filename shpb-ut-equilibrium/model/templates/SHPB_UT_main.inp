@@ -135,11 +135,28 @@ OUTPUT_HEAD_XSYMM, XSYMM
 STRIKER_NALL, 2, <V_STRIKER>
 **
 ** ==========================================================================
-** 7. STEP DYNAMIC EXPLICIT
+** 7. SECTIONS DE MESURE DE FORCE  (donnees du modele, avant le step)
 ** ==========================================================================
-** (*STEP et *DYNAMIC, EXPLICIT : bloc suivant)
+** Une "integrated output section" somme les efforts a travers une surface :
+** la sortie SOF (section force) donne la force totale qui traverse la section.
+** SEC_OUT = debut de la partie droite cote barre de sortie (Y = 155,357)
+** SEC_IN  = fin de la partie droite cote pusher           (Y = 170,357)
+** Equilibre quasi statique  <=>  SOF2(SEC_IN) = SOF2(SEC_OUT)
+** (demi-modele : force reelle = 2 x SOF2)
+*INTEGRATED OUTPUT SECTION, NAME=SECTION_IN, SURFACE=__SPEC___SEC_IN
+*INTEGRATED OUTPUT SECTION, NAME=SECTION_OUT, SURFACE=__SPEC___SEC_OUT
 **
-** --- 7a. Contacts (contact general, limite aux paires listees) -----------
+** ==========================================================================
+** 8. STEP DYNAMIC EXPLICIT
+** ==========================================================================
+** Pas de mass scaling : il changerait la vitesse des ondes dans les barres,
+** c'est-a-dire exactement ce que l'on veut mesurer.
+** Duree <T_STEP> : voir le fichier _paras.inp.
+*STEP, NAME=IMPACT, NLGEOM=YES
+*DYNAMIC, EXPLICIT
+, <T_STEP>
+**
+** --- 8a. Contacts (contact general, limite aux paires listees) -----------
 ** *CONTACT INCLUSIONS : seules ces paires de surfaces sont testees
 ** (sans l'option ALL EXTERIOR, Abaqus ne cherche pas d'autres contacts).
 ** *CONTACT PROPERTY ASSIGNMENT : 1re ligne vide = propriete par defaut
@@ -157,6 +174,43 @@ __SPEC___S_SKIN, OUTPUT_HEAD_S_SKIN
 __SPEC___S_SKIN, PUSHER_HEAD_S_SKIN, IP_FROTT
 __SPEC___S_SKIN, OUTPUT_HEAD_S_SKIN, IP_FROTT
 **
-** --- 7b. Sorties                                     -> a venir
-** (*END STEP                                          -> a venir)
-** ==========================================================================
+** --- 8b. Sorties "champ" (.odb, pour les images et animations) ----------
+** Sorties ciblees, comme dans le tuto du labo : un champ complet sur tout le
+** banc a chaque image ferait un .odb de plusieurs Go.
+**   - eprouvette : beaucoup d'images, contraintes et deformations
+**   - banc entier : peu d'images, juste pour voir passer les ondes
+*OUTPUT, FIELD, NUMBER INTERVAL=<N_FRAMES_SPEC>
+*ELEMENT OUTPUT, ELSET=__SPEC___ALL
+S, LE, PEEQ
+*NODE OUTPUT, NSET=__SPEC___NALL
+U, V
+*OUTPUT, FIELD, NUMBER INTERVAL=<N_FRAMES_ALL>
+*NODE OUTPUT
+U
+*ELEMENT OUTPUT
+S
+**
+** --- 8c. Sorties "historique" (courbes en fonction du temps) -------------
+** Un point toutes les <DT_HIST> secondes.
+*OUTPUT, HISTORY, TIME INTERVAL=<DT_HIST>
+** Jauges virtuelles : deformation axiale (Y = direction 2) des elements de jauge
+*ELEMENT OUTPUT, ELSET=INPUT_BAR_GAUGE_IN
+LE22, S22
+*ELEMENT OUTPUT, ELSET=OUTPUT_BAR_GAUGE_OUT
+LE22, S22
+** Forces a travers les deux sections de l'eprouvette (equilibre)
+*INTEGRATED OUTPUT, SECTION=SECTION_IN
+SOF
+*INTEGRATED OUTPUT, SECTION=SECTION_OUT
+SOF
+** Extensometre virtuel (12 mm) : allongement = U2(EXT_IN) - U2(EXT_OUT)
+*NODE OUTPUT, NSET=__SPEC___EXT_IN
+U2
+*NODE OUTPUT, NSET=__SPEC___EXT_OUT
+U2
+** Energies du modele entier (controle de la qualite du calcul) :
+** ALLAE (energie d'hourglass) doit rester petite devant ALLIE
+*ENERGY OUTPUT
+ALLKE, ALLIE, ALLAE, ALLWK, ALLFD, ETOTAL
+**
+*END STEP
