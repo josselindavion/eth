@@ -117,6 +117,8 @@ OUTPUT_HEAD_S_TIE, OUTPUT_BAR_S_TIE
 ** (sans l'option ALL EXTERIOR, Abaqus ne cherche pas d'autres contacts).
 ** *CONTACT PROPERTY ASSIGNMENT : 1re ligne vide = propriete par defaut
 ** pour toutes les paires, puis les exceptions.
+** L'eprouvette est simplement posee dans les logements (rien ne la maintient
+** par-dessus sur le vrai banc) : pas de condition en Z, comme en realite.
 *CONTACT, OP=NEW
 *CONTACT INCLUSIONS
 STRIKER_S_IMPACT, INPUT_BAR_S_IMPACT
