@@ -233,4 +233,18 @@ Un groupe d'assemblage qui porterait le même nom qu'un groupe de part serait re
 | `OUTPUT_BAR` | `OUTPUT_BAR_ALL`, `OUTPUT_BAR_NALL`, `OUTPUT_BAR_XSYMM`, `OUTPUT_BAR_GAUGE_OUT` | `OUTPUT_BAR_S_TIE` |
 | `OUTPUT_HEAD` | `OUTPUT_HEAD_ALL`, `OUTPUT_HEAD_NALL`, `OUTPUT_HEAD_XSYMM` | `OUTPUT_HEAD_S_TIE`, `OUTPUT_HEAD_S_SKIN` |
 
-*(tableau à confirmer avec le résumé affiché par `inp_to_geo.py` au premier lancement)*
+Tableau vérifié au premier lancement (9 oct. 2026). Plages de labels obtenues :
+
+| Pièce | Nœuds | Éléments | Labels |
+|---|---|---|---|
+| `STRIKER` | 61 061 | 47 000 | 1 000 001 … |
+| `INPUT_BAR` | 75 789 | 58 898 | 2 000 001 … |
+| `PUSHER_ROD` | 1 404 | 1 000 | 3 000 001 … |
+| `PUSHER_HEAD` | 45 811 | 30 886 | 4 000 001 … |
+| `UT19` | 16 765 | 12 428 | 5 000 001 … |
+| `OUTPUT_BAR` | 78 540 | 61 828 | 6 000 001 … |
+| `OUTPUT_HEAD` | 18 052 | 11 755 | 7 000 001 … |
+| **Total** | **297 422** | **223 795** | |
+
+Le premier chiffre d'un label donne donc la pièce : utile pour lire un message d'erreur Abaqus
+(« élément 5004321 trop distordu » → `UT19`).
