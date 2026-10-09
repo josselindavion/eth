@@ -1,0 +1,15 @@
+** ==========================================================================
+** SHPB_UT_paras.inp -- PARAMETRES D'UN CALCUL (gabarit)
+** ==========================================================================
+** scripts/pre/ copie ce fichier en runs/<case_id>/<case_id>_paras.inp
+** en remplacant les jetons (mots entoures de deux soulignes "__").
+** Il est inclus en tete du .inp principal.
+**
+** Syntaxe *PARAMETER : une ligne "nom = expression" (expression Python).
+** Unites : mm, N, s, MPa, t/mm^3
+**
+*PARAMETER
+** Vitesse du striker, en m/s (valeur lisible) ...
+V_STRIKER_MS = __V_STRIKER_MS__
+** ... convertie en mm/s pour Abaqus
+V_STRIKER = V_STRIKER_MS * 1000.0

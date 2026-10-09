@@ -15,6 +15,15 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ** Demi-modele : symetrie par rapport au plan X = 0
 **
 ** ==========================================================================
+** 0. PARAMETRES  (*PARAMETER, fichier propre a chaque calcul)
+** ==========================================================================
+** Les valeurs qui changent d'un calcul a l'autre sont dans <case_id>_paras.inp.
+** Dans ce fichier, on les utilise entre chevrons : <V_STRIKER>.
+** Ce *INCLUDE doit rester AVANT toute utilisation d'un parametre.
+**
+*INCLUDE, INPUT=__CASE_ID___paras.inp
+**
+** ==========================================================================
 ** 1. MAILLAGE  (un .geo par piece, genere par scripts/pre/inp_to_geo.py)
 ** ==========================================================================
 ** Noeuds et elements sont deja en coordonnees globales.
@@ -104,8 +113,26 @@ OUTPUT_HEAD_S_TIE, OUTPUT_BAR_S_TIE
 ** defaut d'Abaqus/Explicit, donc pas de *SURFACE BEHAVIOR a ecrire.
 **
 ** ==========================================================================
-** 6. CONDITIONS AUX LIMITES ET VITESSE INITIALE      -> bloc suivant
+** 6. CONDITIONS AUX LIMITES ET VITESSE INITIALE
 ** ==========================================================================
+** --- 6a. Symetrie : plan X = 0 (demi-modele) -------------------------------
+** XSYMM bloque U1 (deplacement normal au plan) ; les rotations n'existent pas
+** pour les elements volumiques. Aucune autre condition : sur le banc, les
+** barres glissent librement dans leurs paliers et l'eprouvette est posee.
+*BOUNDARY
+STRIKER_XSYMM, XSYMM
+INPUT_BAR_XSYMM, XSYMM
+PUSHER_ROD_XSYMM, XSYMM
+PUSHER_HEAD_XSYMM, XSYMM
+__SPEC___XSYMM, XSYMM
+OUTPUT_BAR_XSYMM, XSYMM
+OUTPUT_HEAD_XSYMM, XSYMM
+**
+** --- 6b. Vitesse initiale du striker ---------------------------------------
+** Le striker (Y de -11010 a -6010) avance vers la barre d'entree : vitesse
+** selon +Y (degre de liberte 2), en mm/s. Toutes les autres pieces sont au repos.
+*INITIAL CONDITIONS, TYPE=VELOCITY
+STRIKER_NALL, 2, <V_STRIKER>
 **
 ** ==========================================================================
 ** 7. STEP DYNAMIC EXPLICIT
