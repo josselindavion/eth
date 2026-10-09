@@ -7,7 +7,8 @@ Refait automatiquement ce qui a ete fait a la main :
   2. cree le striker et la barre d'entree (cylindres)
   3. place les 5 instances dans le repere global
   4. (option) ne garde que la moitie X >= 0 : demi-modele, symetrie au plan X = 0
-  5. sauvegarde le modele .cae
+  5. maille les pieces (C3D8R, Abaqus/Explicit) -- pour l'instant : STRIKER, INPUT_BAR
+  6. sauvegarde le modele .cae
 
 Repere global : Y = axe des barres / traction, Z = vers le haut,
                 X = largeur de l'eprouvette. Unites : mm.
@@ -22,6 +23,7 @@ from abaqus import *
 from abaqusConstants import *
 import os
 import inspect
+import mesh
 
 # ============================================================
 # PARAMETRES  (le seul endroit a modifier)
@@ -47,6 +49,10 @@ SPECIMEN_TRANSLATION = (356.2728, -1357.7622, 28.6)   # eprouvette centree dans 
 # Demi-modele : True = on coupe tout au plan X = 0 et on garde X >= 0
 # (comme le labo : Beerli et al. 2026, Roth et al. 2015)
 HALF_MODEL = True
+
+# Maillage des barres (Roth et al. 2015, Beerli et al. 2026) : hexaedres C3D8R
+BAR_SEED_AXIAL   = 5.0    # mm, taille des elements dans l'axe des barres
+BAR_SEED_SECTION = 2.0    # mm, taille des elements dans la section
 
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
@@ -128,6 +134,48 @@ def report_x_range(model, part_names):
         print('  %-11s X min = %9.4f   X max = %9.4f' % (n, min(xs), max(xs)))
 
 
+def y_range(part):
+    """Y min et Y max des sommets d'une part (axe des barres)."""
+    ys = [v.pointOn[0][1] for v in part.vertices]
+    return min(ys), max(ys)
+
+
+def set_c3d8r(part):
+    """Type d'element : brique lineaire a integration reduite, bibliotheque Explicit."""
+    et = mesh.ElemType(elemCode=C3D8R, elemLibrary=EXPLICIT,
+                       kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
+                       distortionControl=DEFAULT)
+    part.setElementType(regions=(part.cells,), elemTypes=(et,))
+
+
+def mesh_bar(part, seed_axial, seed_section):
+    """Maille un demi-cylindre d'axe Y en hexaedres balayes (sweep) le long de l'axe.
+
+    - graine globale = seed_axial (fixe la taille dans l'axe, sur les grandes aretes)
+    - graine locale = seed_section sur les aretes des deux faces d'extremite
+      (demi-cercle + diametre), qui fixent le maillage de la section
+    """
+    part.setMeshControls(regions=part.cells, elemShape=HEX, technique=SWEEP,
+                         algorithm=ADVANCING_FRONT)
+    part.seedPart(size=seed_axial, deviationFactor=0.1, minSizeFactor=0.1)
+    y0, y1 = y_range(part)
+    big = 1.0e4
+    for y in (y0, y1):
+        end_edges = part.edges.getByBoundingBox(-big, y - 0.5, -big, big, y + 0.5, big)
+        part.seedEdgeBySize(edges=end_edges, size=seed_section,
+                            deviationFactor=0.1, constraint=FINER)
+    set_c3d8r(part)
+    part.generateMesh()
+
+
+def report_mesh(model, part_names):
+    """Affiche le nombre de noeuds et d'elements de chaque part maillee."""
+    print('Maillage :')
+    for n in part_names:
+        p = model.parts[n]
+        print('  %-11s %8d elements  %8d noeuds' % (n, len(p.elements), len(p.nodes)))
+
+
 # ============================================================
 # CONSTRUCTION
 # ============================================================
@@ -175,7 +223,13 @@ if HALF_MODEL:
     del model.parts['CUTTER']
     report_x_range(model, PART_NAMES)
 
-# --- 4. Sauvegarde ---
+# --- 4. Maillage ---
+MESHED = ['STRIKER', 'INPUT_BAR']
+for name in MESHED:
+    mesh_bar(model.parts[name], BAR_SEED_AXIAL, BAR_SEED_SECTION)
+report_mesh(model, MESHED)
+
+# --- 5. Sauvegarde ---
 # Supprime le modele vide 'Model-1' cree par defaut, s'il est inutilise
 if 'Model-1' in mdb.models.keys() and len(mdb.models['Model-1'].parts) == 0:
     del mdb.models['Model-1']
