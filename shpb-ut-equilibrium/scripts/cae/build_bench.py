@@ -14,7 +14,8 @@ Etapes :
   4. maille toutes les pieces (Abaqus/Explicit) ; l'eprouvette est d'abord decoupee
      au debut et a la fin de la partie droite de la zone utile (grille reguliere)
   5. cree les groupes nommes : <PIECE>_ALL, XSYMM, et pour l'eprouvette SEC_IN,
-     SEC_OUT (sections de mesure de force) et GAUGE_ZONE
+     SEC_OUT (sections de mesure de force) et GAUGE_ZONE ; puis les surfaces
+     d'interface : S_TIE, S_IMPACT, S_PUSH, S_SKIN (voir docs/mesh.md)
   6. sauvegarde le modele .cae
 
 Repere global : Y = axe des barres / traction, Z = vers le haut,
@@ -320,6 +321,62 @@ def make_specimen_sets(part, y_out, y_in, tol=1.0e-4):
              cells=part.cells.getByBoundingBox(-big, y_out - tol, -big, big, y_in + tol, big))
 
 
+def faces_at_y(part, y, tol=1.0e-4):
+    """Faces planes situees dans le plan Y = y."""
+    big = 1.0e5
+    return part.faces.getByBoundingBox(-big, y - tol, -big, big, y + tol, big)
+
+
+def skin_faces(part, tol=1.0e-6):
+    """Peau exterieure d'une piece, pour le contact :
+    - sans les faces internes (creees par les decoupes, partagees par 2 volumes)
+    - sans les faces du plan de symetrie X = 0"""
+    pts = []
+    for f in part.faces:
+        if len(f.getCells()) != 1:
+            continue                                   # face interne
+        xs = [part.vertices[i].pointOn[0][0] for i in f.getVertices()]
+        if xs and max(abs(x) for x in xs) < tol:
+            continue                                   # face du plan X = 0
+        pts.append((f.pointOn[0],))
+    return part.faces.findAt(*pts)
+
+
+def make_interface_surfaces(model, y_impact, y_push, y_tie_pusher, y_tie_output):
+    """Surfaces des interfaces entre pieces.
+
+    TIE (collage), meme nom des deux cotes, qualifie par l'instance dans le .inp :
+      PUSHER_ROD.S_TIE / PUSHER_HEAD.S_TIE   en Y = y_tie_pusher
+      OUTPUT_BAR.S_TIE / OUTPUT_HEAD.S_TIE   en Y = y_tie_output
+    Contact bout a bout :
+      STRIKER.S_IMPACT / INPUT_BAR.S_IMPACT  en Y = y_impact (impact du striker)
+      INPUT_BAR.S_PUSH / PUSHER_ROD.S_PUSH   en Y = y_push   (barre d'entree -> pusher)
+    Contact eprouvette / logements (peau exterieure) :
+      UT19.S_SKIN, PUSHER_HEAD.S_SKIN, OUTPUT_HEAD.S_SKIN
+    """
+    P = model.parts
+    for name, y in (('PUSHER_ROD', y_tie_pusher), ('PUSHER_HEAD', y_tie_pusher),
+                    ('OUTPUT_BAR', y_tie_output), ('OUTPUT_HEAD', y_tie_output)):
+        P[name].Surface(name='S_TIE', side1Faces=faces_at_y(P[name], y))
+    for name in ('STRIKER', 'INPUT_BAR'):
+        P[name].Surface(name='S_IMPACT', side1Faces=faces_at_y(P[name], y_impact))
+    for name in ('INPUT_BAR', 'PUSHER_ROD'):
+        P[name].Surface(name='S_PUSH', side1Faces=faces_at_y(P[name], y_push))
+    for name in ('UT19', 'PUSHER_HEAD', 'OUTPUT_HEAD'):
+        P[name].Surface(name='S_SKIN', side1Faces=skin_faces(P[name]))
+
+
+def report_surfaces(model, part_names):
+    """Bilan des surfaces : nombre de faces geometriques et de facettes d'elements."""
+    print('Surfaces :')
+    for n in part_names:
+        p = model.parts[n]
+        for s in sorted(p.surfaces.keys()):
+            surf = p.surfaces[s]
+            print('  %-12s %-9s %4d faces  %6d facettes d\'elements'
+                  % (n, s, len(surf.faces), len(surf.elements)))
+
+
 def report_sets(model, part_names):
     """Bilan des groupes crees."""
     print('Groupes :')
@@ -418,7 +475,10 @@ report_mesh(model, PIECE_NAMES)
 # --- 5. Groupes nommes ---
 make_basic_sets(model, PIECE_NAMES)
 make_specimen_sets(spec, y_sec_out, y_sec_in)
+make_interface_surfaces(model, y_impact=-INPUT_BAR_LENGTH, y_push=0.0,
+                        y_tie_pusher=Y_SPLIT_PUSHER, y_tie_output=Y_SPLIT_OUTPUT)
 report_sets(model, PIECE_NAMES)
+report_surfaces(model, PIECE_NAMES)
 print('Eprouvette : partie droite de Y = %.3f (SEC_OUT) a Y = %.3f (SEC_IN), longueur %.3f mm, '
       '%d elements dans GAUGE_ZONE'
       % (y_sec_out, y_sec_in, y_sec_in - y_sec_out, len(spec.sets['GAUGE_ZONE'].elements)))

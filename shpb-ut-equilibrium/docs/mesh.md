@@ -160,4 +160,17 @@ Les groupes sont définis **sur la géométrie** (par coordonnées), donc ils re
 | `SEC_OUT` | surface | `UT19` | section en Y ≈ 155,357 | force traversant l'éprouvette, côté barre de sortie |
 | `GAUGE_ZONE` | set d'éléments | `UT19` | partie droite de la zone utile | contraintes / déformations moyennes |
 
-À venir : surfaces de *tie* (Y = 125, Y = 100), surfaces de contact, jauges `GAUGE_IN` / `GAUGE_OUT`, extensomètre.
+### Surfaces d'interface
+
+Même nom des deux côtés d'une interface ; dans le `.inp`, elles sont qualifiées par l'instance
+(ex. `PUSHER_ROD-1.S_TIE`).
+
+| Surface | Pièces | Position | Interaction prévue |
+|---|---|---|---|
+| `S_TIE` | `PUSHER_ROD` + `PUSHER_HEAD` | Y = 125 | *tie* (collage) |
+| `S_TIE` | `OUTPUT_BAR` + `OUTPUT_HEAD` | Y = 100 | *tie* (collage) |
+| `S_IMPACT` | `STRIKER` + `INPUT_BAR` | Y = −6010 | contact : impact du striker |
+| `S_PUSH` | `INPUT_BAR` + `PUSHER_ROD` | Y = 0 | contact : la barre d'entrée pousse le pusher |
+| `S_SKIN` | `UT19`, `PUSHER_HEAD`, `OUTPUT_HEAD` | peau extérieure (sans faces internes ni faces en X = 0) | contact général : dents de l'éprouvette ↔ logements |
+
+À venir : jauges `GAUGE_IN` / `GAUGE_OUT`, extensomètre.
