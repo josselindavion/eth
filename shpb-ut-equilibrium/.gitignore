@@ -35,3 +35,7 @@ __pycache__/
 
 # Calculs générés par scripts/pre
 runs/
+
+# Maillages générés (build_bench.py puis inp_to_geo.py) : non versionnés pour l'instant
+*.geo
+model/geometry/_raw/

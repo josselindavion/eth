@@ -89,12 +89,16 @@ HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pus
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
 
+# .inp brut ecrit par CAE (maillage + groupes), converti ensuite en .geo par scripts/pre/inp_to_geo.py
+RAW_INP_NAME = MODEL_NAME + '_mesh'      # -> model/geometry/_raw/SHPB_UT19_mesh.inp
+
 # ============================================================
 # CHEMINS : on retrouve la racine du repo a partir de ce script
 # ============================================================
 THIS_DIR  = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
 STEP_DIR  = os.path.join(REPO_ROOT, 'cad', 'step')
+RAW_DIR   = os.path.join(REPO_ROOT, 'model', 'geometry', '_raw')
 
 # Etendue du banc (pour les boites de decoupe)
 BIG_X = 200.0
@@ -538,3 +542,24 @@ if 'Model-1' in mdb.models.keys() and len(mdb.models['Model-1'].parts) == 0:
     del mdb.models['Model-1']
 mdb.saveAs(pathName=os.path.join(os.getcwd(), CAE_NAME))
 print('Banc construit et sauvegarde dans : ' + os.path.join(os.getcwd(), CAE_NAME))
+
+# ============================================================
+# EXPORT DU .inp BRUT (maillage + groupes + surfaces)
+# ============================================================
+# writeInput ecrit le .inp dans le dossier courant : on se place temporairement dans _raw.
+# consistencyChecking=OFF : le modele n'a encore ni section, ni step, ni CL (ils seront
+# dans le .inp principal du labo), donc on ne demande pas a CAE de verifier la coherence.
+if not os.path.isdir(RAW_DIR):
+    os.makedirs(RAW_DIR)
+old_cwd = os.getcwd()
+try:
+    os.chdir(RAW_DIR)
+    if RAW_INP_NAME in mdb.jobs.keys():
+        del mdb.jobs[RAW_INP_NAME]
+    job = mdb.Job(name=RAW_INP_NAME, model=MODEL_NAME)
+    job.writeInput(consistencyChecking=OFF)
+    del mdb.jobs[RAW_INP_NAME]
+finally:
+    os.chdir(old_cwd)
+print('.inp brut ecrit : ' + os.path.join(RAW_DIR, RAW_INP_NAME + '.inp'))
+print('Etape suivante (Python 3, racine du repo) : python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py')

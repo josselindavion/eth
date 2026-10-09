@@ -29,7 +29,8 @@ shpb-ut-equilibrium/
 ## Chaîne de calcul
 
 0. `scripts/pre/make_materials.py` : paramètres matériaux → `model/materials/*.dat` (voir `docs/materials.md`)
-1. `scripts/cae/` : STEP (`cad/step/`) → maillage → `model/geometry/*.geo`
+1. `scripts/cae/build_bench.py` (Abaqus/CAE) : STEP (`cad/step/`) → maillage → `model/geometry/_raw/SHPB_UT19_mesh.inp`,
+   puis `scripts/pre/inp_to_geo.py` (Python 3) → un `model/geometry/<PIÈCE>.geo` par pièce (voir `docs/mesh.md`, section 10)
 2. `scripts/pre/` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
    (`<case_id>.inp` + `<case_id>_paras.inp`)
 3. `scripts/hpc/` : soumission sur Euler (job array)

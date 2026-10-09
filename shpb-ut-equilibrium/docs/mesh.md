@@ -141,8 +141,8 @@ et la lire dans `abaqus.rpy` (le journal de la session en cours, sans numéro, d
 
 ## 8. Reste à faire
 
-- [ ] Groupes nommés : `<PIÈCE>_ALL`, `XSYMM`, surfaces de *tie* et de contact, jauges (`GAUGE_IN`, `GAUGE_OUT`), extensomètre
-- [ ] Export du maillage en `.geo` (convention du labo)
+- [x] Groupes nommés : `<PIÈCE>_ALL`, `XSYMM`, surfaces de *tie* et de contact, jauges (`GAUGE_IN`, `GAUGE_OUT`), extensomètre
+- [x] Export du maillage en `.geo` (convention du labo) — voir section 10
 - [ ] Après le premier calcul : vérifier l'absence de réflexion aux interfaces Y = 125 et Y = 100
 - [ ] (optionnel) maillage aligné dans la zone utile de l'éprouvette, pour la striction
 
@@ -186,3 +186,51 @@ Réglables dans le bloc `PARAMETRES` (`GAUGE_IN_DIST`, `GAUGE_OUT_DIST`, `GAUGE_
 
 Une jauge virtuelle = les éléments dont le centre est à moins de `GAUGE_LENGTH / 2` = 5 mm de la position
 (≈ 2 tranches d'éléments) : comme une vraie jauge, elle moyenne la déformation sur quelques millimètres.
+
+---
+
+## 10. Export en fichiers `.geo` (convention du labo)
+
+Le `.inp` principal ne contient pas le maillage : il l'inclut par `*INCLUDE`, un fichier `.geo` par pièce
+(comme `NT20.geo` dans le tuto du labo).
+
+### Chaîne
+
+| Étape | Outil | Entrée | Sortie |
+|---|---|---|---|
+| 1 | `scripts/cae/build_bench.py` (Abaqus/CAE, *File → Run Script*) | STEP de `cad/step/` | `SHPB_UT19.cae` (dossier de travail) **et** `model/geometry/_raw/SHPB_UT19_mesh.inp` |
+| 2 | `scripts/pre/inp_to_geo.py` (Python 3, sans Abaqus) | `model/geometry/_raw/SHPB_UT19_mesh.inp` | `model/geometry/<PIÈCE>.geo` (7 fichiers) |
+
+```bash
+# depuis la racine du repo
+python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py
+```
+
+Les `.geo` et le dossier `_raw/` **ne sont pas versionnés** (`.gitignore`) : ils sont regénérés par ces deux scripts.
+
+### Ce que fait la conversion
+
+| Dans le `.inp` brut de CAE | Dans le `.geo` |
+|---|---|
+| maillage dans `*Part`, placé par `*Instance` (translation + rotation) | nœuds directement en **coordonnées globales** (la transformation est appliquée) |
+| labels qui recommencent à 1 dans chaque part | labels **décalés** : pièce n → à partir de n × 1 000 000 (voir tableau ci-dessous) |
+| noms locaux (`XSYMM`, `S_TIE`…) qualifiés par l'instance (`UT19-1.XSYMM`) | noms **préfixés par la pièce** : `UT19_XSYMM`, `PUSHER_ROD_S_TIE` ; `UT19_ALL` reste `UT19_ALL` |
+| `*Solid Section` dans la part | **retiré** : les sections sont dans le `.inp` principal |
+| — | en plus : `*Node, nset=<PIÈCE>_NALL` (tous les nœuds de la pièce) |
+
+Les labels dépendent de l'ordre des instances dans le `.inp` brut ; le script affiche la plage de chaque pièce.
+Un groupe d'assemblage qui porterait le même nom qu'un groupe de part serait renommé `<nom>_ASM` (message `ATTENTION`).
+
+### Noms disponibles dans le `.inp` principal
+
+| Pièce (`<PIÈCE>.geo`) | Groupes | Surfaces |
+|---|---|---|
+| `STRIKER` | `STRIKER_ALL`, `STRIKER_NALL`, `STRIKER_XSYMM` | `STRIKER_S_IMPACT` |
+| `INPUT_BAR` | `INPUT_BAR_ALL`, `INPUT_BAR_NALL`, `INPUT_BAR_XSYMM`, `INPUT_BAR_GAUGE_IN` | `INPUT_BAR_S_IMPACT`, `INPUT_BAR_S_PUSH` |
+| `PUSHER_ROD` | `PUSHER_ROD_ALL`, `PUSHER_ROD_NALL`, `PUSHER_ROD_XSYMM` | `PUSHER_ROD_S_PUSH`, `PUSHER_ROD_S_TIE` |
+| `PUSHER_HEAD` | `PUSHER_HEAD_ALL`, `PUSHER_HEAD_NALL`, `PUSHER_HEAD_XSYMM` | `PUSHER_HEAD_S_TIE`, `PUSHER_HEAD_S_SKIN` |
+| `UT19` | `UT19_ALL`, `UT19_NALL`, `UT19_XSYMM`, `UT19_GAUGE_ZONE`, `UT19_EXT_OUT`, `UT19_EXT_IN` | `UT19_SEC_OUT`, `UT19_SEC_IN`, `UT19_S_SKIN` |
+| `OUTPUT_BAR` | `OUTPUT_BAR_ALL`, `OUTPUT_BAR_NALL`, `OUTPUT_BAR_XSYMM`, `OUTPUT_BAR_GAUGE_OUT` | `OUTPUT_BAR_S_TIE` |
+| `OUTPUT_HEAD` | `OUTPUT_HEAD_ALL`, `OUTPUT_HEAD_NALL`, `OUTPUT_HEAD_XSYMM` | `OUTPUT_HEAD_S_TIE`, `OUTPUT_HEAD_S_SKIN` |
+
+*(tableau à confirmer avec le résumé affiché par `inp_to_geo.py` au premier lancement)*
