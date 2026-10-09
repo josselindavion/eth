@@ -38,3 +38,11 @@ shpb-ut-equilibrium/
 ## Nommage des calculs
 
 `<éprouvette>_R<vitesse de déformation sur 4 chiffres>_<indice>`, par ex. `UT19_R0500_00`.
+
+## Documentation
+
+| Fichier | Contenu |
+|---|---|
+| `docs/assembly.md` | placement des pièces dans le repère global, demi-modèle, découpe des pièces |
+| `docs/materials.md` | matériaux, sources des données, hypothèses |
+| `docs/mesh.md` | maillage : pièces, éléments, techniques, vérifications, paramètres |
