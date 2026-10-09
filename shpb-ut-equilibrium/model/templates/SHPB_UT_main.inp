@@ -60,8 +60,32 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ,
 **
 ** ==========================================================================
-** 4. LIAISONS (ties)                                  -> bloc suivant
-** 5. CONTACTS                                        -> a venir
+** 4. LIAISONS (ties)
+** ==========================================================================
+** Le pusher et la barre de sortie ont ete coupes en deux dans build_bench.py
+** (partie ronde en hexaedres, tete en tetraedres). On recolle les deux moities
+** sur leur plan de coupe : tous les deplacements sont transmis, comme si la
+** piece etait d'un seul bloc.
+**
+** Ligne de donnees : surface SECONDAIRE, surface PRINCIPALE.
+** Secondaire = maillage le plus fin (ici la tete en tetraedres de 2 mm) :
+** ses noeuds sont attaches aux facettes de la surface principale.
+**   ADJUST=YES             : les noeuds secondaires sont ramenes sur la surface
+**                            principale au debut du calcul (ecart < 0,05 mm ici,
+**                            du aux cordes du maillage sur les bords courbes)
+**   POSITION TOLERANCE=0.2 : on ne lie que les noeuds secondaires a moins de
+**                            0,2 mm de la surface principale (la couche de
+**                            noeuds suivante est a ~1 mm : elle n'est pas prise)
+**
+** Pusher, coupe en Y = 125
+*TIE, NAME=TIE_PUSHER, ADJUST=YES, POSITION TOLERANCE=0.2
+PUSHER_HEAD_S_TIE, PUSHER_ROD_S_TIE
+** Barre de sortie, coupe en Y = 100
+*TIE, NAME=TIE_OUTPUT, ADJUST=YES, POSITION TOLERANCE=0.2
+OUTPUT_HEAD_S_TIE, OUTPUT_BAR_S_TIE
+**
+** ==========================================================================
+** 5. CONTACTS                                        -> bloc suivant
 ** 6. CONDITIONS AUX LIMITES ET VITESSE INITIALE      -> a venir
 ** 7. STEP DYNAMIC EXPLICIT ET SORTIES                -> a venir
 ** ==========================================================================
