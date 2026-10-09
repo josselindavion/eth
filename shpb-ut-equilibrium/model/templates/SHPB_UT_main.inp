@@ -85,7 +85,49 @@ PUSHER_HEAD_S_TIE, PUSHER_ROD_S_TIE
 OUTPUT_HEAD_S_TIE, OUTPUT_BAR_S_TIE
 **
 ** ==========================================================================
-** 5. CONTACTS                                        -> bloc suivant
-** 6. CONDITIONS AUX LIMITES ET VITESSE INITIALE      -> a venir
-** 7. STEP DYNAMIC EXPLICIT ET SORTIES                -> a venir
+** 5. PROPRIETES DE CONTACT
+** ==========================================================================
+** En Abaqus/Explicit, les PROPRIETES de contact sont des donnees du modele
+** (ici), mais la DEFINITION du contact (*CONTACT) se fait dans le step :
+** voir section 7.
+**
+** Contact lisse (sans frottement) : chocs bout a bout des barres
+*SURFACE INTERACTION, NAME=IP_LISSE
+*FRICTION
+0.,
+** Contact avec frottement : dents de l'eprouvette dans les logements
+** (coefficient 0,2 : Roth et al. 2015)
+*SURFACE INTERACTION, NAME=IP_FROTT
+*FRICTION
+0.2,
+** Comportement normal : contact "dur" (pas de penetration), valeur par
+** defaut d'Abaqus/Explicit, donc pas de *SURFACE BEHAVIOR a ecrire.
+**
+** ==========================================================================
+** 6. CONDITIONS AUX LIMITES ET VITESSE INITIALE      -> bloc suivant
+** ==========================================================================
+**
+** ==========================================================================
+** 7. STEP DYNAMIC EXPLICIT
+** ==========================================================================
+** (*STEP et *DYNAMIC, EXPLICIT : bloc suivant)
+**
+** --- 7a. Contacts (contact general, limite aux paires listees) -----------
+** *CONTACT INCLUSIONS : seules ces paires de surfaces sont testees
+** (sans l'option ALL EXTERIOR, Abaqus ne cherche pas d'autres contacts).
+** *CONTACT PROPERTY ASSIGNMENT : 1re ligne vide = propriete par defaut
+** pour toutes les paires, puis les exceptions.
+*CONTACT, OP=NEW
+*CONTACT INCLUSIONS
+STRIKER_S_IMPACT, INPUT_BAR_S_IMPACT
+INPUT_BAR_S_PUSH, PUSHER_ROD_S_PUSH
+__SPEC___S_SKIN, PUSHER_HEAD_S_SKIN
+__SPEC___S_SKIN, OUTPUT_HEAD_S_SKIN
+*CONTACT PROPERTY ASSIGNMENT
+ ,  , IP_LISSE
+__SPEC___S_SKIN, PUSHER_HEAD_S_SKIN, IP_FROTT
+__SPEC___S_SKIN, OUTPUT_HEAD_S_SKIN, IP_FROTT
+**
+** --- 7b. Sorties                                     -> a venir
+** (*END STEP                                          -> a venir)
 ** ==========================================================================
