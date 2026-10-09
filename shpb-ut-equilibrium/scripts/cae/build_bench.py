@@ -194,19 +194,30 @@ def y_range(part):
     return min(ys), max(ys)
 
 
+def explicit_elem_types(hex_code, wedge_code, tet_code):
+    """Triplet (hexaedre, prisme, tetraedre) attendu par setElementType.
+
+    Abaqus applique a chaque element le type correspondant a sa forme : il faut
+    donc toujours fournir les trois, comme dans les journaux .rpy de CAE.
+    """
+    return (mesh.ElemType(elemCode=hex_code, elemLibrary=EXPLICIT,
+                          kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
+                          distortionControl=DEFAULT),
+            mesh.ElemType(elemCode=wedge_code, elemLibrary=EXPLICIT),
+            mesh.ElemType(elemCode=tet_code, elemLibrary=EXPLICIT,
+                          secondOrderAccuracy=OFF, distortionControl=DEFAULT))
+
+
 def set_c3d8r(part):
-    """Brique lineaire a integration reduite, bibliotheque Explicit."""
-    et = mesh.ElemType(elemCode=C3D8R, elemLibrary=EXPLICIT,
-                       kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
-                       distortionControl=DEFAULT)
-    part.setElementType(regions=(part.cells,), elemTypes=(et,))
+    """Hexaedres : brique lineaire a integration reduite C3D8R (Explicit)."""
+    part.setElementType(regions=(part.cells,),
+                        elemTypes=explicit_elem_types(C3D8R, C3D6, C3D4))
 
 
 def set_c3d10m(part):
-    """Tetraedre quadratique modifie, bibliotheque Explicit."""
-    et = mesh.ElemType(elemCode=C3D10M, elemLibrary=EXPLICIT,
-                       secondOrderAccuracy=OFF, distortionControl=DEFAULT)
-    part.setElementType(regions=(part.cells,), elemTypes=(et,))
+    """Tetraedres : tetraedre quadratique modifie C3D10M (Explicit)."""
+    part.setElementType(regions=(part.cells,),
+                        elemTypes=explicit_elem_types(C3D8R, C3D6, C3D10M))
 
 
 def mesh_bar(part, seed_axial, seed_section):
@@ -268,7 +279,9 @@ def report_mesh(model, part_names):
     for n in part_names:
         p = model.parts[n]
         total += len(p.elements)
-        print('  %-12s %8d elements  %8d noeuds' % (n, len(p.elements), len(p.nodes)))
+        types = sorted(set(str(e.type) for e in p.elements))
+        print('  %-12s %8d elements  %8d noeuds   type : %s'
+              % (n, len(p.elements), len(p.nodes), ', '.join(types)))
     print('  %-12s %8d elements' % ('TOTAL', total))
 
 
