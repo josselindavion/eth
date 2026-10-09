@@ -194,31 +194,33 @@ def y_range(part):
     return min(ys), max(ys)
 
 
-def explicit_elem_types(hex_code, wedge_code, tet_code):
-    """Triplet (hexaedre, prisme, tetraedre) attendu par setElementType.
-
-    Abaqus applique a chaque element le type correspondant a sa forme : il faut
-    donc toujours fournir les trois, comme dans les journaux .rpy de CAE.
-    """
-    return (mesh.ElemType(elemCode=hex_code, elemLibrary=EXPLICIT,
-                          kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
-                          distortionControl=DEFAULT),
-            mesh.ElemType(elemCode=wedge_code, elemLibrary=EXPLICIT),
-            # Prisme et tetraedre : uniquement le code et la bibliotheque. Les options
-            # (distortionControl, secondOrderAccuracy...) sont refusees pour C3D10M.
-            mesh.ElemType(elemCode=tet_code, elemLibrary=EXPLICIT))
-
-
 def set_c3d8r(part):
-    """Hexaedres : brique lineaire a integration reduite C3D8R (Explicit)."""
-    part.setElementType(regions=(part.cells,),
-                        elemTypes=explicit_elem_types(C3D8R, C3D6, C3D4))
+    """Hexaedres lineaires C3D8R (Explicit).
+
+    setElementType attend toujours un triplet (hexaedre, prisme, tetraedre) ;
+    Abaqus applique a chaque element le type de sa forme.
+    """
+    et_hex = mesh.ElemType(elemCode=C3D8R, elemLibrary=EXPLICIT,
+                           kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
+                           distortionControl=DEFAULT)
+    et_wedge = mesh.ElemType(elemCode=C3D6, elemLibrary=EXPLICIT)
+    et_tet = mesh.ElemType(elemCode=C3D4, elemLibrary=EXPLICIT)
+    part.setElementType(regions=(part.cells,), elemTypes=(et_hex, et_wedge, et_tet))
 
 
 def set_c3d10m(part):
-    """Tetraedres : tetraedre quadratique modifie C3D10M (Explicit)."""
-    part.setElementType(regions=(part.cells,),
-                        elemTypes=explicit_elem_types(C3D8R, C3D6, C3D10M))
+    """Tetraedres quadratiques modifies C3D10M (Explicit).
+
+    Syntaxe reprise telle quelle du journal abaqus.rpy (Mesh > Element Type,
+    Explicit, Quadratic) : en quadratique, la bibliotheque Explicit n'a ni
+    hexaedre ni prisme, d'ou UNKNOWN_HEX et UNKNOWN_WEDGE. On ne peut pas
+    mettre un C3D8R (lineaire) dans le meme triplet.
+    """
+    et_hex = mesh.ElemType(elemCode=UNKNOWN_HEX, elemLibrary=EXPLICIT)
+    et_wedge = mesh.ElemType(elemCode=UNKNOWN_WEDGE, elemLibrary=EXPLICIT)
+    et_tet = mesh.ElemType(elemCode=C3D10M, elemLibrary=EXPLICIT,
+                           secondOrderAccuracy=OFF, distortionControl=DEFAULT)
+    part.setElementType(regions=(part.cells,), elemTypes=(et_hex, et_wedge, et_tet))
 
 
 def mesh_bar(part, seed_axial, seed_section):
