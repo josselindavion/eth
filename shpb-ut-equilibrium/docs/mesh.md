@@ -24,7 +24,7 @@ STRIKER → INPUT_BAR → PUSHER_ROD ┃ PUSHER_HEAD ─┐
 | `INPUT_BAR` | barre d'entrée | cylindre créé par le script, Ø20 × 6010 | −6010 → 0 | balayé | C3D8R | 5 mm axial, 2 mm section | 58 898 | 75 789 |
 | `PUSHER_ROD` | corps de l'inverseur | STEP `Inverter_new.step` | 0 → 125 | balayé | C3D8R | 5 mm axial, 2 mm section | 1 000 | 1 404 |
 | `PUSHER_HEAD` | tête de l'inverseur (logement de l'éprouvette) | STEP `Inverter_new.step` | 125 → 206 | libre (*free*) | C3D10M | 2 mm | 30 886 | 45 811 |
-| `UT19` | éprouvette (tôle 1,5 mm) | STEP `XMas_UT_t1p5.step` | 124 → 201,7 | balayé dans l'épaisseur | C3D8R | 0,5 mm dans le plan, 4 éléments dans l'épaisseur | 12 380 | 16 700 |
+| `UT19` | éprouvette (tôle 1,5 mm) | STEP `XMas_UT_t1p5.step` | 124 → 201,7 | découpée en 3 volumes : partie droite en grille régulière (*structured*), têtes balayées dans l'épaisseur | C3D8R | 0,5 mm dans le plan, 4 éléments dans l'épaisseur | ~12 400 | ~16 700 |
 | `OUTPUT_BAR` | barre de sortie (partie ronde) | cylindre créé par le script, Ø20 × 6000 | −5844 → 100 | balayé | C3D8R | 5 mm axial, 2 mm section | 61 828 | 78 540 |
 | `OUTPUT_HEAD` | tête de la barre de sortie (logement de l'éprouvette) | STEP `Stange30mm_Step2.step` | 100 → 155,7 | libre | C3D10M | 2 mm | 11 755 | 18 052 |
 | **Total** | | | | | | | **223 747** | ~297 000 |
@@ -74,6 +74,20 @@ Graines (*seeds*) : une taille globale pour la pièce, puis des tailles locales 
 Option B (pour plus tard, si la réflexion aux *ties* est gênante) : tout en hexaèdres en découpant les têtes en volumes balayables.
 
 ---
+
+### Découpe de l'éprouvette
+
+La partie droite de la zone utile (15 mm × 5 mm) est isolée par deux plans perpendiculaires à Y,
+dont la position est **lue sur la géométrie** (sommets en |X| = 2,5 mm) :
+
+| Plan | Y (mm) | Nom de la section | Côté |
+|---|---|---|---|
+| début de la partie droite | ≈ 155,357 | `SEC_OUT` | barre de sortie |
+| fin de la partie droite | ≈ 170,357 | `SEC_IN` | pusher (entrée de l'effort) |
+
+Intérêts : (1) maillage **parfaitement aligné** dans la partie droite (meilleur pour la striction) ;
+(2) deux **faces internes** où mesurer la force qui traverse l'éprouvette — comparer `SEC_IN` et `SEC_OUT`
+est le critère d'équilibre de la Task I (comme Beerli et al. 2026, fig. 5c).
 
 ## 5. Vérifier le maillage
 
@@ -131,3 +145,19 @@ et la lire dans `abaqus.rpy` (le journal de la session en cours, sans numéro, d
 - [ ] Export du maillage en `.geo` (convention du labo)
 - [ ] Après le premier calcul : vérifier l'absence de réflexion aux interfaces Y = 125 et Y = 100
 - [ ] (optionnel) maillage aligné dans la zone utile de l'éprouvette, pour la striction
+
+---
+
+## 9. Groupes nommés (créés par `build_bench.py`)
+
+Les groupes sont définis **sur la géométrie** (par coordonnées), donc ils restent valables si le maillage change.
+
+| Groupe | Type | Pièces | Contenu | Usage prévu |
+|---|---|---|---|---|
+| `<PIÈCE>_ALL` | set d'éléments | toutes | tous les éléments de la pièce | `*SOLID SECTION` (matériau) |
+| `XSYMM` | set (faces → nœuds) | toutes | faces en X = 0 | condition de symétrie XSYMM |
+| `SEC_IN` | surface | `UT19` | section en Y ≈ 170,357 | force traversant l'éprouvette, côté pusher |
+| `SEC_OUT` | surface | `UT19` | section en Y ≈ 155,357 | force traversant l'éprouvette, côté barre de sortie |
+| `GAUGE_ZONE` | set d'éléments | `UT19` | partie droite de la zone utile | contraintes / déformations moyennes |
+
+À venir : surfaces de *tie* (Y = 125, Y = 100), surfaces de contact, jauges `GAUGE_IN` / `GAUGE_OUT`, extensomètre.

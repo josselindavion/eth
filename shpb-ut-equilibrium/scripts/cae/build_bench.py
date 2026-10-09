@@ -11,8 +11,11 @@ Etapes :
         PUSHER     -> PUSHER_ROD  (Y <= 125) + PUSHER_HEAD  (Y >= 125)
         OUTPUT_BAR -> OUTPUT_BAR  (Y <= 100, cylindre recree) + OUTPUT_HEAD  (Y >= 100, STEP)
      Les interfaces Y = 125 et Y = 100 seront collees par des contraintes TIE.
-  4. maille toutes les pieces (Abaqus/Explicit)
-  5. sauvegarde le modele .cae
+  4. maille toutes les pieces (Abaqus/Explicit) ; l'eprouvette est d'abord decoupee
+     au debut et a la fin de la partie droite de la zone utile (grille reguliere)
+  5. cree les groupes nommes : <PIECE>_ALL, XSYMM, et pour l'eprouvette SEC_IN,
+     SEC_OUT (sections de mesure de force) et GAUGE_ZONE
+  6. sauvegarde le modele .cae
 
 Repere global : Y = axe des barres / traction, Z = vers le haut,
                 X = largeur de l'eprouvette. Unites : mm.
@@ -69,6 +72,9 @@ BAR_SEED_SECTION = 2.0    # mm, taille des elements dans la section
 # Maillage de l'eprouvette (Roth et al. 2015) : 0.5 mm dans le plan, 4 elements dans l'epaisseur
 SPEC_SEED_INPLANE = 0.5   # mm
 SPEC_N_THICKNESS  = 4     # nombre d'elements dans l'epaisseur
+# Demi-largeur de la partie droite de la zone utile (sUT : 5 mm de large, Beerli 2026 fig. 2a).
+# Sert a reperer, sur la geometrie, le debut et la fin de la partie droite.
+SPEC_GAUGE_HALF_WIDTH = 2.5   # mm
 
 # Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
 HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
@@ -257,14 +263,72 @@ def thickness_edges(part, tol=1.0e-6):
     return part.edges.findAt(*pts)
 
 
-def mesh_sheet(part, seed_inplane, n_thickness):
-    """Maille une tole (epaisseur selon Z) : quadrangles dans le plan, balayes dans l'epaisseur."""
+def partition_specimen_gauge(part, half_width, tol=1.0e-3):
+    """Decoupe l'eprouvette par deux plans Y = cte au debut et a la fin de la partie droite.
+
+    Les positions sont lues sur la geometrie : ce sont les Y extremes des sommets
+    situes sur le bord droit de la zone utile (|X| = half_width).
+    Renvoie (y_out, y_in) : Y bas (cote barre de sortie) et Y haut (cote pusher).
+    """
+    ys = [v.pointOn[0][1] for v in part.vertices
+          if abs(abs(v.pointOn[0][0]) - half_width) < tol]
+    if len(ys) < 2:
+        raise ValueError('Partie droite de la zone utile introuvable (|X| = %g)' % half_width)
+    y_out, y_in = min(ys), max(ys)
+    for y in (y_out, y_in):
+        dp = part.DatumPlaneByPrincipalPlane(principalPlane=XZPLANE, offset=y)
+        part.PartitionCellByDatumPlane(datumPlane=part.datums[dp.id], cells=part.cells)
+    return y_out, y_in
+
+
+def mesh_specimen(part, seed_inplane, n_thickness, y_out, y_in):
+    """Maille l'eprouvette decoupee : partie droite en grille reguliere (STRUCTURED),
+    tetes balayees dans l'epaisseur (SWEEP). 4 elements dans l'epaisseur partout."""
+    big = 1.0e4
     part.setMeshControls(regions=part.cells, elemShape=HEX, technique=SWEEP,
                          algorithm=ADVANCING_FRONT)
+    gauge = part.cells.getByBoundingBox(-big, y_out - 1.0e-3, -big, big, y_in + 1.0e-3, big)
+    part.setMeshControls(regions=gauge, elemShape=HEX, technique=STRUCTURED)
     part.seedPart(size=seed_inplane, deviationFactor=0.1, minSizeFactor=0.1)
     part.seedEdgeByNumber(edges=thickness_edges(part), number=n_thickness, constraint=FIXED)
     set_c3d8r(part)
     part.generateMesh()
+
+
+def make_basic_sets(model, part_names, tol=1.0e-4):
+    """Groupes de base de chaque piece :
+      <PIECE>_ALL : tous les elements (pour *SOLID SECTION)
+      XSYMM       : faces en X = 0 (symetrie du demi-modele)"""
+    big = 1.0e5
+    for n in part_names:
+        p = model.parts[n]
+        p.Set(name=n + '_ALL', cells=p.cells)
+        if HALF_MODEL:
+            p.Set(name='XSYMM', faces=p.faces.getByBoundingBox(-tol, -big, -big, tol, big, big))
+
+
+def make_specimen_sets(part, y_out, y_in, tol=1.0e-4):
+    """Groupes de l'eprouvette :
+      SEC_OUT (surface) : section en Y = y_out, debut de la partie droite cote barre de sortie
+      SEC_IN  (surface) : section en Y = y_in, fin de la partie droite cote pusher
+      GAUGE_ZONE (set)  : elements de la partie droite"""
+    big = 1.0e5
+    for name, y in (('SEC_OUT', y_out), ('SEC_IN', y_in)):
+        faces = part.faces.getByBoundingBox(-big, y - tol, -big, big, y + tol, big)
+        part.Surface(name=name, side1Faces=faces)
+    part.Set(name='GAUGE_ZONE',
+             cells=part.cells.getByBoundingBox(-big, y_out - tol, -big, big, y_in + tol, big))
+
+
+def report_sets(model, part_names):
+    """Bilan des groupes crees."""
+    print('Groupes :')
+    for n in part_names:
+        p = model.parts[n]
+        line = '  %-12s %s_ALL : %6d elements' % (n, n, len(p.sets[n + '_ALL'].elements))
+        if 'XSYMM' in p.sets.keys():
+            line += '   XSYMM : %5d noeuds' % len(p.sets['XSYMM'].nodes)
+        print(line)
 
 
 def mesh_tet(part, seed):
@@ -344,12 +408,22 @@ report_x_range(model, PIECE_NAMES)
 # --- 4. Maillage ---
 for name in ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'OUTPUT_BAR']:
     mesh_bar(model.parts[name], BAR_SEED_AXIAL, BAR_SEED_SECTION)
-mesh_sheet(model.parts['UT19'], SPEC_SEED_INPLANE, SPEC_N_THICKNESS)
+spec = model.parts['UT19']
+y_sec_out, y_sec_in = partition_specimen_gauge(spec, SPEC_GAUGE_HALF_WIDTH)
+mesh_specimen(spec, SPEC_SEED_INPLANE, SPEC_N_THICKNESS, y_sec_out, y_sec_in)
 for name in ['PUSHER_HEAD', 'OUTPUT_HEAD']:
     mesh_tet(model.parts[name], HEAD_SEED)
 report_mesh(model, PIECE_NAMES)
 
-# --- 5. Sauvegarde ---
+# --- 5. Groupes nommes ---
+make_basic_sets(model, PIECE_NAMES)
+make_specimen_sets(spec, y_sec_out, y_sec_in)
+report_sets(model, PIECE_NAMES)
+print('Eprouvette : partie droite de Y = %.3f (SEC_OUT) a Y = %.3f (SEC_IN), longueur %.3f mm, '
+      '%d elements dans GAUGE_ZONE'
+      % (y_sec_out, y_sec_in, y_sec_in - y_sec_out, len(spec.sets['GAUGE_ZONE'].elements)))
+
+# --- 6. Sauvegarde ---
 # Supprime le modele vide 'Model-1' cree par defaut, s'il est inutilise
 if 'Model-1' in mdb.models.keys() and len(mdb.models['Model-1'].parts) == 0:
     del mdb.models['Model-1']
