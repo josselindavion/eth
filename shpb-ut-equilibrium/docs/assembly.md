@@ -27,3 +27,18 @@ comme dans les modèles du labo (Beerli et al. 2026 ; Roth et al. 2015).
   `PUSHER`, `UT19`, `OUTPUT_BAR` (instances `<nom>-1`) et sont définies dans le repère global.
 - Conséquence pour la suite : une condition de symétrie **XSYMM** (U1 = UR2 = UR3 = 0) devra être
   appliquée sur toutes les faces situées en X = 0.
+
+## Découpe des pièces complexes (maillage, option A)
+
+Le pusher et la barre de sortie ont une partie simple (balayable en hexaèdres) et une tête de forme
+complexe (dents, évasement). Chacun est séparé en deux parts par un plan perpendiculaire à Y :
+
+| Part | Zone | Maillage |
+|---|---|---|
+| `PUSHER_ROD` | Y ≤ 125 (corps rectangulaire, qui va jusqu'à Y = 130) | C3D8R balayés, 5 mm / 2 mm |
+| `PUSHER_HEAD` | Y ≥ 125 | C3D10M libres, 2 mm |
+| `OUTPUT_BAR` | Y ≤ 100 (partie ronde, qui commence à Y = 105.05) | C3D8R balayés, 5 mm / 2 mm |
+| `OUTPUT_HEAD` | Y ≥ 100 | C3D10M libres, 2 mm |
+
+Les interfaces **Y = 125** (pusher) et **Y = 100** (barre de sortie) devront être collées par des
+contraintes **TIE**. À vérifier dans les résultats : pas de réflexion parasite de l'onde à ces interfaces.

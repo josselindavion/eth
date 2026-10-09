@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-build_bench.py -- Construit le banc SHPB complet dans Abaqus/CAE.
+build_bench.py -- Construit et maille le banc SHPB complet dans Abaqus/CAE.
 
-Refait automatiquement ce qui a ete fait a la main :
+Etapes :
   1. importe les pieces STEP (pusher, barre de sortie, eprouvette)
-  2. cree le striker et la barre d'entree (cylindres)
-  3. place les 5 instances dans le repere global
-  4. (option) ne garde que la moitie X >= 0 : demi-modele, symetrie au plan X = 0
-  5. maille les pieces (C3D8R, Abaqus/Explicit) -- pour l'instant : STRIKER, INPUT_BAR, UT19
-  6. sauvegarde le modele .cae
+     et cree le striker et la barre d'entree (cylindres)
+  2. place les pieces dans le repere global
+  3. decoupe : demi-modele (on garde X >= 0) et separation des pieces complexes
+     en une partie simple (hexaedres) et une tete (tetraedres) :
+        PUSHER     -> PUSHER_ROD  (Y <= 125) + PUSHER_HEAD  (Y >= 125)
+        OUTPUT_BAR -> OUTPUT_BAR  (Y <= 100) + OUTPUT_HEAD  (Y >= 100)
+     Les interfaces Y = 125 et Y = 100 seront collees par des contraintes TIE.
+  4. maille toutes les pieces (Abaqus/Explicit)
+  5. sauvegarde le modele .cae
 
 Repere global : Y = axe des barres / traction, Z = vers le haut,
                 X = largeur de l'eprouvette. Unites : mm.
@@ -50,13 +54,20 @@ SPECIMEN_TRANSLATION = (356.2728, -1357.7622, 28.6)   # eprouvette centree dans 
 # (comme le labo : Beerli et al. 2026, Roth et al. 2015)
 HALF_MODEL = True
 
-# Maillage des barres (Roth et al. 2015, Beerli et al. 2026) : hexaedres C3D8R
+# Decoupe des pieces complexes (plans perpendiculaires a Y)
+Y_SPLIT_PUSHER = 125.0    # corps rectangulaire du pusher : Y de 0 a 130
+Y_SPLIT_OUTPUT = 100.0    # partie ronde de la barre de sortie : Y < 105.05
+
+# Maillage des barres (Roth et al. 2015, Beerli et al. 2026) : hexaedres C3D8R balayes
 BAR_SEED_AXIAL   = 5.0    # mm, taille des elements dans l'axe des barres
 BAR_SEED_SECTION = 2.0    # mm, taille des elements dans la section
 
 # Maillage de l'eprouvette (Roth et al. 2015) : 0.5 mm dans le plan, 4 elements dans l'epaisseur
 SPEC_SEED_INPLANE = 0.5   # mm
 SPEC_N_THICKNESS  = 4     # nombre d'elements dans l'epaisseur
+
+# Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
+HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
 
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
@@ -68,9 +79,15 @@ THIS_DIR  = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe
 REPO_ROOT = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
 STEP_DIR  = os.path.join(REPO_ROOT, 'cad', 'step')
 
+# Etendue du banc (pour les boites de decoupe)
+BIG_X = 200.0
+Y_LOW  = -INPUT_BAR_LENGTH - STRIKER_LENGTH - 200.0
+Y_HIGH = 400.0
+Z_LOW, Z_HIGH = -100.0, 100.0
+
 
 # ============================================================
-# FONCTIONS
+# FONCTIONS : GEOMETRIE
 # ============================================================
 def import_step_part(model, part_name, step_file):
     """Importe un fichier STEP comme part deformable 3D."""
@@ -103,41 +120,70 @@ def place(assembly, part, inst_name, rot_axis=None, angle=0.0, vector=None):
         assembly.translate(instanceList=(inst_name,), vector=vector)
 
 
-def make_box(model, part_name, xmin, xmax, ymin, ymax, depth):
-    """Cree une boite : rectangle dans le plan XY, extrude selon +Z."""
+def add_box(model, assembly, name, xmin, xmax, ymin, ymax, zmin, zmax):
+    """Cree une boite de decoupe (part + instance) aux coordonnees globales donnees."""
     s = model.ConstrainedSketch(name='__profile__',
-                                sheetSize=2.0 * max(abs(ymin), abs(ymax), abs(xmin), abs(xmax)))
+                                sheetSize=2.0 * max(abs(xmin), abs(xmax), abs(ymin), abs(ymax)))
     s.rectangle(point1=(xmin, ymin), point2=(xmax, ymax))
-    p = model.Part(name=part_name, dimensionality=THREE_D, type=DEFORMABLE_BODY)
-    p.BaseSolidExtrude(sketch=s, depth=depth)
+    p = model.Part(name=name, dimensionality=THREE_D, type=DEFORMABLE_BODY)
+    p.BaseSolidExtrude(sketch=s, depth=zmax - zmin)
     del model.sketches['__profile__']
-    return p
+    assembly.Instance(name=name, part=p, dependent=ON)
+    assembly.translate(instanceList=(name,), vector=(0.0, 0.0, zmin))
+    return name
 
 
-def cut_half(model, assembly, cutter_part, full_inst_name, half_part_name, z_min):
-    """Retire la moitie X < 0 d'une instance avec une boite de decoupe.
+def make_piece(model, assembly, piece_name, full_part, placement, y_min=None, y_max=None):
+    """Cree une piece finale a partir d'une part complete placee dans le banc.
 
-    Abaqus cree une nouvelle part (half_part_name), definie dans le repere
-    global, et son instance half_part_name + '-1'. L'instance d'origine et la
-    boite sont supprimees.
+    On place une copie de la part complete, puis on retire avec des boites :
+      - la zone X < 0 (si HALF_MODEL),
+      - la zone Y < y_min et/ou Y > y_max (si demandees).
+    La piece finale est une nouvelle part piece_name, definie dans le repere global,
+    avec l'instance piece_name + '-1'.
     """
-    cutter_name = 'CUTTER_' + half_part_name
-    assembly.Instance(name=cutter_name, part=cutter_part, dependent=ON)
-    assembly.translate(instanceList=(cutter_name,), vector=(0.0, 0.0, z_min))
-    assembly.InstanceFromBooleanCut(name=half_part_name,
-                                    instanceToBeCut=assembly.instances[full_inst_name],
-                                    cuttingInstances=(assembly.instances[cutter_name],),
-                                    originalInstances=DELETE)
+    rot_axis, angle, vector = placement
+    tmp = piece_name + '_TMP'
+    place(assembly, full_part, tmp, rot_axis, angle, vector)
+
+    boxes = []
+    if HALF_MODEL:
+        boxes.append(add_box(model, assembly, 'BOX_' + piece_name + '_X',
+                             -BIG_X, 0.0, Y_LOW, Y_HIGH, Z_LOW, Z_HIGH))
+    if y_min is not None:
+        boxes.append(add_box(model, assembly, 'BOX_' + piece_name + '_YLO',
+                             -BIG_X, BIG_X, Y_LOW, y_min, Z_LOW, Z_HIGH))
+    if y_max is not None:
+        boxes.append(add_box(model, assembly, 'BOX_' + piece_name + '_YHI',
+                             -BIG_X, BIG_X, y_max, Y_HIGH, Z_LOW, Z_HIGH))
+
+    if boxes:
+        assembly.InstanceFromBooleanCut(name=piece_name,
+                                        instanceToBeCut=assembly.instances[tmp],
+                                        cuttingInstances=tuple(assembly.instances[b] for b in boxes),
+                                        originalInstances=DELETE)
+        for b in boxes:
+            del model.parts[b]
+    else:
+        # Rien a couper : on garde la part complete sous son nom final
+        model.parts.changeKey(fromName=full_part.name, toName=piece_name)
+        assembly.features.changeKey(fromName=tmp, toName=piece_name + '-1')
 
 
 def report_x_range(model, part_names):
-    """Affiche l'etendue en X de chaque part (verification du demi-modele)."""
-    print('Etendue en X des parts (demi-modele : X min doit valoir 0) :')
+    """Affiche l'etendue en X et Y de chaque part."""
+    print('Etendue des pieces (demi-modele : X min doit valoir 0) :')
     for n in part_names:
-        xs = [v.pointOn[0][0] for v in model.parts[n].vertices]
-        print('  %-11s X min = %9.4f   X max = %9.4f' % (n, min(xs), max(xs)))
+        pts = [v.pointOn[0] for v in model.parts[n].vertices]
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        print('  %-12s X = %8.3f .. %8.3f    Y = %10.3f .. %9.3f'
+              % (n, min(xs), max(xs), min(ys), max(ys)))
 
 
+# ============================================================
+# FONCTIONS : MAILLAGE
+# ============================================================
 def y_range(part):
     """Y min et Y max des sommets d'une part (axe des barres)."""
     ys = [v.pointOn[0][1] for v in part.vertices]
@@ -145,19 +191,26 @@ def y_range(part):
 
 
 def set_c3d8r(part):
-    """Type d'element : brique lineaire a integration reduite, bibliotheque Explicit."""
+    """Brique lineaire a integration reduite, bibliotheque Explicit."""
     et = mesh.ElemType(elemCode=C3D8R, elemLibrary=EXPLICIT,
                        kinematicSplit=AVERAGE_STRAIN, hourglassControl=DEFAULT,
                        distortionControl=DEFAULT)
     part.setElementType(regions=(part.cells,), elemTypes=(et,))
 
 
-def mesh_bar(part, seed_axial, seed_section):
-    """Maille un demi-cylindre d'axe Y en hexaedres balayes (sweep) le long de l'axe.
+def set_c3d10m(part):
+    """Tetraedre quadratique modifie, bibliotheque Explicit."""
+    et = mesh.ElemType(elemCode=C3D10M, elemLibrary=EXPLICIT,
+                       secondOrderAccuracy=OFF, distortionControl=DEFAULT)
+    part.setElementType(regions=(part.cells,), elemTypes=(et,))
 
-    - graine globale = seed_axial (fixe la taille dans l'axe, sur les grandes aretes)
-    - graine locale = seed_section sur les aretes des deux faces d'extremite
-      (demi-cercle + diametre), qui fixent le maillage de la section
+
+def mesh_bar(part, seed_axial, seed_section):
+    """Maille une barre d'axe Y en hexaedres balayes (sweep) le long de l'axe.
+
+    - graine globale = seed_axial (taille dans l'axe, sur les grandes aretes)
+    - graine locale = seed_section sur les aretes des deux faces d'extremite,
+      qui fixent le maillage de la section
     """
     part.setMeshControls(regions=part.cells, elemShape=HEX, technique=SWEEP,
                          algorithm=ADVANCING_FRONT)
@@ -196,12 +249,23 @@ def mesh_sheet(part, seed_inplane, n_thickness):
     part.generateMesh()
 
 
+def mesh_tet(part, seed):
+    """Maille une piece de forme complexe en tetraedres quadratiques (maillage libre)."""
+    part.setMeshControls(regions=part.cells, elemShape=TET, technique=FREE)
+    part.seedPart(size=seed, deviationFactor=0.1, minSizeFactor=0.1)
+    set_c3d10m(part)
+    part.generateMesh()
+
+
 def report_mesh(model, part_names):
-    """Affiche le nombre de noeuds et d'elements de chaque part maillee."""
+    """Affiche le nombre de noeuds et d'elements de chaque part."""
     print('Maillage :')
+    total = 0
     for n in part_names:
         p = model.parts[n]
-        print('  %-11s %8d elements  %8d noeuds' % (n, len(p.elements), len(p.nodes)))
+        total += len(p.elements)
+        print('  %-12s %8d elements  %8d noeuds' % (n, len(p.elements), len(p.nodes)))
+    print('  %-12s %8d elements' % ('TOTAL', total))
 
 
 # ============================================================
@@ -211,51 +275,57 @@ def report_mesh(model, part_names):
 if MODEL_NAME in mdb.models.keys():
     del mdb.models[MODEL_NAME]
 model = mdb.Model(name=MODEL_NAME, modelType=STANDARD_EXPLICIT)
-
-# --- 1. Parts ---
-# En demi-modele, les parts completes s'appellent *_FULL ; les demi-parts
-# finales (creees a l'etape 3) prennent les noms definitifs.
-SUFFIX = '_FULL' if HALF_MODEL else ''
-pusher     = import_step_part(model, 'PUSHER' + SUFFIX,     STEP_PUSHER)
-output_bar = import_step_part(model, 'OUTPUT_BAR' + SUFFIX, STEP_OUTPUT_BAR)
-specimen   = import_step_part(model, 'UT19' + SUFFIX,       STEP_SPECIMEN)
-striker    = make_cylinder(model, 'STRIKER' + SUFFIX,   BAR_RADIUS, STRIKER_LENGTH)
-input_bar  = make_cylinder(model, 'INPUT_BAR' + SUFFIX, BAR_RADIUS, INPUT_BAR_LENGTH)
-
-# --- 2. Assemblage ---
 a = model.rootAssembly
 a.DatumCsysByDefault(CARTESIAN)
+
+# --- 1. Parts completes ---
+full = {
+    'PUSHER':     import_step_part(model, 'PUSHER_FULL',     STEP_PUSHER),
+    'OUTPUT_BAR': import_step_part(model, 'OUTPUT_BAR_FULL', STEP_OUTPUT_BAR),
+    'UT19':       import_step_part(model, 'UT19_FULL',       STEP_SPECIMEN),
+    'STRIKER':    make_cylinder(model, 'STRIKER_FULL',   BAR_RADIUS, STRIKER_LENGTH),
+    'INPUT_BAR':  make_cylinder(model, 'INPUT_BAR_FULL', BAR_RADIUS, INPUT_BAR_LENGTH),
+}
+
+# --- 2. Placement : (axe de rotation, angle, translation) ---
 X_AXIS = (1.0, 0.0, 0.0)
 Z_AXIS = (0.0, 0.0, 1.0)
+placement = {
+    'STRIKER':    (X_AXIS, 90.0, (0.0, -INPUT_BAR_LENGTH, Z_INPUT_AXIS)),
+    'INPUT_BAR':  (X_AXIS, 90.0, (0.0, 0.0, Z_INPUT_AXIS)),
+    'PUSHER':     (X_AXIS, 90.0, None),
+    'UT19':       (Z_AXIS, 90.0, SPECIMEN_TRANSLATION),
+    'OUTPUT_BAR': (X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS)),
+}
 
-place(a, pusher,     'PUSHER'     + SUFFIX + '-1', X_AXIS, 90.0, None)
-place(a, input_bar,  'INPUT_BAR'  + SUFFIX + '-1', X_AXIS, 90.0, (0.0, 0.0, Z_INPUT_AXIS))
-place(a, output_bar, 'OUTPUT_BAR' + SUFFIX + '-1', X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS))
-place(a, specimen,   'UT19'       + SUFFIX + '-1', Z_AXIS, 90.0, SPECIMEN_TRANSLATION)
-place(a, striker,    'STRIKER'    + SUFFIX + '-1', X_AXIS, 90.0, (0.0, -INPUT_BAR_LENGTH, Z_INPUT_AXIS))
+# --- 3. Pieces finales : (nom, part complete, Y min garde, Y max garde) ---
+PIECES = [
+    ('STRIKER',     'STRIKER',    None,           None),
+    ('INPUT_BAR',   'INPUT_BAR',  None,           None),
+    ('PUSHER_ROD',  'PUSHER',     None,           Y_SPLIT_PUSHER),
+    ('PUSHER_HEAD', 'PUSHER',     Y_SPLIT_PUSHER, None),
+    ('UT19',        'UT19',       None,           None),
+    ('OUTPUT_BAR',  'OUTPUT_BAR', None,           Y_SPLIT_OUTPUT),
+    ('OUTPUT_HEAD', 'OUTPUT_BAR', Y_SPLIT_OUTPUT, None),
+]
+for piece_name, src, y_min, y_max in PIECES:
+    make_piece(model, a, piece_name, full[src], placement[src], y_min, y_max)
 
-PART_NAMES = ['STRIKER', 'INPUT_BAR', 'PUSHER', 'UT19', 'OUTPUT_BAR']
+# Menage : les parts completes ne servent plus (sauf si renommees directement)
+for name in list(model.parts.keys()):
+    if name.endswith('_FULL'):
+        del model.parts[name]
 
-# --- 3. Demi-modele : coupe au plan X = 0 ---
-if HALF_MODEL:
-    # Boite qui englobe toute la zone X < 0 du banc (Y de -11 200 a +400 mm, Z de -100 a +100 mm)
-    CUT_Z_MIN = -100.0
-    cutter = make_box(model, 'CUTTER', xmin=-200.0, xmax=0.0,
-                      ymin=-INPUT_BAR_LENGTH - STRIKER_LENGTH - 200.0, ymax=400.0,
-                      depth=200.0)
-    for name in PART_NAMES:
-        cut_half(model, a, cutter, name + '_FULL-1', name, CUT_Z_MIN)
-    # Menage : les parts completes et la boite ne servent plus
-    for name in PART_NAMES:
-        del model.parts[name + '_FULL']
-    del model.parts['CUTTER']
-    report_x_range(model, PART_NAMES)
+PIECE_NAMES = [pc[0] for pc in PIECES]
+report_x_range(model, PIECE_NAMES)
 
 # --- 4. Maillage ---
-for name in ['STRIKER', 'INPUT_BAR']:
+for name in ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'OUTPUT_BAR']:
     mesh_bar(model.parts[name], BAR_SEED_AXIAL, BAR_SEED_SECTION)
 mesh_sheet(model.parts['UT19'], SPEC_SEED_INPLANE, SPEC_N_THICKNESS)
-report_mesh(model, ['STRIKER', 'INPUT_BAR', 'UT19'])
+for name in ['PUSHER_HEAD', 'OUTPUT_HEAD']:
+    mesh_tet(model.parts[name], HEAD_SEED)
+report_mesh(model, PIECE_NAMES)
 
 # --- 5. Sauvegarde ---
 # Supprime le modele vide 'Model-1' cree par defaut, s'il est inutilise
