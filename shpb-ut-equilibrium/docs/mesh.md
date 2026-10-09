@@ -173,4 +173,16 @@ Même nom des deux côtés d'une interface ; dans le `.inp`, elles sont qualifi�
 | `S_PUSH` | `INPUT_BAR` + `PUSHER_ROD` | Y = 0 | contact : la barre d'entrée pousse le pusher |
 | `S_SKIN` | `UT19`, `PUSHER_HEAD`, `OUTPUT_HEAD` | peau extérieure (sans faces internes ni faces en X = 0) | contact général : dents de l'éprouvette ↔ logements |
 
-À venir : jauges `GAUGE_IN` / `GAUGE_OUT`, extensomètre.
+### Mesures virtuelles
+
+Réglables dans le bloc `PARAMETRES` (`GAUGE_IN_DIST`, `GAUGE_OUT_DIST`, `GAUGE_LENGTH`, `EXT_LENGTH`).
+
+| Groupe | Type | Pièce | Position | Source / remarque |
+|---|---|---|---|---|
+| `GAUGE_IN` | set d'éléments | `INPUT_BAR` | Y = −6010 + 400 = −5610 | jauge à 400 mm de l'interface striker / barre (Beerli 2026) |
+| `GAUGE_OUT` | set d'éléments | `OUTPUT_BAR` | Y = 155,713 − 400 = −244,3 | « Gauge out: 400 » (Beerli 2026, fig. 5a). **Référence exacte à confirmer** (bout de barre ou interface éprouvette, ≈ 30 mm d'écart ≈ 6 µs de décalage) |
+| `EXT_OUT` | set d'un nœud | `UT19` | dessus (Z = 30,1), X = 0, Y = centre de la partie droite − 6 | extensomètre virtuel de 12 mm (zone DIC de la sUT, Beerli 2026) |
+| `EXT_IN` | set d'un nœud | `UT19` | idem, Y = centre + 6 | |
+
+Une jauge virtuelle = les éléments dont le centre est à moins de `GAUGE_LENGTH / 2` = 5 mm de la position
+(≈ 2 tranches d'éléments) : comme une vraie jauge, elle moyenne la déformation sur quelques millimètres.

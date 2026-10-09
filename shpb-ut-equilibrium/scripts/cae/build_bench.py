@@ -77,6 +77,12 @@ SPEC_N_THICKNESS  = 4     # nombre d'elements dans l'epaisseur
 # Sert a reperer, sur la geometrie, le debut et la fin de la partie droite.
 SPEC_GAUGE_HALF_WIDTH = 2.5   # mm
 
+# Jauges virtuelles et extensometre (Beerli et al. 2026, section 2.5 et fig. 5a)
+GAUGE_IN_DIST   = 400.0   # mm, jauge d'entree : distance depuis l'interface striker / barre d'entree
+GAUGE_OUT_DIST  = 400.0   # mm, jauge de sortie : distance depuis le bout de la barre de sortie cote eprouvette
+GAUGE_LENGTH    = 10.0    # mm, longueur de barre moyennee par une jauge virtuelle
+EXT_LENGTH      = 12.0    # mm, longueur de l'extensometre virtuel (zone DIC de la sUT : 12 mm)
+
 # Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
 HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
 
@@ -377,6 +383,45 @@ def report_surfaces(model, part_names):
                   % (n, s, len(surf.faces), len(surf.elements)))
 
 
+def element_set_near_y(part, set_name, y_target, length):
+    """Set des elements dont le centre est a moins de length/2 du plan Y = y_target."""
+    labels = []
+    for e in part.elements:
+        ys = [n.coordinates[1] for n in e.getNodes()]
+        if abs(sum(ys) / len(ys) - y_target) <= 0.5 * length:
+            labels.append(e.label)
+    if not labels:
+        raise ValueError('Aucun element pres de Y = %g dans %s' % (y_target, part.name))
+    part.SetFromElementLabels(name=set_name, elementLabels=labels)
+    return len(labels)
+
+
+def node_set_at(part, set_name, point, tol=1.0e-3):
+    """Set d'un seul noeud : celui situe au point donne (a tol pres)."""
+    nodes = part.nodes.getByBoundingSphere(center=point, radius=tol)
+    if len(nodes) != 1:
+        raise ValueError('%d noeud(s) trouve(s) en %s pour %s' % (len(nodes), str(point), set_name))
+    part.SetFromNodeLabels(name=set_name, nodeLabels=(nodes[0].label,))
+    return nodes[0].label
+
+
+def make_measurement_sets(model, y_gauge_in, y_gauge_out, y_sec_out, y_sec_in):
+    """Jauges virtuelles (GAUGE_IN, GAUGE_OUT) et extensometre (EXT_OUT, EXT_IN)."""
+    print('Mesures virtuelles :')
+    n = element_set_near_y(model.parts['INPUT_BAR'], 'GAUGE_IN', y_gauge_in, GAUGE_LENGTH)
+    print('  GAUGE_IN   INPUT_BAR   Y = %9.3f   %4d elements' % (y_gauge_in, n))
+    n = element_set_near_y(model.parts['OUTPUT_BAR'], 'GAUGE_OUT', y_gauge_out, GAUGE_LENGTH)
+    print('  GAUGE_OUT  OUTPUT_BAR  Y = %9.3f   %4d elements' % (y_gauge_out, n))
+    # Extensometre : sur le dessus de l'eprouvette, au milieu de la largeur (X = 0),
+    # centre sur la partie droite de la zone utile
+    spec = model.parts['UT19']
+    z_top = max(v.pointOn[0][2] for v in spec.vertices)
+    y_mid = 0.5 * (y_sec_out + y_sec_in)
+    for name, y in (('EXT_OUT', y_mid - 0.5 * EXT_LENGTH), ('EXT_IN', y_mid + 0.5 * EXT_LENGTH)):
+        label = node_set_at(spec, name, (0.0, y, z_top))
+        print('  %-9s  UT19        Y = %9.3f   noeud %d' % (name, y, label))
+
+
 def report_sets(model, part_names):
     """Bilan des groupes crees."""
     print('Groupes :')
@@ -479,6 +524,10 @@ make_interface_surfaces(model, y_impact=-INPUT_BAR_LENGTH, y_push=0.0,
                         y_tie_pusher=Y_SPLIT_PUSHER, y_tie_output=Y_SPLIT_OUTPUT)
 report_sets(model, PIECE_NAMES)
 report_surfaces(model, PIECE_NAMES)
+make_measurement_sets(model,
+                      y_gauge_in=-INPUT_BAR_LENGTH + GAUGE_IN_DIST,
+                      y_gauge_out=Y_OUTPUT_BAR - GAUGE_OUT_DIST,
+                      y_sec_out=y_sec_out, y_sec_in=y_sec_in)
 print('Eprouvette : partie droite de Y = %.3f (SEC_OUT) a Y = %.3f (SEC_IN), longueur %.3f mm, '
       '%d elements dans GAUGE_ZONE'
       % (y_sec_out, y_sec_in, y_sec_in - y_sec_out, len(spec.sets['GAUGE_ZONE'].elements)))
