@@ -31,8 +31,9 @@ echo "Calcul $JOB sur $(hostname), $SLURM_CPUS_PER_TASK coeurs, debut $(date)"
 # mp_mode=threads : parallelisme par threads sur un seul noeud (recommande sur Euler)
 # double=both   : double precision (calcul long : on evite l'accumulation d'arrondis)
 # scratch=      : fichiers temporaires sur le disque local du noeud (rapide)
+# ask_delete=OFF : si d'anciens fichiers du calcul existent, les ecraser sans poser la question (y/n)
 # interactive   : Abaqus reste au premier plan, sinon le job Slurm se terminerait tout de suite
 abaqus job=$JOB input=$JOB.inp cpus=$SLURM_CPUS_PER_TASK mp_mode=threads \
-       double=both scratch=$TMPDIR interactive
+       double=both scratch=$TMPDIR ask_delete=OFF interactive
 
 echo "Fin $(date)"

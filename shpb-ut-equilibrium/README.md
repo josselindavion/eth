@@ -33,7 +33,8 @@ shpb-ut-equilibrium/
    puis `scripts/pre/inp_to_geo.py` (Python 3) → un `model/geometry/<PIÈCE>.geo` par pièce (voir `docs/mesh.md`, section 10)
 2. `scripts/pre/make_run.py` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
    (`<case_id>.inp` + `<case_id>_paras.inp` + copies des `.geo` et `.dat` : dossier autonome)
-3. `scripts/hpc/` : soumission sur Euler (job array)
+3. `scripts/hpc/submit_study.py <étude>` (depuis le PC) : prépare tous les cas, les copie sur Euler dans
+   `$SCRATCH/<étude>_<date>/` et lance un job array Slurm (`scripts/hpc/run_array.sh`, un calcul par cas)
 4. `scripts/post/` : `.odb` → CSV dans `results/`
 
 ## Lancer Abaqus à la main (PC du labo, Windows)
@@ -47,6 +48,19 @@ shpb-ut-equilibrium/
 
 Utiliser **`abq2023`** et pas `abaqus` : sur les PC du labo, `abaqus.bat` charge le compilateur puis se place
 d'office dans `C:\APPS\Abaqus2023_Work`, et ne trouve donc pas le `.inp`.
+
+## Lancer une étude sur Euler
+
+Prérequis (une fois) : repo cloné sur Euler dans `~/eth` (`module load eth_proxy` puis `git clone https://github.com/josselindavion/eth.git`).
+
+| Étape | Où | Commande |
+|---|---|---|
+| Préparer, copier, lancer tous les cas | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI` |
+| Vérifier sans rien lancer | PC | ajouter `--dry-run` |
+| Suivre | Euler | `squeue -u $USER` puis `tail -3 $SCRATCH/<étude>_<date>/*/*.sta` |
+| Lancer un seul cas à la main | Euler, dans le dossier du cas | `sbatch ~/eth/shpb-ut-equilibrium/scripts/hpc/run_abaqus.sh` |
+
+Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` est vidé après 15 jours.
 
 ## Nommage des calculs
 
