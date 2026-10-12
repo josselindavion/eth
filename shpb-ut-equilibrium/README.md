@@ -36,6 +36,18 @@ shpb-ut-equilibrium/
 3. `scripts/hpc/` : soumission sur Euler (job array)
 4. `scripts/post/` : `.odb` → CSV dans `results/`
 
+## Lancer Abaqus à la main (PC du labo, Windows)
+
+| Étape | Commande |
+|---|---|
+| Ouvrir l'invite Abaqus | menu Démarrer → taper **Abaqus Command** → Entrée |
+| Aller dans le dossier du calcul | `cd /d C:\Users\jdavion\Documents\eth\shpb-ut-equilibrium\runs\<case_id>` |
+| Vérifier le modèle sans calculer | `abq2023 job=<case_id> datacheck interactive` |
+| Calculer | `abq2023 job=<case_id> cpus=4 double=both interactive` |
+
+Utiliser **`abq2023`** et pas `abaqus` : sur les PC du labo, `abaqus.bat` charge le compilateur puis se place
+d'office dans `C:\APPS\Abaqus2023_Work`, et ne trouve donc pas le `.inp`.
+
 ## Nommage des calculs
 
 `<éprouvette>_R<vitesse de déformation sur 4 chiffres>_<indice>`, par ex. `UT19_R0500_00`.
