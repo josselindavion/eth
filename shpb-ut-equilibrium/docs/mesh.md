@@ -249,3 +249,34 @@ Tableau vérifié au premier lancement (9 oct. 2026). Plages de labels obtenues 
 
 Le premier chiffre d'un label donne donc la pièce : utile pour lire un message d'erreur Abaqus
 (« élément 5004321 trop distordu » → `UT19`).
+
+---
+
+## 11. Qualité des tétraèdres des têtes (pas de temps)
+
+Premier datacheck (12/10/2026) : pas de temps stable **5,5e-9 s**, imposé par des tétraèdres écrasés
+dans les têtes (204 éléments signalés). Localisation des éléments signalés :
+
+| Cause | Éléments | Pire épaisseur | Traitement |
+|---|---|---|---|
+| Trou M4 au fond du logement du **pusher** (Y = 186,35 ; borgne, pointe de foret ; coupé par X = 0) | 89 | 0,54 mm | **supprimé dans le STEP** |
+| Trou M4 au fond du logement de la **barre de sortie** (Y = 139,21 ; débouchant ; coupé par X = 0) | 45 | 0,68 mm | **supprimé dans le STEP** |
+| Congés R0,5 / R1 / R1,5 des dents des logements | 64 | 0,13 mm | virtual topology (à venir) |
+| Lanières de la surface cylindrique à la jonction tige / tête du pusher (Y ≈ 130, 0,05 à 0,14 mm de large) | 2 | **0,10 mm** (impose le pas) | virtual topology (à venir) |
+
+Épaisseur médiane des tétraèdres : ≈ 1,2 mm.
+
+### Suppression des trous M4
+
+Les trous sont inutiles pendant l'essai. Ils sont supprimés **avant Abaqus**, dans la géométrie :
+
+| Fichier d'origine | Fichier utilisé | Volume ajouté |
+|---|---|---|
+| `cad/step/Inverter_new.step` | `cad/step/Inverter_new_noM4.step` | 101,2 mm³ (Ø3,3 × 11,5 mm + pointe) |
+| `cad/step/Stange30mm_Step2.step` | `cad/step/Stange30mm_Step2_noM4.step` | 62,0 mm³ (Ø3,3 × 7,25 mm) |
+
+- Outil : `scripts/pre/defeature_step.py` (Python 3 + OpenCascade, `pip install cadquery-ocp`).
+  Il retire les faces de rayon 1,65 mm et prolonge les faces voisines. Contrôles : un seul solide,
+  géométrie valide, volume ajouté = volume du trou.
+- Pourquoi pas dans Abaqus/CAE : *Geometry Edit → Face → Remove* sur la demi-tête a fait **perdre le volume**
+  de la pièce (il ne restait qu'une peau), et la conversion *Shell → Solid* a échoué.
