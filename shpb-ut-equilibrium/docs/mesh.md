@@ -261,8 +261,8 @@ dans les têtes (204 éléments signalés). Localisation des éléments signalé
 |---|---|---|---|
 | Trou M4 au fond du logement du **pusher** (Y = 186,35 ; borgne, pointe de foret ; coupé par X = 0) | 89 | 0,54 mm | **supprimé dans le STEP** |
 | Trou M4 au fond du logement de la **barre de sortie** (Y = 139,21 ; débouchant ; coupé par X = 0) | 45 | 0,68 mm | **supprimé dans le STEP** |
-| Congés R0,5 / R1 / R1,5 des dents des logements | 64 | 0,13 mm | virtual topology (à venir) |
-| Lanières de la surface cylindrique à la jonction tige / tête du pusher (Y ≈ 130, 0,05 à 0,14 mm de large) | 2 | **0,10 mm** (impose le pas) | virtual topology (à venir) |
+| Congés R0,5 / R1 / R1,5 des dents des logements | 64 | 0,13 mm | virtual topology |
+| Lanières de la surface cylindrique à la jonction tige / tête du pusher (Y ≈ 130, 0,05 à 0,14 mm de large) | 2 | **0,10 mm** (impose le pas) | virtual topology |
 
 Épaisseur médiane des tétraèdres : ≈ 1,2 mm.
 
@@ -280,3 +280,20 @@ Les trous sont inutiles pendant l'essai. Ils sont supprimés **avant Abaqus**, d
   géométrie valide, volume ajouté = volume du trou.
 - Pourquoi pas dans Abaqus/CAE : *Geometry Edit → Face → Remove* sur la demi-tête a fait **perdre le volume**
   de la pièce (il ne restait qu'une peau), et la conversion *Shell → Solid* a échoué.
+
+### Virtual topology des têtes
+
+Dans `build_bench.py` (`apply_virtual_topology`, appelée par `mesh_tet`) : le mailleur ignore les faces et arêtes
+plus petites qu'un élément. La géométrie réelle ne change pas ; les nœuds restent sur la vraie surface, mais les
+congés de 0,5 à 1 mm ne sont plus suivis exactement (écart ~0,1–0,2 mm aux coins des dents).
+
+| Réglage (`PARAMETRES`) | Valeur | Ce qu'il fusionne |
+|---|---|---|
+| `VT_SHORT_EDGE` | 1,0 mm | arêtes courtes (arcs des congés R0,5 : 0,5–0,8 mm ; arêtes de 0,14 mm à la jonction) |
+| `VT_SMALL_FACE` | 5,0 mm² | petites faces (bandes de congés 1,8–4,6 mm², petites faces planes des dents) |
+| `VT_ASPECT` | 10 | faces très élancées (lanières de 0,05 × 20 mm à la jonction) |
+| `applyBlendControls` | `False` | sinon les congés de rayon < 2,1 mm sont **protégés** (réglage par défaut de CAE) |
+| `HEAD_MIN_SIZE_FACTOR` | 0,5 | taille mini des tétraèdres = 1 mm (sinon CAE raffine jusqu'à 0,2 mm sur les petits rayons) |
+
+Réglages testés à la main dans CAE (*Mesh → Tools → Virtual Topology → Automatic Create*, aperçu avec *Preview*).
+`build_bench.py` affiche ensuite, pour chaque tête, la plus petite hauteur de tétraèdre (indicateur du pas de temps).

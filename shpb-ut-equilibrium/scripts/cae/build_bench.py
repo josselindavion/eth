@@ -87,6 +87,15 @@ EXT_LENGTH      = 12.0    # mm, longueur de l'extensometre virtuel (zone DIC de 
 
 # Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
 HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
+HEAD_MIN_SIZE_FACTOR = 0.5  # taille mini des tetraedres = 0.5 x 2 mm : empeche le mailleur de
+                            # raffiner jusqu'a 0.2 mm sur les petits rayons (pas de temps)
+
+# Virtual topology des tetes (docs/mesh.md, section 11) : le mailleur ignore les faces et
+# aretes plus petites qu'un element, au lieu de les suivre avec des tetraedres ecrases.
+# Reglages testes dans CAE le 12/10/2026 (Tools > Virtual Topology > Automatic Create).
+VT_SHORT_EDGE = 1.0       # mm  : aretes plus courtes fusionnees (arcs des conges R0.5 : 0.5-0.8 mm)
+VT_SMALL_FACE = 5.0       # mm2 : faces plus petites fusionnees (bandes de conges : 1.8-4.6 mm2)
+VT_ASPECT     = 10.0      # faces plus elancees fusionnees (lanieres de la jonction : 0.05 x 20 mm)
 
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
@@ -439,12 +448,69 @@ def report_sets(model, part_names):
         print(line)
 
 
+def apply_virtual_topology(part):
+    """Fusionne (pour le mailleur seulement) les faces et aretes trop petites.
+
+    La geometrie reelle ne change pas. Syntaxe relevee dans abaqus.rpy (12/10/2026).
+    applyBlendControls=False : sinon les conges de rayon < 2.1 mm sont proteges,
+    et ce sont justement eux qui creent les tetraedres ecrases.
+    """
+    part.createVirtualTopology(mergeShortEdges=True, shortEdgeThreshold=VT_SHORT_EDGE,
+                               mergeSmallFaces=True, smallFaceAreaThreshold=VT_SMALL_FACE,
+                               mergeSliverFaces=True, faceAspectRatioThreshold=VT_ASPECT,
+                               mergeSmallAngleFaces=True, smallFaceCornerAngleThreshold=10.0,
+                               mergeThinStairFaces=True, thinStairFaceThreshold=0.082,
+                               ignoreRedundantEntities=True, cornerAngleTolerance=30.0,
+                               applyBlendControls=False)
+
+
 def mesh_tet(part, seed):
     """Maille une piece de forme complexe en tetraedres quadratiques (maillage libre)."""
+    apply_virtual_topology(part)
     part.setMeshControls(regions=part.cells, elemShape=TET, technique=FREE)
-    part.seedPart(size=seed, deviationFactor=0.1, minSizeFactor=0.1)
+    part.seedPart(size=seed, deviationFactor=0.1, minSizeFactor=HEAD_MIN_SIZE_FACTOR)
     set_c3d10m(part)
     part.generateMesh()
+
+
+def tet_heights(part):
+    """Plus petite hauteur de chaque tetraedre (mm) : 3 x volume / plus grande face.
+
+    Indicateur du pas de temps stable : un tetraedre "ecrase" a une petite hauteur
+    meme si ses aretes sont longues. Renvoie [(hauteur, label, centre), ...] trie.
+    """
+    def sub(a, b):
+        return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+    def cross(a, b):
+        return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+    def norm(a):
+        return (a[0] ** 2 + a[1] ** 2 + a[2] ** 2) ** 0.5
+
+    out = []
+    for el in part.elements:
+        P = [n.coordinates for n in el.getNodes()[:4]]          # 4 sommets
+        a, b, c, d = P
+        vol = abs(sum(x * y for x, y in zip(cross(sub(b, a), sub(c, a)), sub(d, a)))) / 6.0
+        areas = [norm(cross(sub(q, p), sub(r, p))) / 2.0
+                 for p, q, r in ((b, c, d), (a, c, d), (a, b, d), (a, b, c))]
+        centre = tuple(sum(x[i] for x in P) / 4.0 for i in range(3))
+        out.append((3.0 * vol / max(areas), el.label, centre))
+    out.sort()
+    return out
+
+
+def report_tet_quality(model, names):
+    """Affiche la qualite des tetraedres (petites hauteurs = petit pas de temps)."""
+    print('Qualite des tetraedres (hauteur = 3 x volume / plus grande face) :')
+    for n in names:
+        h = tet_heights(model.parts[n])
+        hs = [x[0] for x in h]
+        print('  %-12s hauteur min %.3f mm   mediane %.3f mm   < 0.3 mm : %d   < 0.5 mm : %d'
+              % (n, hs[0], hs[len(hs) // 2], sum(1 for x in hs if x < 0.3), sum(1 for x in hs if x < 0.5)))
+        for hh, lab, c in h[:3]:
+            print('      pire : element %d  h = %.3f mm  au point (%.2f, %.2f, %.2f)' % (lab, hh, c[0], c[1], c[2]))
 
 
 def report_mesh(model, part_names):
@@ -522,6 +588,7 @@ mesh_specimen(spec, SPEC_SEED_INPLANE, SPEC_N_THICKNESS, y_sec_out, y_sec_in)
 for name in ['PUSHER_HEAD', 'OUTPUT_HEAD']:
     mesh_tet(model.parts[name], HEAD_SEED)
 report_mesh(model, PIECE_NAMES)
+report_tet_quality(model, ['PUSHER_HEAD', 'OUTPUT_HEAD'])
 
 # --- 5. Groupes nommes ---
 make_basic_sets(model, PIECE_NAMES)
