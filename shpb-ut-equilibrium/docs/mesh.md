@@ -297,3 +297,18 @@ congés de 0,5 à 1 mm ne sont plus suivis exactement (écart ~0,1–0,2 mm aux 
 
 Réglages testés à la main dans CAE (*Mesh → Tools → Virtual Topology → Automatic Create*, aperçu avec *Preview*).
 `build_bench.py` affiche ensuite, pour chaque tête, la plus petite hauteur de tétraèdre (indicateur du pas de temps).
+
+### Résultat (datacheck du 12/10/2026)
+
+| | Avant | Après (STEP sans trous M4 + virtual topology + taille mini 1 mm) |
+|---|---|---|
+| Éléments des têtes | 30 886 + 11 755 | 24 307 + 8 753 |
+| Plus petite hauteur de tétraèdre | 0,102 mm (pusher), 0,174 mm (sortie) | 0,431 mm, 0,388 mm |
+| Pas de temps stable initial | **5,5e-9 s** | **2,0e-8 s** (× 3,7) |
+| Éléments les plus critiques | 9 sur 10 dans la tête du pusher | tête de sortie (7005583) **et éprouvette** (5002066, 5003540…), à égalité |
+| Pénétrations initiales de contact | max 0,0070 mm | max 0,0076 mm (la virtual topology ne dégrade pas le contact) |
+| Masse du demi-modèle | 21,4882 kg | 21,4889 kg (+0,7 g = matière des deux demi-trous bouchés) |
+
+Les têtes ne sont plus seules à imposer le pas de temps : **l'éprouvette** a maintenant des éléments aussi
+critiques (≈ 2,0e-8 s, alors qu'une couche de 0,375 mm laisserait attendre ≈ 6e-8 s). Pour gagner encore,
+il faudrait regarder où sont ces petits éléments de l'éprouvette (à faire).

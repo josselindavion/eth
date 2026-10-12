@@ -71,3 +71,4 @@ d'office dans `C:\APPS\Abaqus2023_Work`, et ne trouve donc pas le `.inp`.
 | Date | Modèle | Machine | Résultat |
 |---|---|---|---|
 | 12/10/2026 | UT19_R0500_00, maillage initial, double précision | Euler, 8 cœurs | 1 789 incréments en 59 s (≈ 33 ms/incrément), pas ≈ 1,1e-8 s imposé par des tétraèdres déformés des têtes → ≈ 3,3 h pour 4 ms |
+| 12/10/2026 | têtes remaillées (sans trous M4, virtual topology) | datacheck local | pas de temps initial 2,0e-8 s (au lieu de 5,5e-9 s) ; à mesurer sur Euler |
