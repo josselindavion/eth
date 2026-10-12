@@ -46,7 +46,13 @@ numérique du banc (tôle de 1,5 mm, von Mises, écrouissage isotrope, indépend
 - Écrouissage Swift-Voce :
   k(εp) = α·A·(εp + ε0)ⁿ + (1 − α)·(k0 + Q·(1 − e^(−β·εp)))
   avec A = 1395 MPa, ε0 = 1e-6, n = 0.0892, k0 = 739 MPa, Q = 301 MPa, β = 102, α = 0.5
-- Tabulé de εp = 0 à 2 (80 points, espacement logarithmique). Au-delà, Abaqus garde la dernière valeur.
+- Tabulé de εp = 0 à 2 avec un **pas constant de 0,005** (401 points). Au-delà de 2, Abaqus garde la dernière valeur.
+  - Pourquoi un pas constant : Abaqus/Explicit « régularise » les tables, c'est-à-dire qu'il les ré-échantillonne
+    à pas constant, égal au plus petit intervalle donné. Une première version en échelle log (plus petit
+    intervalle 1e-6 sur une plage de 2) a donné l'erreur `Failed to regularize material data` au premier datacheck.
+  - Conséquence : entre εp = 0 et 0,005, la courbe est remplacée par une droite (573 → 864 MPa), alors que la loi
+    monte très vite (761 MPa dès εp = 0,001, à cause de ε0 = 1e-6). Écart max ≈ −12 % sur ce tout début de
+    plasticité seulement ; sans effet au-delà de εp = 0,005.
 - Contrôle : k(0) = 573 MPa, k(0,002) = 798 MPa, k(0,1) = 1088 MPa, k(1) = 1218 MPa.
 
 **À confirmer avec le maître de stage :** le matériau d'éprouvette à utiliser pour la Task I, les densités des barres,

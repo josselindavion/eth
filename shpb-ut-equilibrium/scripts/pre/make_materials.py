@@ -44,9 +44,12 @@ SPECIMEN = {
 }
 
 # Tabulation de la courbe d'ecrouissage pour *Plastic
+# Points EQUIDISTANTS : Abaqus/Explicit "regularise" les tables (il les re-echantillonne
+# a pas constant, egal au plus petit intervalle donne). Avec des points en echelle log
+# (plus petit intervalle 1e-6 sur une plage de 2), il faudrait 2 millions d'intervalles :
+# erreur "Failed to regularize material data". Pas constant de 0,005 -> 400 intervalles.
 EP_MAX = 2.0       # deformation plastique max tabulee (au-dela, Abaqus garde la derniere valeur)
-N_POINTS = 80      # nombre de points (espaces de facon logarithmique)
-EP_MIN = 1.0e-6    # premier point non nul (Swift avec e0 = 1e-6 monte tres vite au debut)
+EP_STEP = 0.005    # pas de la table
 
 # ============================================================
 # CHEMINS
@@ -76,10 +79,10 @@ def swift_voce(ep, p):
     return p['a_SV'] * swift + (1.0 - p['a_SV']) * voce
 
 
-def plastic_strains(ep_min, ep_max, n_points):
-    """0, puis des points espaces logarithmiquement de ep_min a ep_max."""
-    lo, hi = math.log10(ep_min), math.log10(ep_max)
-    return [0.0] + [10 ** (lo + (hi - lo) * i / (n_points - 2)) for i in range(n_points - 1)]
+def plastic_strains(ep_step, ep_max):
+    """0, ep_step, 2*ep_step, ... jusqu'a ep_max (pas constant)."""
+    n = int(round(ep_max / ep_step))
+    return [i * ep_step for i in range(n + 1)]
 
 
 def header(lines):
@@ -113,7 +116,7 @@ for name, p in ELASTIC.items():
 
 # --- Eprouvette ---
 p = SPECIMEN
-eps = plastic_strains(EP_MIN, EP_MAX, N_POINTS)
+eps = plastic_strains(EP_STEP, EP_MAX)
 lines = header([
     'Materiau ' + p['name'] + ' -- genere par scripts/pre/make_materials.py, NE PAS EDITER A LA MAIN',
     'Source : Beerli et al. (2026), Int. J. Impact Eng. 215, 105761, tableau 4',
