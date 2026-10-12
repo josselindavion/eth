@@ -4,10 +4,10 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ** ==========================================================================
 ** SHPB_UT_main.inp -- MODELE PRINCIPAL (gabarit)
 ** ==========================================================================
-** Ce fichier est un GABARIT : scripts/pre/ le copie dans runs/<case_id>/ en
+** Ce fichier est un GABARIT : scripts/pre/ le copie dans runs/CASE_ID/ en
 ** remplacant deux jetons (mots entoures de deux soulignes "__") :
-**     SPEC     -> nom de l'eprouvette   (UT19 ou UT40)
-**     CASE_ID  -> nom du calcul         (ex. UT19_R0500_00)
+**     SPEC     : nom de l'eprouvette   (UT19 ou UT40)
+**     CASE_ID  : nom du calcul         (ex. UT19_R0500_00)
 ** Tous les fichiers inclus (*.geo, *.dat) sont copies a cote du .inp :
 ** les *INCLUDE n'ont donc pas de chemin.
 **
@@ -17,8 +17,11 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ** ==========================================================================
 ** 0. PARAMETRES  (*PARAMETER, fichier propre a chaque calcul)
 ** ==========================================================================
-** Les valeurs qui changent d'un calcul a l'autre sont dans <case_id>_paras.inp.
-** Dans ce fichier, on les utilise entre chevrons : <V_STRIKER>.
+** Les valeurs qui changent d'un calcul a l'autre sont dans CASE_ID_paras.inp.
+** Dans ce fichier, on les utilise entre chevrons (voir V_STRIKER en 6b).
+** ATTENTION : jamais de chevrons dans un commentaire. Abaqus remplace les
+** parametres meme dans les lignes de commentaire, et s'arrete s'il ne
+** connait pas le nom (verifie par make_run.py).
 ** Ce *INCLUDE doit rester AVANT toute utilisation d'un parametre.
 **
 *INCLUDE, INPUT=__CASE_ID___paras.inp
@@ -27,7 +30,7 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ** 1. MAILLAGE  (un .geo par piece, genere par scripts/pre/inp_to_geo.py)
 ** ==========================================================================
 ** Noeuds et elements sont deja en coordonnees globales.
-** Labels : piece n -> n*1 000 000 + ...  (STRIKER 1M, INPUT_BAR 2M, ...)
+** Labels : piece n = n*1 000 000 + ...  (STRIKER 1M, INPUT_BAR 2M, ...)
 **
 *INCLUDE, INPUT=STRIKER.geo
 *INCLUDE, INPUT=INPUT_BAR.geo
@@ -80,7 +83,7 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 ** Secondaire = maillage le plus fin (ici la tete en tetraedres de 2 mm) :
 ** ses noeuds sont attaches aux facettes de la surface principale.
 **   ADJUST=YES             : les noeuds secondaires sont ramenes sur la surface
-**                            principale au debut du calcul (ecart < 0,05 mm ici,
+**                            principale au debut du calcul (ecart inferieur a 0,05 mm ici,
 **                            du aux cordes du maillage sur les bords courbes)
 **   POSITION TOLERANCE=0.2 : on ne lie que les noeuds secondaires a moins de
 **                            0,2 mm de la surface principale (la couche de
@@ -141,7 +144,7 @@ STRIKER_NALL, 2, <V_STRIKER>
 ** la sortie SOF (section force) donne la force totale qui traverse la section.
 ** SEC_OUT = debut de la partie droite cote barre de sortie (Y = 155,357)
 ** SEC_IN  = fin de la partie droite cote pusher           (Y = 170,357)
-** Equilibre quasi statique  <=>  SOF2(SEC_IN) = SOF2(SEC_OUT)
+** Equilibre quasi statique : SOF2(SEC_IN) = SOF2(SEC_OUT)
 ** (demi-modele : force reelle = 2 x SOF2)
 *INTEGRATED OUTPUT SECTION, NAME=SECTION_IN, SURFACE=__SPEC___SEC_IN
 *INTEGRATED OUTPUT SECTION, NAME=SECTION_OUT, SURFACE=__SPEC___SEC_OUT
@@ -151,7 +154,7 @@ STRIKER_NALL, 2, <V_STRIKER>
 ** ==========================================================================
 ** Pas de mass scaling : il changerait la vitesse des ondes dans les barres,
 ** c'est-a-dire exactement ce que l'on veut mesurer.
-** Duree <T_STEP> : voir le fichier _paras.inp.
+** Duree T_STEP : voir le fichier _paras.inp.
 *STEP, NAME=IMPACT, NLGEOM=YES
 *DYNAMIC, EXPLICIT
 , <T_STEP>
@@ -191,7 +194,7 @@ U
 S
 **
 ** --- 8c. Sorties "historique" (courbes en fonction du temps) -------------
-** Un point toutes les <DT_HIST> secondes.
+** Un point toutes les DT_HIST secondes.
 *OUTPUT, HISTORY, TIME INTERVAL=<DT_HIST>
 ** Jauges virtuelles : deformation axiale (Y = direction 2) des elements de jauge
 *ELEMENT OUTPUT, ELSET=INPUT_BAR_GAUGE_IN

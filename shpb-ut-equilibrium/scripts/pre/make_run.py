@@ -62,6 +62,12 @@ def fill(template_name, tokens):
     left = TOKEN.findall(text)
     if left:
         sys.exit('Jetons non remplaces dans %s : %s' % (template_name, ', '.join(sorted(set(left)))))
+    # Abaqus remplace les <parametres> meme dans les commentaires, et s'arrete
+    # s'il ne connait pas le nom : on interdit donc les chevrons dans les commentaires.
+    bad = [i + 1 for i, l in enumerate(text.splitlines()) if l.startswith('**') and ('<' in l or '>' in l)]
+    if bad:
+        sys.exit('Chevrons < ou > dans un commentaire de %s, lignes %s : a retirer'
+                 % (template_name, ', '.join(str(i) for i in bad)))
     return text
 
 

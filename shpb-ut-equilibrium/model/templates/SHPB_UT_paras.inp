@@ -1,7 +1,7 @@
 ** ==========================================================================
 ** SHPB_UT_paras.inp -- PARAMETRES D'UN CALCUL (gabarit)
 ** ==========================================================================
-** scripts/pre/ copie ce fichier en runs/<case_id>/<case_id>_paras.inp
+** scripts/pre/ copie ce fichier en runs/CASE_ID/CASE_ID_paras.inp
 ** en remplacant les jetons (mots entoures de deux soulignes "__").
 ** Il est inclus en tete du .inp principal.
 **
@@ -15,9 +15,9 @@ V_STRIKER_MS = __V_STRIKER_MS__
 V_STRIKER = V_STRIKER_MS * 1000.0
 **
 ** Duree du calcul, en s. Chronologie (barre d'entree c = 4871 m/s) :
-**   onde de l'impact -> pusher (6010 mm)            : ~1,23 ms
+**   onde de l'impact jusqu'au pusher (6010 mm)          : ~1,23 ms
 **   duree de l'impulsion (2 x 5000 mm / 4720 m/s)   : ~2,12 ms
-**   => fin du chargement de l'eprouvette            : ~3,4 ms
+**   donc fin du chargement de l'eprouvette          : ~3,4 ms
 T_STEP = 4.0e-3
 **
 ** Sorties
