@@ -217,6 +217,7 @@ Les `.geo` et le dossier `_raw/` **ne sont pas versionnés** (`.gitignore`) : il
 | noms locaux (`XSYMM`, `S_TIE`…) qualifiés par l'instance (`UT19-1.XSYMM`) | noms **préfixés par la pièce** : `UT19_XSYMM`, `PUSHER_ROD_S_TIE` ; `UT19_ALL` reste `UT19_ALL` |
 | `*Solid Section` dans la part | **retiré** : les sections sont dans le `.inp` principal |
 | — | en plus : `*Node, nset=<PIÈCE>_NALL` (tous les nœuds de la pièce) |
+| elsets internes des surfaces (`_S_TIE_S3, internal`) | renommés `<PIÈCE>_I_S_TIE_S3`, **sans** l'option `internal` : hors `*Part` / `*Assembly`, Abaqus la refuse (`UNKNOWN PARAMETER INTERNAL`) |
 
 Les labels dépendent de l'ordre des instances dans le `.inp` brut ; le script affiche la plage de chaque pièce.
 Un groupe d'assemblage qui porterait le même nom qu'un groupe de part serait renommé `<nom>_ASM` (message `ATTENTION`).

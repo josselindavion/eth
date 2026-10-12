@@ -200,11 +200,13 @@ def transform(xyz, tr, rot):
 # ECRITURE DES .geo
 # ============================================================
 def new_name(name, piece):
-    """Prefixe le nom par la piece, sauf s'il l'est deja (UT19_ALL reste UT19_ALL)."""
+    """Prefixe le nom par la piece, sauf s'il l'est deja (UT19_ALL reste UT19_ALL).
+    Les elsets internes de CAE (_S_TIE_S3) deviennent PIECE_I_S_TIE_S3 : un nom ne doit
+    pas commencer par '_' dans un fichier a plat (hors *Part / *Assembly)."""
     if name.upper().startswith(piece.upper() + '_'):
         return name
     if name.startswith('_'):                         # elset interne de surface : _S_TIE_S3
-        return '_' + piece + name
+        return piece + '_I' + name
     return piece + '_' + name
 
 
@@ -214,7 +216,9 @@ def chunks(vals, n=PER_LINE):
 
 
 def write_set(out, kw, name, params, vals, off):
-    opts = ''.join(', ' + k for k in ('internal', 'generate') if params.get(k))
+    # Option 'internal' NON recopiee : elle n'existe que dans un *Part / *Assembly ;
+    # dans un fichier a plat, Abaqus la refuse (UNKNOWN PARAMETER INTERNAL).
+    opts = ', generate' if params.get('generate') else ''
     out.append('*%s, %s=%s%s' % ('Nset' if kw == 'nset' else 'Elset', kw, name, opts))
     if params.get('generate'):
         for i in range(0, len(vals), 3):
@@ -263,9 +267,8 @@ def write_geo(path, piece, mesh, off, tr, rot, asm_sets, asm_surfaces, src):
 
     surfaces = [(n, p, r, False) for n, p, r in mesh.surfaces] + [(n, p, r, True) for n, p, r in asm_surfaces]
     for name, params, rows, from_asm in surfaces:
-        opts = ', internal' if params.get('internal') else ''
-        out.append('*Surface, type=%s, name=%s%s'
-                   % (params.get('type', 'ELEMENT'), unique('surface', new_name(name, piece)), opts))
+        out.append('*Surface, type=%s, name=%s'
+                   % (params.get('type', 'ELEMENT'), unique('surface', new_name(name, piece))))
         for elset, face in rows:
             ref = rename.get(elset, new_name(elset, piece)) if from_asm else new_name(elset, piece)
             out.append('%s, %s' % (ref, face) if face else ref)
