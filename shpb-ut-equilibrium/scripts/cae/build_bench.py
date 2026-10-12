@@ -478,6 +478,8 @@ def tet_heights(part):
 
     Indicateur du pas de temps stable : un tetraedre "ecrase" a une petite hauteur
     meme si ses aretes sont longues. Renvoie [(hauteur, label, centre), ...] trie.
+    Attention : dans Abaqus/CAE, sum() est remplace par une version qui refuse les
+    generateurs (TypeError: found 'generator') -> pas de sum(x for x in ...) ici.
     """
     def sub(a, b):
         return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
@@ -485,17 +487,21 @@ def tet_heights(part):
     def cross(a, b):
         return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
 
+    def dot(a, b):
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
     def norm(a):
-        return (a[0] ** 2 + a[1] ** 2 + a[2] ** 2) ** 0.5
+        return dot(a, a) ** 0.5
 
     out = []
     for el in part.elements:
         P = [n.coordinates for n in el.getNodes()[:4]]          # 4 sommets
         a, b, c, d = P
-        vol = abs(sum(x * y for x, y in zip(cross(sub(b, a), sub(c, a)), sub(d, a)))) / 6.0
+        vol = abs(dot(cross(sub(b, a), sub(c, a)), sub(d, a))) / 6.0
         areas = [norm(cross(sub(q, p), sub(r, p))) / 2.0
                  for p, q, r in ((b, c, d), (a, c, d), (a, b, d), (a, b, c))]
-        centre = tuple(sum(x[i] for x in P) / 4.0 for i in range(3))
+        centre = ((a[0] + b[0] + c[0] + d[0]) / 4.0, (a[1] + b[1] + c[1] + d[1]) / 4.0,
+                  (a[2] + b[2] + c[2] + d[2]) / 4.0)
         out.append((3.0 * vol / max(areas), el.label, centre))
     out.sort()
     return out
@@ -508,7 +514,7 @@ def report_tet_quality(model, names):
         h = tet_heights(model.parts[n])
         hs = [x[0] for x in h]
         print('  %-12s hauteur min %.3f mm   mediane %.3f mm   < 0.3 mm : %d   < 0.5 mm : %d'
-              % (n, hs[0], hs[len(hs) // 2], sum(1 for x in hs if x < 0.3), sum(1 for x in hs if x < 0.5)))
+              % (n, hs[0], hs[len(hs) // 2], len([x for x in hs if x < 0.3]), len([x for x in hs if x < 0.5])))
         for hh, lab, c in h[:3]:
             print('      pire : element %d  h = %.3f mm  au point (%.2f, %.2f, %.2f)' % (lab, hh, c[0], c[1], c[2]))
 
