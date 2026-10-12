@@ -86,6 +86,18 @@ EXT_LENGTH      = 12.0    # mm, longueur de l'extensometre virtuel (zone DIC de 
 # Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
 HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
 
+# Trous M4 inutiles au fond des logements (perces sur le plan X = 0) : on les bouche
+# avant de couper le demi-modele. Ils creaient ~130 tetraedres deformes (datacheck du 12/10/2026).
+# Chaque trou = un cylindre englobant, en coordonnees du fichier STEP (avant placement) :
+# (point 1 de l'axe, point 2 de l'axe). Les faces entierement dedans sont supprimees.
+#   pusher       : trou borgne diam. 3,3 + pointe de foret, global Y = 186,35, Z = 16,1 .. 28,6
+#   barre sortie : trou debouchant diam. 3,3,               global Y = 139,21, Z = 21,35 .. 28,6
+M4_HOLES = {
+    'PUSHER':     ((0.0, 15.9, -186.35), (0.0, 28.65, -186.35)),
+    'OUTPUT_BAR': ((0.0, -8.1, 16.5),    (0.0, -0.70, 16.5)),
+}
+M4_HOLE_RADIUS = 1.7      # mm, un peu plus que le rayon du trou (1,65)
+
 # Nom du fichier .cae sauvegarde (dans le dossier de travail courant)
 CAE_NAME = MODEL_NAME + '.cae'
 
@@ -119,6 +131,20 @@ def import_step_part(model, part_name, step_file):
     return model.PartFromGeometryFile(name=part_name, geometryFile=geom,
                                       combine=False, dimensionality=THREE_D,
                                       type=DEFORMABLE_BODY)
+
+
+def fill_hole(part, center1, center2, radius):
+    """Bouche un trou : supprime les faces contenues dans un cylindre englobant.
+
+    RemoveFaces(deleteCells=False) retire les faces et "cicatrise" le solide en
+    prolongeant les faces voisines (syntaxe relevee dans abaqus.rpy, 12/10/2026).
+    """
+    faces = part.faces.getByBoundingCylinder(center1=center1, center2=center2, radius=radius)
+    n = len(faces)
+    if n == 0:
+        raise ValueError('Aucune face de trou trouvee dans ' + part.name)
+    part.RemoveFaces(faceList=faces, deleteCells=False)
+    print('  %-16s trou bouche (%d faces supprimees)' % (part.name, n))
 
 
 def make_cylinder(model, part_name, radius, length):
@@ -477,6 +503,11 @@ full = {
     'INPUT_BAR':  make_cylinder(model, 'INPUT_BAR_FULL', BAR_RADIUS, INPUT_BAR_LENGTH),
     'OUTPUT_ROD': make_cylinder(model, 'OUTPUT_ROD_FULL', BAR_RADIUS, OUTPUT_BAR_LENGTH),
 }
+
+# Trous M4 inutiles : bouches sur les parts completes, avant la coupe X = 0
+print('Trous M4 :')
+for src, (c1, c2) in sorted(M4_HOLES.items()):
+    fill_hole(full[src], c1, c2, M4_HOLE_RADIUS)
 
 # --- 2. Placement : (axe de rotation, angle, translation) ---
 X_AXIS = (1.0, 0.0, 0.0)
