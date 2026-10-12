@@ -47,3 +47,15 @@ shpb-ut-equilibrium/
 | `docs/assembly.md` | placement des pièces dans le repère global, demi-modèle, découpe des pièces |
 | `docs/materials.md` | matériaux, sources des données, hypothèses |
 | `docs/mesh.md` | maillage : pièces, éléments, techniques, vérifications, paramètres |
+
+## Idées en réserve
+
+| Idée | Gain attendu | Détail |
+|---|---|---|
+| Durée simulée `T_STEP` calculée par cas dans `make_run.py` | ≈ 2× sur 500 et 1 000 /s | `T_STEP` = arrivée de l'onde au pusher (≈ 1,25 ms) + temps pour 30 % de déformation (0,30 / vitesse) + marge 0,2 ms, plafonné à la fin de l'impulsion (≈ 1,25 + 2,1 ms). Valeurs à vérifier sur les jauges du premier calcul. |
+
+## Mesures de performance
+
+| Date | Modèle | Machine | Résultat |
+|---|---|---|---|
+| 12/10/2026 | UT19_R0500_00, maillage initial, double précision | Euler, 8 cœurs | 1 789 incréments en 59 s (≈ 33 ms/incrément), pas ≈ 1,1e-8 s imposé par des tétraèdres déformés des têtes → ≈ 3,3 h pour 4 ms |
