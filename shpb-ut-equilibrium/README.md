@@ -44,6 +44,9 @@ shpb-ut-equilibrium/
    (jauges, forces dans les sections, extensomètre, énergies), puis rapatrie ces fichiers légers dans
    `runs/_submit/<étude>_<date>/<case>/`. Options : `--clean` (supprime les fichiers de reprise sur Euler),
    `--odb <case>` (rapatrie aussi le `.odb` pour CAE)
+5. `scripts/post/plot_case.py runs/_submit/<étude>_<date>` (PC, Python 3) : un graphe `<case>_overview.png`
+   par calcul (jauges, forces, déséquilibre, extensomètre) et `<étude>_<date>_summary.csv`
+   (vitesse de déformation obtenue, instant des 30 %, temps de mise en équilibre…) ; voir `docs/results.md`
 
 ## Lancer Abaqus à la main (PC du labo, Windows)
 
@@ -69,6 +72,7 @@ Prérequis (une fois) : repo cloné sur Euler dans `~/eth` (`module load eth_pro
 | Récupérer les courbes (calculs terminés) | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude>_<date>` |
 | … et nettoyer Euler | PC | ajouter `--clean` (garde les `.odb`) |
 | … et rapatrier un `.odb` pour CAE | PC | ajouter `--odb <case_id>` |
+| Tracer et résumer | PC, racine du repo | `python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/runs/_submit/<étude>_<date>` |
 | Lancer un seul cas à la main | Euler, dans le dossier du cas | `sbatch ~/eth/shpb-ut-equilibrium/scripts/hpc/run_abaqus.sh` |
 
 Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` est vidé après 15 jours.
@@ -84,13 +88,15 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 | `docs/assembly.md` | placement des pièces dans le repère global, demi-modèle, découpe des pièces |
 | `docs/materials.md` | matériaux, sources des données, hypothèses |
 | `docs/mesh.md` | maillage : pièces, éléments, techniques, vérifications, paramètres |
+| `docs/results.md` | dépouillement : graphes, définitions des grandeurs, premiers résultats |
 
 ## Reste à faire
 
 | Sujet | Détail |
 |---|---|
-| Tracés | script Python 3 sur le PC : à partir des `<case>_history.csv`, ondes dans les jauges, F(SEC_IN) vs F(SEC_OUT), déformation de l'extensomètre, énergies |
-| Première étude `taskI_20261012-1811` | 3 calculs UT19 terminés sur Euler (100, 500, 1 000 /s, 4 ms) ; à dépouiller avant le 26/10/2026 |
+| Vitesse du striker | V = vitesse × 15 mm donne 21 /s au lieu de 100 /s : ajouter la force de l'éprouvette, V ≈ vitesse × L + 2 F / (ρ c A) (voir `docs/results.md`) |
+| 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : il faut ≈ 3 ms de chargement |
+| Étude `taskI_20261013-1127` | R0100 et R0500 dépouillés ; R1000 encore en cours (pas de temps 3,9e-9 s en fin de calcul) |
 
 ## Mesures de performance
 
