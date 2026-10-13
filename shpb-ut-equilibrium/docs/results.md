@@ -61,7 +61,7 @@ ne freine pas les barres. En réalité la vitesse d'allongement du LID vaut
 Conséquences :
 
 - il faut ajouter la force de l'éprouvette dans le calcul de la vitesse du striker : V ≈ rate × L + 2 F / (ρ c A),
-  soit ≈ 2,8 m/s pour 100 /s ;
+  fait dans `make_run.py`, voir section 4 (2,48 m/s pour 100 /s) ;
 - à 100 /s, 30 % demandent 3 ms de chargement : impossible avec l'impulsion de 2,12 ms du striker de 5 m.
 
 ## 4. Vitesse du striker et durée simulée (`make_run.py`, depuis le 13/10/2026)
