@@ -203,7 +203,7 @@ __SPEC___S_SKIN, OUTPUT_HEAD_S_SKIN, IP_FROTT
 **   - banc entier : peu d'images, juste pour voir passer les ondes
 ** Les tetes et la tige du pusher sont dans la requete a beaucoup d'images :
 ** sinon, aux images intermediaires, elles n'ont pas de resultat et Abaqus
-** les dessine a leur position initiale -> l'animation "clignote"
+** les dessine a leur position initiale : l'animation "clignote"
 ** (constate sur taskI_20261013-1127). Cout : environ +300 Mo par .odb.
 *OUTPUT, FIELD, NUMBER INTERVAL=<N_FRAMES_SPEC>
 *ELEMENT OUTPUT, ELSET=__SPEC___ALL
