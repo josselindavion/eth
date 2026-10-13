@@ -131,7 +131,25 @@ __SPEC___XSYMM, XSYMM
 OUTPUT_BAR_XSYMM, XSYMM
 OUTPUT_HEAD_XSYMM, XSYMM
 **
-** --- 6b. Vitesse initiale du striker ---------------------------------------
+** --- 6b. Guidages : glissiere du pusher et paliers des barres -------------
+** Sur le banc, le pusher coulisse dans une glissiere et les barres dans des
+** paliers, qui les tiennent dans les deux sens (haut et bas). Ici : U3 = 0
+** (deplacement vertical) sur :
+**   - la face inferieure du pusher (Z = 0), qui frotte dans la glissiere ;
+**   - l'axe des barres (striker, barre d'entree, barre de sortie), sur toute
+**     leur longueur.
+** Tout reste libre selon Y (l'axe du banc). Hypotheses : sans frottement,
+** sans jeu ; guidage continu des barres (positions des paliers non prises
+** en compte). Sans ces conditions, les efforts excentres font basculer le
+** pusher (calcul taskI_20261012-1811).
+*BOUNDARY
+PUSHER_ROD_GUIDE, 3, 3
+PUSHER_HEAD_GUIDE, 3, 3
+STRIKER_GUIDE, 3, 3
+INPUT_BAR_GUIDE, 3, 3
+OUTPUT_BAR_GUIDE, 3, 3
+**
+** --- 6c. Vitesse initiale du striker ---------------------------------------
 ** Le striker (Y de -11010 a -6010) avance vers la barre d'entree : vitesse
 ** selon +Y (degre de liberte 2), en mm/s. Toutes les autres pieces sont au repos.
 *INITIAL CONDITIONS, TYPE=VELOCITY

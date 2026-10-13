@@ -159,6 +159,7 @@ Les groupes sont définis **sur la géométrie** (par coordonnées), donc ils re
 | `SEC_IN` | surface | `UT19` | section en Y ≈ 170,357 | force traversant l'éprouvette, côté pusher |
 | `SEC_OUT` | surface | `UT19` | section en Y ≈ 155,357 | force traversant l'éprouvette, côté barre de sortie |
 | `GAUGE_ZONE` | set d'éléments | `UT19` | partie droite de la zone utile | contraintes / déformations moyennes |
+| `GUIDE` | set de nœuds | `PUSHER_ROD`, `PUSHER_HEAD`, `STRIKER`, `INPUT_BAR`, `OUTPUT_BAR` | face inférieure du pusher (Z = 0) ; axe des barres | guidage vertical U3 = 0 (section 12) |
 
 ### Surfaces d'interface
 
@@ -312,3 +313,26 @@ Réglages testés à la main dans CAE (*Mesh → Tools → Virtual Topology → 
 Les têtes ne sont plus seules à imposer le pas de temps : **l'éprouvette** a maintenant des éléments aussi
 critiques (≈ 2,0e-8 s, alors qu'une couche de 0,375 mm laisserait attendre ≈ 6e-8 s). Pour gagner encore,
 il faudrait regarder où sont ces petits éléments de l'éprouvette (à faire).
+
+---
+
+## 12. Guidages (glissière du pusher, paliers des barres)
+
+**Constat** (calcul `taskI_20261012-1811`, UT19 à 500 /s) : entre t = 0 et t = 4 ms, le pusher a **basculé** par rapport
+au reste du banc. Les efforts sont excentrés : la barre d'entrée pousse le pusher à Z = 7,85 (son axe), l'éprouvette le
+retient à Z ≈ 29 (fond du logement) ; ce couple le fait tourner autour de X. Dans le modèle, rien ne s'y opposait
+(seule condition : la symétrie X = 0).
+
+**Sur le banc** : le pusher coulisse dans une **glissière** et les barres dans des **paliers**, qui les tiennent dans les
+deux sens (haut et bas).
+
+**Dans le modèle** : U3 = 0 (déplacement vertical) sur les groupes `GUIDE` créés par `build_bench.py` :
+
+| Pièce | Nœuds bloqués en U3 | Pourquoi ces nœuds |
+|---|---|---|
+| `PUSHER_ROD`, `PUSHER_HEAD` | face inférieure, Z = 0 (une seule face plane sur toute la longueur, Y = 0 à 206) | c'est la face qui glisse dans la glissière. Sur la tête, les nœuds du plan de tie (Y = 125) sont exclus : ceux de la tige les bloquent déjà |
+| `STRIKER`, `INPUT_BAR`, `OUTPUT_BAR` | axe de la barre (X = 0, Z = axe), sur toute la longueur | bloquer l'axe empêche la barre de monter, descendre ou basculer, sans gêner l'onde axiale ni le gonflement radial (effet Poisson), qui laissent l'axe en place |
+
+Tout reste libre selon Y. Hypothèses : guidages **sans frottement** et **sans jeu** ; guidage des barres **continu**
+(les positions réelles des paliers ne sont pas modélisées). `build_bench.py` affiche le nombre de nœuds de chaque groupe
+et s'arrête si un groupe est vide.

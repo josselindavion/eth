@@ -87,6 +87,11 @@ EXT_LENGTH      = 12.0    # mm, longueur de l'extensometre virtuel (zone DIC de 
 
 # Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
 HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
+
+# Guidages du banc (glissiere du pusher, paliers des barres), bloquants dans les deux sens.
+# Sans eux, les efforts excentres (pusher pousse a Z = 7.85, retenu par l'eprouvette a Z ~ 29)
+# font basculer le pusher (calcul taskI_20261012-1811). Voir docs/mesh.md, section 12.
+Z_PUSHER_SLIDE = 0.0      # mm, face inferieure du pusher (une seule face plane, Y = 0 .. 206)
 HEAD_MIN_SIZE_FACTOR = 0.5  # taille mini des tetraedres = 0.5 x 2 mm : empeche le mailleur de
                             # raffiner jusqu'a 0.2 mm sur les petits rayons (pas de temps)
 
@@ -327,6 +332,44 @@ def make_basic_sets(model, part_names, tol=1.0e-4):
         p.Set(name=n + '_ALL', cells=p.cells)
         if HALF_MODEL:
             p.Set(name='XSYMM', faces=p.faces.getByBoundingBox(-tol, -big, -big, tol, big, big))
+
+
+def make_guide_sets(model, tol=1.0e-3):
+    """Groupes de noeuds GUIDE : la ou le banc est guide verticalement (U3 = 0 dans le .inp).
+
+      PUSHER_ROD, PUSHER_HEAD : noeuds de la face inferieure (Z = Z_PUSHER_SLIDE), qui glisse
+                                dans la glissiere. Sur la tete, on exclut les noeuds du plan de
+                                tie (Y = Y_SPLIT_PUSHER), deja bloques par ceux de la tige.
+      STRIKER, INPUT_BAR, OUTPUT_BAR : noeuds de l'axe de la barre (X = 0, Z = axe), sur toute
+                                la longueur. Bloquer l'axe empeche la barre de monter, descendre
+                                ou basculer, sans gener ni l'onde axiale ni le gonflement radial
+                                (effet Poisson), qui laissent l'axe en place.
+    """
+    big = 1.0e5
+    p = model.parts['PUSHER_ROD']
+    p.Set(name='GUIDE', nodes=p.nodes.getByBoundingBox(
+        -big, -big, Z_PUSHER_SLIDE - tol, big, big, Z_PUSHER_SLIDE + tol))
+    p = model.parts['PUSHER_HEAD']
+    p.Set(name='GUIDE', nodes=p.nodes.getByBoundingBox(
+        -big, Y_SPLIT_PUSHER + tol, Z_PUSHER_SLIDE - tol, big, big, Z_PUSHER_SLIDE + tol))
+    for name, z_axis in (('STRIKER', Z_INPUT_AXIS), ('INPUT_BAR', Z_INPUT_AXIS),
+                         ('OUTPUT_BAR', Z_OUTPUT_AXIS)):
+        p = model.parts[name]
+        p.Set(name='GUIDE', nodes=p.nodes.getByBoundingBox(
+            -tol, -big, z_axis - tol, tol, big, z_axis + tol))
+
+
+def report_guides(model):
+    """Bilan des groupes GUIDE (nombre de noeuds et etendue en Y)."""
+    print('Guidages (U3 = 0) :')
+    for n in ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'PUSHER_HEAD', 'OUTPUT_BAR']:
+        nodes = model.parts[n].sets['GUIDE'].nodes
+        if len(nodes) == 0:
+            raise ValueError('Groupe GUIDE vide sur ' + n)
+        ys = [nd.coordinates[1] for nd in nodes]
+        zs = [nd.coordinates[2] for nd in nodes]
+        print('  %-12s %6d noeuds   Y = %10.3f .. %9.3f   Z = %7.3f .. %7.3f'
+              % (n, len(nodes), min(ys), max(ys), min(zs), max(zs)))
 
 
 def make_specimen_sets(part, y_out, y_in, tol=1.0e-4):
@@ -598,10 +641,12 @@ report_tet_quality(model, ['PUSHER_HEAD', 'OUTPUT_HEAD'])
 
 # --- 5. Groupes nommes ---
 make_basic_sets(model, PIECE_NAMES)
+make_guide_sets(model)
 make_specimen_sets(spec, y_sec_out, y_sec_in)
 make_interface_surfaces(model, y_impact=-INPUT_BAR_LENGTH, y_push=0.0,
                         y_tie_pusher=Y_SPLIT_PUSHER, y_tie_output=Y_SPLIT_OUTPUT)
 report_sets(model, PIECE_NAMES)
+report_guides(model)
 report_surfaces(model, PIECE_NAMES)
 make_measurement_sets(model,
                       y_gauge_in=-INPUT_BAR_LENGTH + GAUGE_IN_DIST,
