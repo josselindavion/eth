@@ -80,6 +80,14 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 |---|---|---|
 | Durée simulée `T_STEP` calculée par cas dans `make_run.py` | ≈ 2× sur 500 et 1 000 /s | `T_STEP` = arrivée de l'onde au pusher (≈ 1,25 ms) + temps pour 30 % de déformation (0,30 / vitesse) + marge 0,2 ms, plafonné à la fin de l'impulsion (≈ 1,25 + 2,1 ms). Valeurs à vérifier sur les jauges du premier calcul. |
 
+## Reste à faire
+
+| Sujet | Détail |
+|---|---|
+| Dépouillement automatique | script `abaqus python` sur Euler : `.odb` → CSV (jauges, SOF2 des sections, extensomètre, énergies), puis tracés sur le PC |
+| Rangement des résultats | rapatrier les CSV (et les `.odb` utiles) dans `runs/_submit/<étude>_<date>/<cas>/` à côté de leurs fichiers d'entrée ; `$SCRATCH` est vidé après 15 jours |
+| Première étude `taskI_20261012-1811` | 3 calculs UT19 terminés sur Euler (100, 500, 1 000 /s, 4 ms) ; à dépouiller avant le 26/10/2026 |
+
 ## Mesures de performance
 
 | Date | Modèle | Machine | Résultat |
