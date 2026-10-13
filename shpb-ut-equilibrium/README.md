@@ -33,9 +33,10 @@ shpb-ut-equilibrium/
    puis `scripts/pre/inp_to_geo.py` (Python 3) → un `model/geometry/<PIÈCE>.geo` par pièce (voir `docs/mesh.md`, section 10)
 2. `scripts/pre/make_run.py` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
    (`<case_id>.inp` + `<case_id>_paras.inp` + copies des `.geo` et `.dat` : dossier autonome)
-   - vitesse du striker ≈ vitesse de déformation × 15 mm (estimation à vérifier) ;
-   - durée simulée par cas : arrivée de l'onde (1,234 ms) + 0,30 / vitesse de déformation + 0,2 ms,
-     plafonnée à la fin de l'impulsion (+ 2,119 ms) → 3,55 / 2,03 / 1,73 ms à 100 / 500 / 1 000 /s
+   - vitesse du striker = (vitesse de déformation × L_eff + 2 F / ρcA) / (2 × 0,487), qui tient compte
+     de la force de l'éprouvette (voir `docs/results.md`, section 4) → 2,48 / 7,69 / 14,20 m/s à 100 / 500 / 1 000 /s ;
+   - durée simulée par cas : arrivée de l'onde (1,234 ms) + 0,30 / vitesse de déformation + 0,3 ms,
+     plafonnée à la fin de l'impulsion (+ 2,119 ms) → 3,65 / 2,13 / 1,83 ms à 100 / 500 / 1 000 /s
      (colonne optionnelle `t_step_ms` dans `cases.csv` pour imposer une valeur)
 3. `scripts/hpc/submit_study.py <étude>` (depuis le PC) : prépare tous les cas, les copie sur Euler dans
    `$SCRATCH/<étude>_<date>/` et lance un job array Slurm (`scripts/hpc/run_array.sh`, un calcul par cas)
@@ -94,9 +95,8 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 
 | Sujet | Détail |
 |---|---|
-| Vitesse du striker | V = vitesse × 15 mm donne 21 /s au lieu de 100 /s : ajouter la force de l'éprouvette, V ≈ vitesse × L + 2 F / (ρ c A) (voir `docs/results.md`) |
+| Vitesse du striker | formule corrigée (force de l'éprouvette) le 13/10 : à vérifier sur l'étude relancée, surtout à 100 /s (très sensible à F) |
 | 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : il faut ≈ 3 ms de chargement |
-| Étude `taskI_20261013-1127` | R0100 et R0500 dépouillés ; R1000 encore en cours (pas de temps 3,9e-9 s en fin de calcul) |
 
 ## Mesures de performance
 

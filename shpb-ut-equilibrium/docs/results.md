@@ -63,3 +63,27 @@ Conséquences :
 - il faut ajouter la force de l'éprouvette dans le calcul de la vitesse du striker : V ≈ rate × L + 2 F / (ρ c A),
   soit ≈ 2,8 m/s pour 100 /s ;
 - à 100 /s, 30 % demandent 3 ms de chargement : impossible avec l'impulsion de 2,12 ms du striker de 5 m.
+
+## 4. Vitesse du striker et durée simulée (`make_run.py`, depuis le 13/10/2026)
+
+    V_striker = (vitesse de déformation × L_eff + 2 F / Z) / (2 K)
+
+| Terme | Valeur | Origine |
+|---|---|---|
+| K = v_i / V_striker | 0,487 | impédances striker / barre (même diamètre 20 mm) : Z_s / (Z_s + Z_b) ; vérifié sur la jauge d'entrée (7,5e-4 à 7,5 m/s) |
+| Z = ρ c A des barres | 12 242 N·s/m | maraging, 8000 kg/m³, 4871 m/s, Ø 20 mm |
+| F (UT19) | 7 000 N | force moyenne de l'éprouvette pendant l'essai : 6,4 à 6,8 kN, max 7,4 à 7,6 kN |
+| L_eff (UT19) | 12,7 mm | calée sur UT19 à 500 /s (485 /s obtenus) ; plus courte que la partie droite (15 mm) car l'extensomètre (12 mm) voit la zone la plus déformée |
+
+| Vitesse visée | V_striker (ancienne formule) | V_striker (nouvelle) | Durée simulée |
+|---|---|---|---|
+| 100 /s | 1,5 m/s | 2,48 m/s | 3,65 ms (plafonnée : fin de l'impulsion) |
+| 500 /s | 7,5 m/s | 7,69 m/s | 2,13 ms |
+| 1 000 /s | 15 m/s | 14,20 m/s | 1,83 ms |
+
+À 100 /s, 2F/Z (1,14 m/s) pèse autant que le terme utile (1,27 m/s) : une erreur de 10 % sur F donne
+≈ 10 % d'erreur sur la vitesse de déformation. Les nouvelles valeurs sont à vérifier sur l'étude relancée.
+
+Durée simulée = 1,234 ms (arrivée de l'onde au pusher) + 0,30 / vitesse de déformation + 0,3 ms de marge,
+plafonnée à 1,234 + 2,119 + 0,3 ms. La marge est passée de 0,2 à 0,3 ms : à 500 /s, les 30 % étaient atteints
+à 1,995 ms pour 2,034 ms simulées.

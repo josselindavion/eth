@@ -16,6 +16,7 @@ Lancement (Python 3, depuis la racine du repo) :
 Si le dossier existe deja, il est ecrase (les resultats deja presents restent).
 """
 import csv
+import math
 import os
 import re
 import shutil
@@ -26,12 +27,22 @@ import sys
 # ============================================================
 STUDY = 'taskI'                       # etude : studies/<STUDY>/cases.csv
 
-# Vitesse du striker deduite de la vitesse de deformation visee :
-#     V_striker ~ V_pusher ~ (vitesse de deformation) x (longueur de reference)
-# ESTIMATION a verifier avec le premier calcul (extensometre).
-# Longueur de reference = partie droite de la zone utile, en mm.
-L_REF_MM = {
-    'UT19': 15.0,                     # partie droite mesuree dans build_bench.py (15,000 mm)
+# Vitesse du striker deduite de la vitesse de deformation visee (voir docs/results.md, section 4) :
+#     vitesse d'allongement de l'eprouvette  ~  2 v_i - 2 F / Z_BARRE      (v_i = K_IMP x V_striker)
+#     =>  V_striker = (vitesse de deformation x L_eff + 2 F / Z_BARRE) / (2 K_IMP)
+# v_i : vitesse particulaire de l'onde incidente ; F : force moyenne dans l'eprouvette ;
+# Z_BARRE = rho c A des barres : la force de l'eprouvette freine le pusher ET pousse la barre de sortie.
+RHO_BARRE, C_BARRE = 8000.0, 4871.0           # barres et pusher (MARAGING)
+RHO_STRIKER, C_STRIKER = 7850.0, 4720.0       # striker (STRIKER_STEEL)
+A_BARRE_M2 = math.pi * 0.010 ** 2             # diametre 20 mm, le meme pour le striker
+Z_BARRE = RHO_BARRE * C_BARRE * A_BARRE_M2    # 12 242 N.s/m
+K_IMP = RHO_STRIKER * C_STRIKER / (RHO_STRIKER * C_STRIKER + RHO_BARRE * C_BARRE)   # 0,487
+
+# Par eprouvette : L_eff = longueur efficace (mm) qui relie l'allongement a la deformation de
+# l'extensometre ; F = force moyenne de l'eprouvette pendant l'essai (N). Calees sur l'etude
+# taskI_20261013-1127 (UT19 a 500 /s : 485 /s obtenus, F moyenne 6,4 a 6,8 kN).
+SPECIMENS = {
+    'UT19': {'L_eff_mm': 12.7, 'F_N': 7000.0},
     'UT40': None,                     # geometrie pas encore disponible
 }
 
@@ -45,7 +56,8 @@ L_REF_MM = {
 DEFORMATION_CIBLE = 0.30              # deformation nominale visee (Task I : 30 %)
 T_ARRIVEE_MS = 6010.0 / 4871.0        # ms
 T_IMPULSION_MS = 2.0 * 5000.0 / 4720.0
-MARGE_MS = 0.2                        # ms : montee de l'impulsion + mise en equilibre
+MARGE_MS = 0.3                        # ms : montee de l'impulsion + retard de la mise en charge
+                                      # (0,2 ms etait trop juste : 30 % a 1,995 ms pour 2,034 ms simulees)
 
 # Pieces communes a toutes les eprouvettes (+ la piece de l'eprouvette elle-meme)
 BENCH_PIECES = ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'PUSHER_HEAD', 'OUTPUT_BAR', 'OUTPUT_HEAD']
@@ -85,10 +97,11 @@ def fill(template_name, tokens):
 
 def striker_velocity(spec, rate):
     """Vitesse du striker en m/s pour une vitesse de deformation 'rate' en 1/s."""
-    L = L_REF_MM.get(spec)
-    if L is None:
+    p = SPECIMENS.get(spec)
+    if p is None:
         return None
-    return rate * L / 1000.0          # (1/s) x mm -> mm/s -> m/s
+    v_allongement = rate * p['L_eff_mm'] / 1000.0 + 2.0 * p['F_N'] / Z_BARRE    # m/s
+    return v_allongement / (2.0 * K_IMP)
 
 
 def step_time_ms(rate, case):
@@ -107,7 +120,7 @@ def make_run(case):
     case_id, spec, rate = case['case_id'], case['specimen'], float(case['strain_rate'])
     v = striker_velocity(spec, rate)
     if v is None:
-        print('%-15s IGNORE : pas de longueur de reference pour %s' % (case_id, spec))
+        print('%-15s IGNORE : pas de parametres (SPECIMENS) pour %s' % (case_id, spec))
         return False
     needed_geo = BENCH_PIECES + [spec]
     missing = [p + '.geo' for p in needed_geo if not os.path.exists(os.path.join(GEO_DIR, p + '.geo'))]
