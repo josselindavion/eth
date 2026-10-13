@@ -70,30 +70,43 @@ def main():
     n_ext_in, n_ext_out = node(spec + '_EXT_IN'), node(spec + '_EXT_OUT')
     L0 = abs(n_ext_in.coordinates[1] - n_ext_out.coordinates[1])  # longueur de l'extensometre (mm)
 
-    # --- Parcours de toutes les sorties historiques
-    raw = {'LE22_in': [], 'S22_in': [], 'LE22_out': [], 'S22_out': []}
-    cols = {}
+    # --- Inventaire de toutes les sorties historiques (ecrit d'abord : utile si la suite echoue)
     inventory = []
     for rname, reg in step.historyRegions.items():
         for key, ho in reg.historyOutputs.items():
+            inventory.append('%-60s %-12s %6d points' % (rname, key, len(ho.data)))
+    with open(os.path.join(case_dir, case + '_inventory.txt'), 'w') as f:
+        f.write('\n'.join(sorted(inventory)) + '\n')
+
+    def label_of(rname):
+        """'Element PART-1-1.2000123 Int Point 1' -> 2000123 ; 'Node PART-1-1.5000203' -> 5000203."""
+        try:
+            return int(rname.split('.')[-1].split()[0])
+        except (ValueError, IndexError):
+            return None
+
+    # --- Tri des sorties utiles
+    raw = {'LE22_in': [], 'S22_in': [], 'LE22_out': [], 'S22_out': []}
+    cols = {}
+    for rname, reg in step.historyRegions.items():
+        up = rname.upper()
+        for key, ho in reg.historyOutputs.items():
             data = ho.data
-            inventory.append('%-45s %-12s %6d points' % (rname, key, len(data)))
-            up = rname.upper()
-            if up.startswith('ELEMENT'):
-                label = int(rname.split('.')[-1].split()[0])
+            if 'SECTION_IN' in up and key.startswith('SOF2'):
+                cols['F_sec_in_N'] = [(t, 2.0 * v) for t, v in data]
+            elif 'SECTION_OUT' in up and key.startswith('SOF2'):
+                cols['F_sec_out_N'] = [(t, 2.0 * v) for t, v in data]
+            elif up.startswith('ELEMENT ') and key in ('LE22', 'S22'):
+                label = label_of(rname)
                 side = 'in' if label in gauge_in else ('out' if label in gauge_out else None)
-                if side and key in ('LE22', 'S22'):
+                if side:
                     raw[key + '_' + side].append(data)
-            elif up.startswith('NODE') and key == 'U2':
-                label = int(rname.split('.')[-1])
+            elif up.startswith('NODE ') and key == 'U2':
+                label = label_of(rname)
                 if label == n_ext_in.label:
                     cols['u2_ext_in_mm'] = data
                 elif label == n_ext_out.label:
                     cols['u2_ext_out_mm'] = data
-            elif 'SECTION_IN' in up and key.startswith('SOF2'):
-                cols['F_sec_in_N'] = [(t, 2.0 * v) for t, v in data]
-            elif 'SECTION_OUT' in up and key.startswith('SOF2'):
-                cols['F_sec_out_N'] = [(t, 2.0 * v) for t, v in data]
             elif up.startswith('ASSEMBLY') and key in ENERGIES:
                 cols[key + '_mJ'] = [(t, 2.0 * v) for t, v in data]
 
@@ -120,8 +133,6 @@ def main():
         f.write(','.join(['time_s'] + present) + '\n')
         for i in range(n):
             f.write(','.join(['%.6e' % time[i]] + ['%.6e' % cols[c][i][1] for c in present]) + '\n')
-    with open(os.path.join(case_dir, case + '_inventory.txt'), 'w') as f:
-        f.write('\n'.join(sorted(inventory)) + '\n')
     odb.close()
 
     print('%-15s %d instants (t = %.3e .. %.3e s), %d colonnes%s'
