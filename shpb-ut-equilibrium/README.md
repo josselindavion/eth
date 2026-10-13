@@ -39,7 +39,11 @@ shpb-ut-equilibrium/
      (colonne optionnelle `t_step_ms` dans `cases.csv` pour imposer une valeur)
 3. `scripts/hpc/submit_study.py <étude>` (depuis le PC) : prépare tous les cas, les copie sur Euler dans
    `$SCRATCH/<étude>_<date>/` et lance un job array Slurm (`scripts/hpc/run_array.sh`, un calcul par cas)
-4. `scripts/post/` : `.odb` → CSV dans `results/`
+4. `scripts/hpc/fetch_study.py <étude>_<date>` (depuis le PC) : sur Euler, `extract_study.sh` lance
+   `scripts/post/extract_history.py` (Python d'Abaqus) sur chaque calcul terminé → `<case>_history.csv`
+   (jauges, forces dans les sections, extensomètre, énergies), puis rapatrie ces fichiers légers dans
+   `runs/_submit/<étude>_<date>/<case>/`. Options : `--clean` (supprime les fichiers de reprise sur Euler),
+   `--odb <case>` (rapatrie aussi le `.odb` pour CAE)
 
 ## Lancer Abaqus à la main (PC du labo, Windows)
 
@@ -61,7 +65,10 @@ Prérequis (une fois) : repo cloné sur Euler dans `~/eth` (`module load eth_pro
 |---|---|---|
 | Préparer, copier, lancer tous les cas | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI` |
 | Vérifier sans rien lancer | PC | ajouter `--dry-run` |
-| Suivre | Euler | `squeue -u $USER` puis `tail -3 $SCRATCH/<étude>_<date>/*/*.sta` |
+| Suivre | Euler | `squeue -u $USER` puis `tail -n 3 $SCRATCH/<étude>_<date>/*/*.sta` |
+| Récupérer les courbes (calculs terminés) | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude>_<date>` |
+| … et nettoyer Euler | PC | ajouter `--clean` (garde les `.odb`) |
+| … et rapatrier un `.odb` pour CAE | PC | ajouter `--odb <case_id>` |
 | Lancer un seul cas à la main | Euler, dans le dossier du cas | `sbatch ~/eth/shpb-ut-equilibrium/scripts/hpc/run_abaqus.sh` |
 
 Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` est vidé après 15 jours.
@@ -82,8 +89,7 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 
 | Sujet | Détail |
 |---|---|
-| Dépouillement automatique | script `abaqus python` sur Euler : `.odb` → CSV (jauges, SOF2 des sections, extensomètre, énergies), puis tracés sur le PC |
-| Rangement des résultats | rapatrier les CSV (et les `.odb` utiles) dans `runs/_submit/<étude>_<date>/<cas>/` à côté de leurs fichiers d'entrée ; `$SCRATCH` est vidé après 15 jours |
+| Tracés | script Python 3 sur le PC : à partir des `<case>_history.csv`, ondes dans les jauges, F(SEC_IN) vs F(SEC_OUT), déformation de l'extensomètre, énergies |
 | Première étude `taskI_20261012-1811` | 3 calculs UT19 terminés sur Euler (100, 500, 1 000 /s, 4 ms) ; à dépouiller avant le 26/10/2026 |
 
 ## Mesures de performance
