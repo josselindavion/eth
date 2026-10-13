@@ -14,11 +14,12 @@ V_STRIKER_MS = __V_STRIKER_MS__
 ** ... convertie en mm/s pour Abaqus
 V_STRIKER = V_STRIKER_MS * 1000.0
 **
-** Duree du calcul, en s. Chronologie (barre d'entree c = 4871 m/s) :
-**   onde de l'impact jusqu'au pusher (6010 mm)          : ~1,23 ms
-**   duree de l'impulsion (2 x 5000 mm / 4720 m/s)   : ~2,12 ms
-**   donc fin du chargement de l'eprouvette          : ~3,4 ms
-T_STEP = 4.0e-3
+** Duree simulee, en s : calculee par scripts/pre/make_run.py pour chaque cas
+**   arrivee de l'onde au pusher (6010 mm / 4871 m/s)    : 1,234 ms
+** + temps pour 30 % de deformation (0,30 / vitesse)      : 0,3 a 3 ms
+** + marge                                                : 0,2 ms
+** plafonnee a la fin de l'impulsion (2 x 5000 mm / 4720 m/s = 2,119 ms) + marge
+T_STEP = __T_STEP__
 **
 ** Sorties
 ** Historique : un point par microseconde (comme une acquisition a 1 MHz)

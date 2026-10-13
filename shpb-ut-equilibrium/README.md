@@ -33,6 +33,10 @@ shpb-ut-equilibrium/
    puis `scripts/pre/inp_to_geo.py` (Python 3) → un `model/geometry/<PIÈCE>.geo` par pièce (voir `docs/mesh.md`, section 10)
 2. `scripts/pre/make_run.py` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
    (`<case_id>.inp` + `<case_id>_paras.inp` + copies des `.geo` et `.dat` : dossier autonome)
+   - vitesse du striker ≈ vitesse de déformation × 15 mm (estimation à vérifier) ;
+   - durée simulée par cas : arrivée de l'onde (1,234 ms) + 0,30 / vitesse de déformation + 0,2 ms,
+     plafonnée à la fin de l'impulsion (+ 2,119 ms) → 3,55 / 2,03 / 1,73 ms à 100 / 500 / 1 000 /s
+     (colonne optionnelle `t_step_ms` dans `cases.csv` pour imposer une valeur)
 3. `scripts/hpc/submit_study.py <étude>` (depuis le PC) : prépare tous les cas, les copie sur Euler dans
    `$SCRATCH/<étude>_<date>/` et lance un job array Slurm (`scripts/hpc/run_array.sh`, un calcul par cas)
 4. `scripts/post/` : `.odb` → CSV dans `results/`
@@ -73,12 +77,6 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 | `docs/assembly.md` | placement des pièces dans le repère global, demi-modèle, découpe des pièces |
 | `docs/materials.md` | matériaux, sources des données, hypothèses |
 | `docs/mesh.md` | maillage : pièces, éléments, techniques, vérifications, paramètres |
-
-## Idées en réserve
-
-| Idée | Gain attendu | Détail |
-|---|---|---|
-| Durée simulée `T_STEP` calculée par cas dans `make_run.py` | ≈ 2× sur 500 et 1 000 /s | `T_STEP` = arrivée de l'onde au pusher (≈ 1,25 ms) + temps pour 30 % de déformation (0,30 / vitesse) + marge 0,2 ms, plafonné à la fin de l'impulsion (≈ 1,25 + 2,1 ms). Valeurs à vérifier sur les jauges du premier calcul. |
 
 ## Reste à faire
 

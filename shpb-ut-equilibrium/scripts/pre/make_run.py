@@ -35,6 +35,18 @@ L_REF_MM = {
     'UT40': None,                     # geometrie pas encore disponible
 }
 
+# Duree simulee T_STEP, calculee pour chaque cas (on s'arrete juste apres les 30 %) :
+#     T_STEP = T_ARRIVEE + DEFORMATION_CIBLE / vitesse de deformation + MARGE
+# plafonnee a T_ARRIVEE + T_IMPULSION + MARGE (apres la fin de l'impulsion, plus rien
+# ne tire sur l'eprouvette). Valeurs a la main, a verifier sur les jauges :
+#   T_ARRIVEE   = barre d'entree / c = 6010 mm / 4871 m/s       = 1,234 ms
+#   T_IMPULSION = 2 x striker / c    = 2 x 5000 mm / 4720 m/s   = 2,119 ms
+# Une colonne optionnelle 't_step_ms' dans cases.csv impose la duree a la main.
+DEFORMATION_CIBLE = 0.30              # deformation nominale visee (Task I : 30 %)
+T_ARRIVEE_MS = 6010.0 / 4871.0        # ms
+T_IMPULSION_MS = 2.0 * 5000.0 / 4720.0
+MARGE_MS = 0.2                        # ms : montee de l'impulsion + mise en equilibre
+
 # Pieces communes a toutes les eprouvettes (+ la piece de l'eprouvette elle-meme)
 BENCH_PIECES = ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'PUSHER_HEAD', 'OUTPUT_BAR', 'OUTPUT_HEAD']
 MATERIALS = ['MARAGING', 'STRIKER_STEEL', 'DP1000']
@@ -79,6 +91,18 @@ def striker_velocity(spec, rate):
     return rate * L / 1000.0          # (1/s) x mm -> mm/s -> m/s
 
 
+def step_time_ms(rate, case):
+    """Duree simulee en ms (voir PARAMETRES) ; colonne t_step_ms de cases.csv si remplie."""
+    forced = (case.get('t_step_ms') or '').strip()
+    if forced:
+        return float(forced), 'impose (cases.csv)'
+    t = T_ARRIVEE_MS + 1000.0 * DEFORMATION_CIBLE / rate + MARGE_MS
+    t_max = T_ARRIVEE_MS + T_IMPULSION_MS + MARGE_MS
+    if t > t_max:
+        return t_max, 'plafonne : fin de l\'impulsion avant %d %%' % round(100 * DEFORMATION_CIBLE)
+    return t, ''
+
+
 def make_run(case):
     case_id, spec, rate = case['case_id'], case['specimen'], float(case['strain_rate'])
     v = striker_velocity(spec, rate)
@@ -94,7 +118,9 @@ def make_run(case):
 
     run_dir = os.path.join(RUNS_DIR, case_id)
     os.makedirs(run_dir, exist_ok=True)
-    tokens = {'SPEC': spec, 'CASE_ID': case_id, 'V_STRIKER_MS': '%.4g' % v}
+    t_ms, note = step_time_ms(rate, case)
+    tokens = {'SPEC': spec, 'CASE_ID': case_id, 'V_STRIKER_MS': '%.4g' % v,
+              'T_STEP': '%.4e' % (t_ms * 1.0e-3)}
     with open(os.path.join(run_dir, case_id + '.inp'), 'w') as f:
         f.write(fill('SHPB_UT_main.inp', tokens))
     with open(os.path.join(run_dir, case_id + '_paras.inp'), 'w') as f:
@@ -103,8 +129,8 @@ def make_run(case):
         shutil.copy(os.path.join(GEO_DIR, p + '.geo'), run_dir)
     for m in MATERIALS:
         shutil.copy(os.path.join(MAT_DIR, m + '.dat'), run_dir)
-    print('%-15s %-5s %6.0f /s   V_striker = %6.2f m/s   -> %s'
-          % (case_id, spec, rate, v, os.path.relpath(run_dir, os.getcwd())))
+    print('%-15s %-5s %6.0f /s   V_striker = %6.2f m/s   T_STEP = %5.3f ms  %-34s -> %s'
+          % (case_id, spec, rate, v, t_ms, note, os.path.relpath(run_dir, os.getcwd())))
     return True
 
 
