@@ -15,7 +15,7 @@
 # correspondante de cases.txt.
 # ============================================================================
 #SBATCH --job-name=shpb
-#SBATCH --time=04:00:00            # par calcul (~1,4 h estimee pour 4 ms simulees)
+#SBATCH --time=08:00:00            # par calcul ; mesure 12/10/2026 (4 ms simulees) : 1,2 h a 100/s, 3,1 h a 1000/s
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=2G

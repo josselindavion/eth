@@ -86,3 +86,4 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 |---|---|---|---|
 | 12/10/2026 | UT19_R0500_00, maillage initial, double précision | Euler, 8 cœurs | 1 789 incréments en 59 s (≈ 33 ms/incrément), pas ≈ 1,1e-8 s imposé par des tétraèdres déformés des têtes → ≈ 3,3 h pour 4 ms |
 | 12/10/2026 | têtes remaillées (sans trous M4, virtual topology) | Euler, 8 cœurs | 767 incréments en 26 s (≈ 34 ms/incrément), pas ≈ 2,6e-8 s → ≈ 153 000 incréments, **≈ 1,4 h pour 4 ms** |
+| 12/10/2026 | étude taskI (UT19, 4 ms simulées, double précision) | Euler, 8 cœurs par cas | R0100 : 4 182 s (1,2 h) ; R0500 : 6 473 s (1,8 h) ; R1000 : 11 329 s (**3,1 h**, proche de la limite de 4 h). Plus la vitesse est grande, plus l'éprouvette se déforme et plus le pas de temps baisse en cours de calcul |
