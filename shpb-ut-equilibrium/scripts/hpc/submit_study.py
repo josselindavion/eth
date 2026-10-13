@@ -103,7 +103,7 @@ def main():
     if out:
         print('Slurm        : %s' % out.strip())
     print('Suivi sur Euler :  squeue -u $USER')
-    print('                   tail -3 $SCRATCH/%s/*/*.sta' % name)
+    print('                   tail -n 3 $SCRATCH/%s/*/*.sta' % name)
 
 
 if __name__ == '__main__':
