@@ -92,9 +92,11 @@ def main():
         up = rname.upper()
         for key, ho in reg.historyOutputs.items():
             data = ho.data
-            if 'SECTION_IN' in up and key.startswith('SOF2'):
+            # Sections de force : region 'ElementSet  PIBATCH', cle 'SOF2  on surface SECTION_IN'
+            where = (up + ' ' + key.upper())
+            if key.upper().startswith('SOF2') and 'SECTION_IN' in where:
                 cols['F_sec_in_N'] = [(t, 2.0 * v) for t, v in data]
-            elif 'SECTION_OUT' in up and key.startswith('SOF2'):
+            elif key.upper().startswith('SOF2') and 'SECTION_OUT' in where:
                 cols['F_sec_out_N'] = [(t, 2.0 * v) for t, v in data]
             elif up.startswith('ELEMENT ') and key in ('LE22', 'S22'):
                 label = label_of(rname)
