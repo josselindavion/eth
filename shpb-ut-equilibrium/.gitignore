@@ -39,3 +39,8 @@ runs/
 # Maillages générés (build_bench.py puis inp_to_geo.py) : non versionnés pour l'instant
 *.geo
 model/geometry/_raw/
+
+# Résultats rapatriés (results/<étude>/) : tout est suivi (courbes, CSV, .sta, .msg, paramètres),
+# SAUF les .odb (≈ 700 Mo chacun, GitHub refuse les fichiers > 100 Mo) : ils restent sur le PC.
+!results/**/*.sta
+!results/**/*.msg

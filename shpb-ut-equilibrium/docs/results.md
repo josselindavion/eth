@@ -3,10 +3,10 @@
 Script : `scripts/post/plot_case.py` (Python 3 + numpy, pandas, matplotlib), sur le PC, après `fetch_study.py`.
 
 ```
-python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/runs/_submit/<étude>_<date>
+python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/results/<étude>_<date>
 ```
 
-Sorties : `<case>/<case>_overview.png` pour chaque calcul, et `<étude>_<date>_summary.csv` (une ligne par calcul).
+Graphes de contrôle (un par calcul, pour vérifier). Sorties : `<case>/<case>_overview.png` pour chaque calcul, et `<étude>_<date>_summary.csv` (une ligne par calcul).
 
 ## 1. Les 4 graphes de `<case>_overview.png`
 
@@ -87,3 +87,40 @@ Conséquences :
 Durée simulée = 1,234 ms (arrivée de l'onde au pusher) + 0,30 / vitesse de déformation + 0,3 ms de marge,
 plafonnée à 1,234 + 2,119 + 0,3 ms. La marge est passée de 0,2 à 0,3 ms : à 500 /s, les 30 % étaient atteints
 à 1,995 ms pour 2,034 ms simulées.
+
+## 5. Livrables de la Task I (`report_taskI.py`)
+
+```
+python shpb-ut-equilibrium/scripts/post/report_taskI.py shpb-ut-equilibrium/results/<étude>_<date>
+```
+
+Sorties dans `results/<étude>_<date>/report/` : `T1_conditions.csv`, `F1_equilibrium`, `F2_forces_<SPEC>`,
+`F3_stress_strain`, `F4_strain_rate`, `F5_striker_velocity` (chacune en `.pdf` pour le rapport et `.png`),
+et `report.md` (texte en anglais, chiffres calculés automatiquement, à reprendre dans le rapport PDF).
+
+### Traitement des signaux, comme dans les essais
+
+| Étape | Choix | Pourquoi |
+|---|---|---|
+| Filtre | passe-bas Butterworth d'ordre 4, coupure **100 kHz**, sans déphasage (`filtfilt`), appliqué aux forces et à la déformation **avant** de calculer R | le labo filtre la jauge de sortie à 100 kHz : on compare simulation et essai avec la même « finesse ». Abaqus sort un point par µs (1 MHz) avec des vibrations de quelques µs que l'essai ne peut pas voir |
+| Force « mesurée » | S22 de la jauge de sortie × aire de la barre, décalée de 400 mm / 4871 m/s = 82 µs | comme Beerli et al. (2026, fig. 5c) : la force de la jauge « ramenée » à l'éprouvette, comparée aux coupes SEC_IN et SEC_OUT |
+| Déformation | extensomètre virtuel de 12 mm | équivalent de la corrélation d'images |
+
+### Indicateurs (colonnes de T1)
+
+| Colonne | Définition |
+|---|---|
+| achieved rate | pente moyenne de la déformation entre 5 % et min(25 %, 0,8 × déformation max) |
+| time to 30 % | du début du chargement (\|F_in\| > 2 % du max) à 30 % ; vide si jamais atteint |
+| equilibrium from strain / after | déformation (et temps depuis le début du chargement) à partir de laquelle \|R\| < 5 % jusqu'à 30 % ; vide si jamais |
+| max \|R\| after 5 % | plus grand \|R\| filtré entre 5 % et 30 % |
+| max \|dF\| after 5 % | plus grand \|F_in − F_out\| (kN) au même moment : R grossit quand la force chute (striction), dF non |
+| max gauge error after 5 % | plus grand \|F_jauge − F_out\| / F_max : écart entre ce que mesure la jauge et la vraie force dans l'éprouvette |
+
+### Premiers livrables : étude `taskI_20261013-1554` (UT19, nouvelle vitesse du striker)
+
+| Vitesse visée | Obtenue | 30 % | Équilibre (\|R\| < 5 %) | \|R\| max après 5 % | Erreur max de la jauge |
+|---|---|---|---|---|---|
+| 100 /s | 105 /s | non, 18,5 % max | dès 0,9 % | 0,9 % | 3 % |
+| 500 /s | 546 /s | en 0,63 ms | dès 2,5 % | 3,8 % | 15 % |
+| 1 000 /s | 1 073 /s | en 0,33 ms | **jamais durablement** | 13 % (dF ≤ 0,6 kN) | 39 % |

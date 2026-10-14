@@ -4,7 +4,7 @@ plot_case.py -- Trace les courbes d'un ou plusieurs calculs a partir de <case>_h
 (sortie de extract_history.py) et calcule les grandeurs de la Task I.
 
 Lancement (Python 3 + numpy, pandas, matplotlib), depuis la racine du repo :
-    python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/runs/_submit/taskI_20261013-1127
+    python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/results/taskI_20261013-1554
     python shpb-ut-equilibrium/scripts/post/plot_case.py chemin/vers/UT19_R0500_00_history.csv
 
 Sorties, a cote de chaque CSV :
@@ -12,6 +12,7 @@ Sorties, a cote de chaque CSV :
                           desequilibre des forces ; deformation de l'extensometre
 Et, si on donne un dossier d'etude : <etude>_summary.csv (une ligne par calcul).
 
+Graphes de controle, un par calcul (les livrables de la Task I : report_taskI.py).
 Grandeurs calculees (voir docs/results.md) :
     t_load_ms      debut du chargement de l'eprouvette (|F_sec_in| > 2 % du max)
     rate_mean      vitesse de deformation moyenne de l'extensometre (de 0,5 % a 25 %)

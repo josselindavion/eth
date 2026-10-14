@@ -12,7 +12,8 @@
 #   - avec --clean : supprime les fichiers de reprise / temporaires d'Abaqus
 #     (.res .abq .pac .sel .stt .mdl .prt .com .par .pes .pmg .ipm .lck),
 #     qui ne servent qu'a relancer un calcul interrompu. Le .odb est GARDE.
-# Puis cree <etude>/<etude>_results.tgz : CSV, inventaires, .sta, .msg, journaux Slurm.
+# Un calcul deja extrait (CSV plus recent que le .odb) n'est pas re-extrait.
+# Puis cree <etude>/<etude>_results.tgz : CSV, inventaires, parametres (_paras.inp), .sta, .msg.
 # ============================================================================
 STUDY_DIR=${1%/}
 CLEAN=$2
@@ -33,13 +34,17 @@ for d in */; do
         echo "$c : calcul pas termine (ou en echec), ignore"
         continue
     fi
-    (cd "$c" && abaqus python "$EXTRACT" "$PWD" 2>&1 | grep -v -i "^abaqus license\|^<\|checked out")
+    if [ "$c/${c}_history.csv" -nt "$c/$c.odb" ]; then
+        echo "$c : deja extrait"
+    else
+        (cd "$c" && abaqus python "$EXTRACT" "$PWD" 2>&1 | grep -v -i "^abaqus license\|^<\|checked out")
+    fi
     if [ "$CLEAN" == "--clean" ]; then
         rm -f "$c/$c".{res,abq,pac,sel,stt,mdl,prt,com,par,pes,pmg,ipm,lck}
     fi
 done
 
 NAME=$(basename "$STUDY_DIR")
-tar czf "${NAME}_results.tgz" */*_history.csv */*_inventory.txt */*.sta */*.msg slurm_* cases.txt 2>/dev/null
+tar czf "${NAME}_results.tgz" */*_history.csv */*_inventory.txt */*_paras.inp */*.sta */*.msg 2>/dev/null
 echo "Archive : $STUDY_DIR/${NAME}_results.tgz ($(du -h "${NAME}_results.tgz" | cut -f1))"
 du -sh "$STUDY_DIR" | sed 's/^/Place occupee par l etude : /'

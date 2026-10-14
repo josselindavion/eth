@@ -17,14 +17,35 @@ shpb-ut-equilibrium/
 ├── scripts/
 │   ├── cae/           Python 2.7 lancé par Abaqus : STEP → maillage → .geo
 │   ├── pre/           Python 3 : plan de calcul → génère runs/
-│   ├── hpc/           script sbatch (job array), synchro vers Euler
-│   └── post/          extract_odb.py (abaqus python) + analyse (Python 3)
+│   ├── hpc/           envoi sur Euler (submit_study), job array, rapatriement (fetch_study)
+│   └── post/          extraction du .odb (abaqus python) + graphes et livrables (Python 3)
 ├── studies/
 │   └── taskI/cases.csv   matrice : UT19/UT40 × 100/500/1000 s⁻¹
-├── runs/              GÉNÉRÉ, non versionné : un dossier par calcul
-├── results/           CSV légers extraits (force, extensomètre), versionnés
+├── runs/              GÉNÉRÉ, non versionné : fichiers d'entrée des calculs (à envoyer, ou lancés à la main)
+│   └── _submit/       copies préparées pour Euler (submit_study.py) ; jetable
+├── results/           RÉSULTATS, versionnés : un dossier par étude (voir ci-dessous)
 └── docs/              notes, schémas du banc
 ```
+
+### Où sont les résultats
+
+```
+results/<étude>_<date>/                    ex. results/taskI_20261013-1554/
+├── <case>/                                un dossier par calcul, ex. UT19_R0500_00/
+│   ├── <case>_history.csv                 courbes extraites du .odb (jauges, forces, extensomètre, énergies)
+│   ├── <case>_paras.inp                   paramètres du calcul (vitesse du striker, durée)
+│   ├── <case>.sta, <case>.msg             journaux Abaqus (déroulement, avertissements)
+│   ├── <case>_inventory.txt               liste des sorties du .odb
+│   ├── <case>_overview.png                graphe de contrôle (plot_case.py)
+│   └── <case>.odb                         SUR LE PC SEULEMENT (≈ 700 Mo, pas sur GitHub), si --odb
+├── <étude>_<date>_summary.csv             résumé de plot_case.py
+└── report/                                livrables (report_taskI.py) : T1, F1…F5 (.pdf + .png), report.md
+```
+
+Tout est rangé automatiquement par `fetch_study.py` puis les deux scripts de tracé ; il reste à faire
+`git add` + `git commit` + `git push`. Les fichiers d'entrée des calculs (`runs/`) ne sont pas versionnés :
+on les regénère avec `make_run.py`. Les `.odb` non plus (GitHub refuse les fichiers de plus de 100 Mo) :
+ils restent sur le PC dans `results/…/<case>/`, et sur Euler jusqu'à la purge de `$SCRATCH` (15 jours).
 
 ## Chaîne de calcul
 
@@ -43,11 +64,12 @@ shpb-ut-equilibrium/
 4. `scripts/hpc/fetch_study.py <étude>_<date>` (depuis le PC) : sur Euler, `extract_study.sh` lance
    `scripts/post/extract_history.py` (Python d'Abaqus) sur chaque calcul terminé → `<case>_history.csv`
    (jauges, forces dans les sections, extensomètre, énergies), puis rapatrie ces fichiers légers dans
-   `runs/_submit/<étude>_<date>/<case>/`. Options : `--clean` (supprime les fichiers de reprise sur Euler),
-   `--odb <case>` (rapatrie aussi le `.odb` pour CAE)
-5. `scripts/post/plot_case.py runs/_submit/<étude>_<date>` (PC, Python 3) : un graphe `<case>_overview.png`
-   par calcul (jauges, forces, déséquilibre, extensomètre) et `<étude>_<date>_summary.csv`
-   (vitesse de déformation obtenue, instant des 30 %, temps de mise en équilibre…) ; voir `docs/results.md`
+   `results/<étude>_<date>/<case>/`. Options : `--clean` (supprime les fichiers de reprise sur Euler),
+   `--odb <case>` ou `--odb all` (rapatrie aussi les `.odb`, pour CAE)
+5. `scripts/post/plot_case.py results/<étude>_<date>` (PC, Python 3) : un graphe de contrôle `<case>_overview.png`
+   par calcul et `<étude>_<date>_summary.csv` ; voir `docs/results.md`
+6. `scripts/post/report_taskI.py results/<étude>_<date>` (PC, Python 3 + scipy) : livrables de la Task I
+   dans `results/<étude>_<date>/report/` (tableau T1, figures F1 à F5, texte en anglais) ; voir `docs/results.md`
 
 ## Lancer Abaqus à la main (PC du labo, Windows)
 
@@ -72,8 +94,10 @@ Prérequis (une fois) : repo cloné sur Euler dans `~/eth` (`module load eth_pro
 | Suivre | Euler | `squeue -u $USER` puis `tail -n 3 $SCRATCH/<étude>_<date>/*/*.sta` |
 | Récupérer les courbes (calculs terminés) | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude>_<date>` |
 | … et nettoyer Euler | PC | ajouter `--clean` (garde les `.odb`) |
-| … et rapatrier un `.odb` pour CAE | PC | ajouter `--odb <case_id>` |
-| Tracer et résumer | PC, racine du repo | `python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/runs/_submit/<étude>_<date>` |
+| … et rapatrier un `.odb` (ou tous) pour CAE | PC | ajouter `--odb <case_id>` (ou `--odb all`) |
+| Graphes de contrôle | PC, racine du repo | `python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/results/<étude>_<date>` |
+| Livrables Task I | PC, racine du repo | `python shpb-ut-equilibrium/scripts/post/report_taskI.py shpb-ut-equilibrium/results/<étude>_<date>` |
+| Versionner les résultats | PC, racine du repo | `git add shpb-ut-equilibrium/results` puis `git commit` et `git push` |
 | Lancer un seul cas à la main | Euler, dans le dossier du cas | `sbatch ~/eth/shpb-ut-equilibrium/scripts/hpc/run_abaqus.sh` |
 
 Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` est vidé après 15 jours.
@@ -95,8 +119,10 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 
 | Sujet | Détail |
 |---|---|
-| Vitesse du striker | formule corrigée (force de l'éprouvette) le 13/10 : à vérifier sur l'étude relancée, surtout à 100 /s (très sensible à F) |
-| 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : il faut ≈ 3 ms de chargement |
+| UT40 | géométrie à récupérer, puis `A0_MM2` (report_taskI.py) et `SPECIMENS` (make_run.py) |
+| Jauge de sortie | référence exacte des 400 mm à confirmer ; oscillations fortes à 500 et 1 000 /s (tête de la barre de sortie ?) |
+| Matériau | DP1000 indépendant de la vitesse : en essai la force, donc la vitesse du striker nécessaire, augmentera |
+| 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : écrit comme un résultat (18,5 % max) |
 
 ## Mesures de performance
 
