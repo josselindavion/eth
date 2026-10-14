@@ -1,0 +1,4 @@
+case_id,specimen,target rate (1/s),striker velocity (m/s),incident strain (-),achieved rate (1/s),time to 30 % (ms),max strain reached (-),max force (kN),strain at max force (-),equilibrium from strain (-),equilibrium after (ms),max |R| after 5 % (-),max |dF| after 5 % (kN),max gauge error after 5 % (-),hourglass / internal energy (-)
+UT19_R0100_00,UT19,100,2.476,-0.0002477,104.6,,0.1855,7.505,0.05812,0.00934,0.286,0.008734,0.04789,0.03056,0.003863
+UT19_R0500_00,UT19,500,7.687,-0.0007692,545.5,0.631,0.3,7.565,0.05007,0.02504,0.124,0.03823,0.2787,0.1499,0.004771
+UT19_R1000_00,UT19,1000,14.2,-0.001421,1073,0.329,0.301,7.585,0.07583,,,0.1315,0.6037,0.3886,0.001603
