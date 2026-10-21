@@ -285,23 +285,36 @@ def fig_forces(spec, items, out):
 
 
 def fig_stress_strain(groups, out):
-    fig, axs = new_axes(len(groups), w=5.6)
-    for ax, (spec, items) in zip(axs, groups):
+    """Une ligne par eprouvette, un graphe par vitesse : vraie courbe (coupe dans l'eprouvette, gris epais)
+    et courbe mesuree par la jauge de la barre de sortie (couleur), toutes deux issues de la simulation."""
+    ncol = max(len(items) for _, items in groups)
+    fig, axs = plt.subplots(len(groups), ncol, figsize=(3.4 * ncol + 0.4, 3.1 * len(groups)),
+                            squeeze=False, sharey=True)
+    for row, (spec, items) in enumerate(groups):
         A0 = A0_MM2.get(spec)
-        if not A0:
-            continue
-        for col, (r, c) in items:
+        for k in range(ncol):
+            ax = axs[row][k]
+            if k >= len(items) or not A0:
+                ax.axis('off')
+                continue
+            col, (r, c) = items[k]
             m = c['win']
-            ax.plot(100 * c['eps'][m], c['Fg'][m] / A0, color=col, lw=1.4, label=rate_label(r))
-            ax.plot(100 * c['eps'][m], c['Fo'][m] / A0, color=col, lw=0.9, ls=':')
-        ax.plot([], [], color=INK2, lw=1.4, label='from output bar gauge')
-        ax.plot([], [], color=INK2, lw=0.9, ls=':', label='specimen section (exact)')
-        ax.set_xlim(0, 32)
-        ax.set_ylim(0, 1600)                  # le pic initial de la jauge (< 2 %) est coupe
-        ax.set_xlabel('engineering strain (%)')
-        ax.set_ylabel('engineering stress (MPa)')
-        ax.set_title('%s  (A$_0$ = %.1f mm$^2$)' % (spec, A0), loc='left')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1.0), fontsize=8)
+            ax.grid(True, color=GRID, linewidth=0.6)
+            ax.set_axisbelow(True)
+            for s_ in ('top', 'right'):
+                ax.spines[s_].set_visible(False)
+            ax.plot(100 * c['eps'][m], c['Fo'][m] / A0, color='#9a9994', lw=3.2, solid_capstyle='round',
+                    label='true force in the specimen\n(cross-section, simulation only)')
+            ax.plot(100 * c['eps'][m], c['Fg'][m] / A0, color=col, lw=1.2,
+                    label='force read on the output bar\ngauge (what the test measures)')
+            ax.set_xlim(0, 32)
+            ax.set_ylim(0, 1600)              # le pic initial de la jauge (< 2 %) est coupe
+            ax.set_title('%s, %s  (error %s)' % (spec, rate_label(r), pct(r['gauge_err_after5'], 0)),
+                         loc='left')
+            ax.set_xlabel('engineering strain (%)')
+            if k == 0:
+                ax.set_ylabel('engineering stress (MPa)')
+                ax.legend(loc='lower left', fontsize=7, frameon=False)      # une seule legende
     save(fig, out, 'F3_stress_strain')
 
 
@@ -721,14 +734,19 @@ def write_report(study, rows, out):
                '%.0f mm between specimen and gauge); all signals filtered at %d kHz.' % (shift_us, GAUGE_TO_SPEC_MM, fc),
                'overlapping coloured lines mean equilibrium; the distance between the black line and the coloured '
                'lines is the measurement error of the gauge.')
-    figure('F3_stress_strain.png', 'Figure F3 – Engineering stress–strain curves',
-           'engineering stress $F / A_0$ (%s) against the engineering strain of the extensometer, one colour per '
-           'target rate. Solid line: force from the output bar gauge, i.e. the curve the experiment will give. '
-           'Dotted line: exact force in the output section of the specimen.' % a0_txt,
-           'filtered signals, gauge shifted as in F2.',
-           'the gap between the solid and the dotted line of the same colour is the error of the measured curve. '
-           'As the material is rate independent, the dotted curves coincide. Axis cut at 1600 MPa (spike of the '
-           'gauge signal below 2 % strain).')
+    figure('F3_stress_strain.png', 'Figure F3 – Engineering stress–strain curves: true and measured',
+           'one panel per target rate: engineering stress $F / A_0$ (%s) against the engineering strain of the '
+           'extensometer. **Both curves come from the same simulation**; they differ by *where* the force is taken. '
+           'Thick grey line: the true force in the specimen, summed over a cross-section of the specimen '
+           '(impossible in a real test). Coloured line: the force read by the virtual strain gauge on the output '
+           'bar, 400 mm away from the specimen, exactly where the real gauge is: this is the curve the experiment '
+           'will give.' % a0_txt,
+           'filtered signals; gauge signal shifted by the travel time of the wave as in F2. The error in the panel '
+           'title is the largest gap after 5 % strain, relative to the maximum force.',
+           'where the coloured line follows the grey one, the gauge measures the specimen correctly; where it '
+           'oscillates around it, the measurement distorts the true response. The grey curves are identical at '
+           'the three rates because the simulated material is rate independent. Axis cut at 1600 MPa (spike of '
+           'the gauge signal below 2 % strain).')
     P('**Table T5 – Error of the output bar gauge.**')
     P(md_table(['Specimen / target rate (s⁻¹)', 'Max force', 'Max gauge error after 5 %'],
                [[label(r), '%.2f kN' % r['F_max_kN'], '%s of the max force' % pct(r['gauge_err_after5'], 1)]
