@@ -110,12 +110,45 @@ et `report.md` (texte en anglais, chiffres calculés automatiquement, à reprend
 
 | Colonne | Définition |
 |---|---|
-| achieved rate | pente moyenne de la déformation entre 5 % et min(25 %, 0,8 × déformation max) |
+| achieved rate | pente de la déformation de l'extensomètre entre 5 % et min(25 %, 0,8 × déformation max) = déformation gagnée sur cet intervalle / temps mis (voir ci-dessous) |
 | time to 30 % | du début du chargement (\|F_in\| > 2 % du max) à 30 % ; vide si jamais atteint |
 | equilibrium from strain / after | déformation (et temps depuis le début du chargement) à partir de laquelle \|R\| < 5 % jusqu'à 30 % ; vide si jamais |
 | max \|R\| after 5 % | plus grand \|R\| filtré entre 5 % et 30 % |
 | max \|dF\| after 5 % | plus grand \|F_in − F_out\| (kN) au même moment : R grossit quand la force chute (striction), dF non |
 | max gauge error after 5 % | plus grand \|F_jauge − F_out\| / F_max : écart entre ce que mesure la jauge et la vraie force dans l'éprouvette |
+
+### Pourquoi la vitesse de déformation « obtenue » est prise entre 5 % et 25 %
+
+La vitesse de déformation n'est pas constante pendant l'essai (F4) : un seul chiffre par calcul doit donc dire
+**sur quelle partie** de l'essai il est pris. Ce chiffre sert à vérifier la formule de la vitesse du striker
+(`make_run.py`), qui décrit un **régime établi** : onde incidente constante et force de l'éprouvette à peu près
+constante (F ≈ 7 kN dans le terme 2F/ρcA). La fenêtre est choisie pour couvrir ce régime :
+
+| Borne | Valeur | Raison |
+|---|---|---|
+| basse | 5 % | avant : démarrage. Montée de l'impulsion incidente (≈ 40–60 µs), mise en place des épaulements dans les logements (rebond : la vitesse devient même négative), et force de l'éprouvette qui monte de 0 à son maximum, donc terme de freinage 2F/ρcA qui change. Le maximum de force est atteint à 5,0 / 5,8 / 7,6 % de déformation (500 / 100 / 1 000 /s) : à partir de là le chargement est établi |
+| haute | min(25 %, 0,8 × déformation max) | s'arrêter avant la fin de la fenêtre utile. Pour 500 et 1 000 /s (30 % atteints) : 0,8 × 30 % = 24 %. Pour 100 /s, l'impulsion s'arrête à 18,5 % : borne à 14,8 %, pour exclure le déchargement |
+
+Comme les points sont équidistants en temps, la moyenne de la pente sur la fenêtre est exactement la **sécante** :
+déformation gagnée / temps mis.
+
+| Cas | Fenêtre | Temps | Vitesse obtenue |
+|---|---|---|---|
+| 100 /s | 5 → 14,8 % | 2,205 → 3,144 ms | 105 /s |
+| 500 /s | 5 → 24 % | 1,523 → 1,872 ms | 546 /s |
+| 1 000 /s | 5 → 24 % | 1,417 → 1,595 ms | 1 074 /s |
+
+Dans la fenêtre, la vitesse n'est pas parfaitement constante : elle monte un peu (529 → 582 /s à 500 /s) car la
+force baisse pendant la striction. Valeurs complémentaires (même signal filtré) :
+
+| Cas | ε̇ au maximum de force | ε̇ nominale = ε_fin / durée du chargement | ε̇ avant le max de force (10e–90e percentile) |
+|---|---|---|---|
+| 100 /s | 100 /s (à 5,8 %) | 87 /s | 51 à 120 /s |
+| 500 /s | 516 /s (à 5,0 %) | 475 /s | −147 à 531 /s |
+| 1 000 /s | 1 010 /s (à 7,6 %) | 915 /s | −114 à 1 201 /s |
+
+La dernière colonne montre qu'à 500 et 1 000 /s, la phase d'écrouissage uniforme (avant le maximum de force) se
+fait à une vitesse qui n'est pas encore stable.
 
 ### Premiers livrables : étude `taskI_20261013-1554` (UT19, nouvelle vitesse du striker)
 

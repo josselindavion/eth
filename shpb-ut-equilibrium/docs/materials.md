@@ -55,5 +55,27 @@ numérique du banc (tôle de 1,5 mm, von Mises, écrouissage isotrope, indépend
     plasticité seulement ; sans effet au-delà de εp = 0,005.
 - Contrôle : k(0) = 573 MPa, k(0,002) = 798 MPa, k(0,1) = 1088 MPa, k(1) = 1218 MPa.
 
+### Ce qu'on a pris dans Beerli et al. (2026), et ce qu'on a laissé
+
+Le modèle de Beerli 2026 pour le DP1000 est plus riche que ce qu'on utilise. On a gardé exactement ce que Beerli
+utilise pour **sa propre simulation du banc** (§2.5.1 : « a strain-rate independent 1.5 mm thick material with von
+Mises yield surface and isotropic hardening similar to the DP1000 (Table 4) »).
+
+| Élément du modèle de Beerli | Source | Dans nos simulations |
+|---|---|---|
+| E = 195 GPa, ν = 0,33, ρ = 7850 kg/m³ | tableau 4 | **oui** |
+| écrouissage Swift-Voce (A, ε0, n, k0, Q, β, αSV) | tableau 4 | **oui**, c'est la courbe de base |
+| surface de charge anisotrope non associée (paramètres P12…G33) | tableau 4 | **non** : von Mises (isotrope) |
+| effet de la vitesse de déformation et de la température sur la résistance (réseau de neurones) | §3–4 | **non** : courbe identique à toutes les vitesses |
+| propriétés thermiques (Cp = 420 J/kgK, κ = 49 W/mK) | tableau 4 | **non** : pas d'échauffement |
+| rupture (Hosford-Coulomb + réseau de neurones) | §3 | **non** : pas de rupture |
+
+Conséquence : nos trois vitesses de déformation ont **exactement la même courbe d'écrouissage**. Les différences
+entre 100, 500 et 1 000 /s viennent donc uniquement de la propagation des ondes et de l'inertie, ce qui est l'objet
+de la Task I (équilibre). En essai, le DP1000 est plus résistant à grande vitesse : la force sera plus élevée, et la
+vitesse du striker nécessaire un peu plus grande (terme 2F/ρcA).
+
+Historique : fichiers créés le 9/10/2026 ; table d'écrouissage passée à pas constant le 12/10/2026 (datacheck).
+
 **À confirmer avec le maître de stage :** le matériau d'éprouvette à utiliser pour la Task I, les densités des barres,
 et le matériau réel du pusher.

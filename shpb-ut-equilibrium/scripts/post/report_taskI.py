@@ -260,7 +260,7 @@ def fig_striker(groups, out):
                     label='%s, simulated, target %s' % (spec, rate_label(r)))
     ax.set_xlim(0, 1300)
     ax.set_ylim(0, 18)
-    ax.set_xlabel('achieved strain rate (s$^{-1}$, mean over 5-25 %)')
+    ax.set_xlabel('achieved strain rate (s$^{-1}$)')
     ax.set_ylabel('striker velocity (m/s)')
     ax.legend(loc='lower right', fontsize=8)
     save(fig, out, 'F5_striker_velocity')
@@ -360,7 +360,12 @@ def write_report(study, rows, table, out):
         'Force equilibrium is quantified by R = (F_in - F_out) / F_mean with F_mean = (F_in + F_out) / 2. '
         'The specimen is considered in equilibrium when |R| < %d %%. The reported equilibrium strain is the '
         'strain from which |R| stays below this limit until 30 %% strain (or until the end of loading). '
-        'The achieved strain rate is the mean slope of the extensometer strain between 5 %% and 25 %%.\n'
+        'The achieved strain rate is the slope of the extensometer strain between 5 %% strain and '
+        'min(25 %%, 0.8 x maximum strain), i.e. the strain gained in this interval divided by the time taken. '
+        'The interval excludes the start-up transient (rise of the incident pulse, settling of the specimen '
+        'shoulders in the pockets, build-up of the specimen force up to its maximum at about 5 %% strain) and the '
+        'end of the loading, so that it covers the established regime described by the striker velocity '
+        'estimate (section 2). The complete strain rate history is given in F4.\n'
         % round(100 * EQ_TOL))
     L.append('## 2. Results\n')
     L.append('**Table T1** - Test conditions and equilibrium indicators (`T1_conditions.csv`).\n')
@@ -405,8 +410,10 @@ def write_report(study, rows, table, out):
     L.append('**Figure F4** - Strain rate (extensometer) as a function of the engineering strain; '
              'dotted lines: target rates.\n')
     L.append('![F5](F5_striker_velocity.png)\n')
-    L.append('**Figure F5** - Striker velocity required for a given strain rate: estimate used to set up the '
-             'simulations and simulated points.\n')
+    L.append('**Figure F5** - Striker velocity (vertical axis, setting of the test) required for a given strain '
+             'rate (horizontal axis). Line: estimate used to set up the simulations. Dots: simulations, placed at '
+             'the striker velocity imposed and at the strain rate achieved (slope between 5 %% and 25 %% strain, '
+             'see section 1).\n')
     L.append(
         'The striker velocity is estimated from the elongation rate of the load inversion device, '
         'v ≈ 2 v_i - 2 F / (ρ c A), where v_i = 0.487 V_striker is the particle velocity of the incident '
