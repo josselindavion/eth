@@ -13,6 +13,9 @@ Unites : mm, N, s, MPa, t/mm^3   (1 kg/m^3 = 1e-12 t/mm^3)
 
 Lancement (Python 3, pas besoin d'Abaqus), depuis la racine du repo :
     python shpb-ut-equilibrium/scripts/pre/make_materials.py
+
+Trace aussi la courbe d'ecrouissage de l'eprouvette dans docs/figures/DP1000_hardening.png
+(si matplotlib est installe). Explications : docs/materials.md.
 """
 import math
 import os
@@ -57,6 +60,7 @@ EP_STEP = 0.005    # pas de la table
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
 OUT_DIR = os.path.join(PROJECT_ROOT, 'model', 'materials')
+FIG_DIR = os.path.join(PROJECT_ROOT, 'docs', 'figures')
 
 
 # ============================================================
@@ -135,3 +139,69 @@ write(p['name'], lines)
 
 print('Controle %s : k(0) = %.1f MPa, k(0.002) = %.1f MPa, k(0.1) = %.1f MPa, k(1) = %.1f MPa'
       % (p['name'], swift_voce(0.0, p), swift_voce(0.002, p), swift_voce(0.1, p), swift_voce(1.0, p)))
+
+
+# ============================================================
+# FIGURE : courbe d'ecrouissage (docs/materials.md)
+# ============================================================
+def considere(p):
+    """Debut de la striction en traction (critere de Considere : dk/dep = k), par dichotomie."""
+    lo, hi, h = 1.0e-4, 1.0, 1.0e-7
+    f = lambda e: (swift_voce(e + h, p) - swift_voce(e - h, p)) / (2 * h) - swift_voce(e, p)
+    for _ in range(100):
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if f(mid) > 0 else (lo, mid)
+    return lo
+
+
+def plot_hardening(p, eps_table):
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print('matplotlib absent : pas de figure')
+        return
+    os.makedirs(FIG_DIR, exist_ok=True)
+    e_c = considere(p)
+    fig, axs = plt.subplots(1, 2, figsize=(9.5, 3.6))
+    for k, (ax, emax) in enumerate(zip(axs, (1.0, 0.03))):
+        e = [emax * i / 2000.0 for i in range(2001)]
+        sw = [p['A'] * (x + p['e0']) ** p['n'] for x in e]
+        vo = [p['k0'] + p['Q'] * (1.0 - math.exp(-p['beta'] * x)) for x in e]
+        ax.plot(e, sw, color='#2a78d6', lw=1.0, ls='--', label='Swift  $A(\\varepsilon_p+\\varepsilon_0)^n$')
+        ax.plot(e, vo, color='#eb6834', lw=1.0, ls='--', label='Voce  $k_0+Q(1-e^{-\\beta\\varepsilon_p})$')
+        ax.plot(e, [swift_voce(x, p) for x in e], color='#1f1f1d', lw=1.6,
+                label='Swift-Voce, $\\alpha_{SV}$ = %g' % p['a_SV'])
+        tab = [x for x in eps_table if x <= emax]
+        if k == 0:                              # vue d'ensemble : un point sur 10 de la table
+            tab = tab[::10]
+            ax.axvline(e_c, color='#6b6b6b', lw=0.8, ls=':')
+            ax.text(e_c, 420, ' necking (Considere)\n $\\varepsilon_p$ = %.3f' % e_c, fontsize=7, color='#52514e')
+        else:                                   # zoom : premier intervalle de la table, rectiligne
+            ax.annotate('first interval of the table:\nstraight line %.0f -> %.0f MPa' %
+                        (swift_voce(0.0, p), swift_voce(EP_STEP, p)),
+                        xy=(0.0025, 0.5 * (swift_voce(0.0, p) + swift_voce(EP_STEP, p))), xytext=(0.008, 620),
+                        fontsize=7, color='#52514e', arrowprops=dict(arrowstyle='->', color='#6b6b6b', lw=0.7))
+        ax.plot(tab, [swift_voce(x, p) for x in tab], 'o', color='#1baf7a', ms=3, zorder=3,
+                label='points of the *Plastic table' + (' (1 in 10)' if k == 0 else ''))
+        ax.set_xlim(0, emax)
+        ax.set_ylim(400, 1450)
+        ax.set_xlabel('true plastic strain $\\varepsilon_p$ (-)')
+        ax.set_ylabel('flow stress $k$ (MPa)')
+        ax.set_title('%s, %s' % (p['name'], 'whole table' if k == 0 else 'zoom on the start'), loc='left', fontsize=10)
+        ax.grid(True, color='#e3e2de', lw=0.6)
+        for side in ('top', 'right'):
+            ax.spines[side].set_visible(False)
+    axs[0].legend(loc='lower right', fontsize=7, frameon=False)
+    axs[1].plot([0.0, EP_STEP], [swift_voce(0.0, p), swift_voce(EP_STEP, p)], color='#1baf7a', lw=0.8)
+    fig.tight_layout()
+    path = os.path.join(FIG_DIR, p['name'] + '_hardening.png')
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+    print('figure : ' + os.path.relpath(path, PROJECT_ROOT))
+    print('Striction (Considere) : ep = %.4f, k = %.0f MPa -> deformation nominale %.1f %%, contrainte nominale %.0f MPa'
+          % (e_c, swift_voce(e_c, p), 100 * (math.exp(e_c) - 1), swift_voce(e_c, p) / math.exp(e_c)))
+
+
+plot_hardening(p, eps)

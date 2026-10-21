@@ -338,3 +338,12 @@ deux sens (haut et bas).
 Tout reste libre selon Y. Hypothèses : guidages **sans frottement** et **sans jeu** ; guidage des barres **continu**
 (les positions réelles des paliers ne sont pas modélisées). `build_bench.py` affiche le nombre de nœuds de chaque groupe
 et s'arrête si un groupe est vide.
+
+## 13. Performances mesurées
+
+| Date | Modèle | Machine | Résultat |
+|---|---|---|---|
+| 12/10/2026 | UT19_R0500_00, maillage initial, double précision | Euler, 8 cœurs | 1 789 incréments en 59 s (≈ 33 ms/incrément), pas ≈ 1,1e-8 s imposé par des tétraèdres déformés des têtes → ≈ 3,3 h pour 4 ms |
+| 12/10/2026 | têtes remaillées (sans trous M4, virtual topology) | Euler, 8 cœurs | 767 incréments en 26 s (≈ 34 ms/incrément), pas ≈ 2,6e-8 s → **≈ 1,4 h pour 4 ms** |
+| 12/10/2026 | étude `taskI_20261012-1811` (UT19, 4 ms simulées) | Euler, 8 cœurs par cas | 100 /s : 1,2 h ; 500 /s : 1,8 h ; 1 000 /s : 3,1 h. Plus la vitesse est grande, plus l'éprouvette se déforme et plus le pas de temps baisse |
+| 13/10/2026 | étude `taskI_20261013-1554` (durée par cas : 3,65 / 2,13 / 1,83 ms) | Euler, 8 cœurs par cas | calculs terminés en moins d'une nuit (limite du job array : 8 h) |

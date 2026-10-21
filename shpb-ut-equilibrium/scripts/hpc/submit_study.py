@@ -5,6 +5,7 @@ submit_study.py -- Prepare et lance sur Euler tous les calculs d'une etude, en u
 Depuis ton PC (Python 3, racine du repo) :
     python shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI
     python shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI --dry-run   (montre sans rien faire)
+    python shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI UT19_R0500_00 UT40_R0500_00   (quelques cas)
 
 Etapes :
   1. make_run.py pour chaque ligne de studies/<etude>/cases.csv  -> runs/<case_id>/
@@ -59,12 +60,18 @@ def run(cmd, dry):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
     ap.add_argument('study', help='nom de l etude (dossier studies/<etude>/)')
+    ap.add_argument('cases', nargs='*', help='seulement ces calculs (par defaut : tous ceux de cases.csv)')
     ap.add_argument('--dry-run', action='store_true', help='prepare tout en local, sans copier ni lancer')
     args = ap.parse_args()
 
     cases_csv = os.path.join(PROJECT_ROOT, 'studies', args.study, 'cases.csv')
     with open(cases_csv) as f:
         cases = list(csv.DictReader(f))
+    if args.cases:
+        unknown = [c for c in args.cases if c not in [x['case_id'] for x in cases]]
+        if unknown:
+            sys.exit('Inconnu dans %s : %s' % (cases_csv, ', '.join(unknown)))
+        cases = [c for c in cases if c['case_id'] in args.cases]
 
     # 1. Dossiers de calcul
     print('1. Preparation des calculs (%s)' % os.path.relpath(cases_csv, os.getcwd()))

@@ -33,7 +33,7 @@ fi
 cd "$CASE"
 echo "Calcul $CASE (tache $SLURM_ARRAY_TASK_ID) sur $(hostname), $SLURM_CPUS_PER_TASK coeurs, debut $(date)"
 
-# Memes options que run_abaqus.sh ; ask_delete=OFF : ne jamais attendre de reponse (y/n)
+# ask_delete=OFF : ne jamais attendre de reponse (y/n)
 abaqus job=$CASE input=$CASE.inp cpus=$SLURM_CPUS_PER_TASK mp_mode=threads \
        double=both scratch=$TMPDIR ask_delete=OFF interactive
 

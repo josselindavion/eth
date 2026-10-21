@@ -1,150 +1,244 @@
 # shpb-ut-equilibrium
 
-Simulations Abaqus de l'équilibre des efforts dans les éprouvettes UT (UT19, UT40) sur barres de Hopkinson (SHPB).
+Simulations Abaqus/Explicit du banc de Hopkinson automatisé avec inverseur de charge (LID) pour des éprouvettes de
+traction UT19 et UT40 (Task I) : l'équilibre des forces est-il atteint à 100, 500 et 1 000 /s, et quelle vitesse de
+chargement faut-il pour atteindre 30 % de déformation ?
 
-## Arborescence
+**Résultats actuels (UT19)** : `results/taskI_20261013-1554/report/report.md`.
+
+Toutes les commandes se tapent dans **Git Bash**, depuis la racine du repo (`C:\Users\jdavion\Documents\eth`),
+**une commande à la fois**, sauf mention contraire.
+
+---
+
+## En bref : je veux…
+
+| Je veux… | Je fais… | Section |
+|---|---|---|
+| lancer les calculs d'une étude | `py shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI` | [4](#4-lancer-une-étude-sur-euler) |
+| savoir où en sont les calculs | sur Euler : `squeue -u $USER` | [4](#4-lancer-une-étude-sur-euler) |
+| récupérer les résultats | `py shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude> --clean` | [5](#5-récupérer-et-dépouiller) |
+| faire les courbes et le rapport | `py shpb-ut-equilibrium/scripts/post/report_taskI.py shpb-ut-equilibrium/results/<étude>` | [5](#5-récupérer-et-dépouiller) |
+| regarder un calcul dans Abaqus/Viewer | `fetch_study.py <étude> --odb <calcul>`, puis File → Open | [5](#5-récupérer-et-dépouiller) |
+| refaire le maillage | Abaqus/CAE : `build_bench.py`, puis `inp_to_geo.py <éprouvette>` | [3](#3-construire-le-modèle) |
+| ajouter l'UT40 | 7 étapes | [8](#8-ajouter-une-éprouvette-ut40) |
+
+`<étude>` est le nom daté affiché au lancement, par ex. `taskI_20261013-1554`.
+
+---
+
+## 1. Ce qu'il y a dans le dossier
 
 ```
 shpb-ut-equilibrium/
+├── README.md              ce guide
 ├── cad/
-│   ├── native/        sources SolidWorks (.SLDPRT / .SLDASM)
-│   └── step/          exports STEP importés par Abaqus
-├── model/             modèle Abaqus « source », conventions du labo
-│   ├── geometry/      un dossier par éprouvette : UT19/*.geo, UT40/*.geo (7 pièces, générés, non versionnés)
-│   ├── materials/     A2_tool_steel.dat, A286.dat, specimen_*.dat
-│   ├── templates/     SHPB_UT_main.inp (avec *INCLUDE et <PARAMÈTRES>)
-│   └── subroutines/   VUMAT du labo, le cas échéant
+│   ├── native/            pièces SolidWorks (.SLDPRT)
+│   └── step/              exports STEP lus par Abaqus (pusher et barre de sortie : versions _noM4, sans trous M4)
+├── model/
+│   ├── materials/         MARAGING.dat, STRIKER_STEEL.dat, DP1000.dat (générés par make_materials.py)
+│   ├── templates/         SHPB_UT_main.inp et SHPB_UT_paras.inp : le modèle complet, avec des jetons à remplir
+│   └── geometry/          GÉNÉRÉ, non versionné : un dossier de maillages .geo par éprouvette (UT19/, UT40/)
 ├── scripts/
-│   ├── cae/           Python 2.7 lancé par Abaqus : STEP → maillage → .geo
-│   ├── pre/           Python 3 : plan de calcul → génère runs/
-│   ├── hpc/           envoi sur Euler (submit_study), job array, rapatriement (fetch_study)
-│   └── post/          extraction du .odb (abaqus python) + graphes et livrables (Python 3)
-├── studies/
-│   └── taskI/cases.csv   matrice : UT19/UT40 × 100/500/1000 s⁻¹
-├── runs/              GÉNÉRÉ, non versionné : fichiers d'entrée des calculs (à envoyer, ou lancés à la main)
-│   └── _submit/       copies préparées pour Euler (submit_study.py) ; jetable
-├── results/           RÉSULTATS, versionnés : un dossier par étude (voir ci-dessous)
-└── docs/              notes, schémas du banc
+│   ├── pre/               préparation (Python 3) : matériaux, .geo, dossiers de calcul
+│   ├── cae/               build_bench.py : construit et maille le banc dans Abaqus/CAE
+│   ├── hpc/               Euler : lancer une étude, rapatrier les résultats
+│   └── post/              extraction du .odb, rapport et figures
+├── studies/taskI/cases.csv   liste des calculs de la Task I
+├── runs/                  GÉNÉRÉ, non versionné : dossiers de calcul (fichiers d'entrée), jetables
+├── results/               RÉSULTATS, versionnés : un dossier par étude
+└── docs/                  explications détaillées (assemblage, matériaux, maillage, dépouillement)
 ```
 
-### Où sont les résultats
+| Script | Rôle | Quand |
+|---|---|---|
+| `scripts/pre/make_materials.py` | écrit les `.dat` des matériaux et la figure de la loi d'écrouissage | si un paramètre matériau change |
+| `scripts/pre/defeature_step.py` | enlève les trous M4 des STEP du pusher et de la barre de sortie | déjà fait, seulement si la CAO change |
+| `scripts/cae/build_bench.py` | Abaqus/CAE : importe, place, découpe et maille le banc ; écrit `model/geometry/_raw/SHPB_<éprouvette>_mesh.inp` | si la géométrie ou le maillage change |
+| `scripts/pre/inp_to_geo.py` | convertit ce fichier en 7 `.geo` (convention du labo) | après `build_bench.py` |
+| `scripts/pre/make_run.py` | remplit les gabarits pour chaque calcul (vitesse du striker, durée) → `runs/<calcul>/` | appelé par `submit_study.py` |
+| `scripts/hpc/submit_study.py` | prépare les calculs, les copie sur Euler, lance un job array | à chaque étude |
+| `scripts/hpc/run_array.sh` | script Slurm : un calcul Abaqus par tâche | lancé par `submit_study.py` |
+| `scripts/hpc/fetch_study.py` | sur Euler : extraction (`extract_study.sh` → `extract_history.py`), puis copie sur le PC | après les calculs |
+| `scripts/post/report_taskI.py` | rapport, tableau, figures, et une figure de contrôle par calcul | après `fetch_study.py` |
 
+---
+
+## 2. Installation (une seule fois)
+
+**PC** (Git Bash) :
 ```
-results/<étude>_<date>/                    ex. results/taskI_20261013-1554/
-├── <case>/                                un dossier par calcul, ex. UT19_R0500_00/
-│   ├── <case>_history.csv                 courbes extraites du .odb (jauges, forces, extensomètre, énergies)
-│   ├── <case>_paras.inp                   paramètres du calcul (vitesse du striker, durée)
-│   ├── <case>.sta, <case>.msg             journaux Abaqus (déroulement, avertissements)
-│   ├── <case>_inventory.txt               liste des sorties du .odb
-│   ├── <case>_overview.png                graphe de contrôle (plot_case.py)
-│   └── <case>.odb                         SUR LE PC SEULEMENT (≈ 700 Mo, pas sur GitHub), si --odb
-├── <étude>_<date>_summary.csv             résumé de plot_case.py
-└── report/                                livrables (report_taskI.py) : T1, F1…F5 (.pdf + .png), report.md
+py -m pip install --user numpy pandas matplotlib scipy
 ```
+`defeature_step.py` demande en plus `cadquery-ocp`, seulement si la CAO change.
 
-Tout est rangé automatiquement par `fetch_study.py` puis les deux scripts de tracé ; il reste à faire
-`git add` + `git commit` + `git push`. Les fichiers d'entrée des calculs (`runs/`) ne sont pas versionnés :
-on les regénère avec `make_run.py`. Les `.odb` non plus (GitHub refuse les fichiers de plus de 100 Mo) :
-ils restent sur le PC dans `results/…/<case>/`, et sur Euler jusqu'à la purge de `$SCRATCH` (15 jours).
+**Euler** : se connecter (`ssh jdavion@euler.ethz.ch`, réseau ETH ou VPN), puis
+```
+module load eth_proxy
+git clone https://github.com/josselindavion/eth.git
+```
+Le repo doit être dans `~/eth` : les scripts lancés sur Euler s'y trouvent, et `submit_study.py` le met à jour
+(`git pull`) à chaque lancement.
 
-## Chaîne de calcul
+---
 
-0. `scripts/pre/make_materials.py` : paramètres matériaux → `model/materials/*.dat` (voir `docs/materials.md`)
-1. `scripts/cae/build_bench.py` (Abaqus/CAE, `SPEC = 'UT19'` ou `'UT40'` en tête du script) : STEP (`cad/step/`) →
-   placement automatique de l'éprouvette et de la barre de sortie (`docs/assembly.md`) → maillage →
-   `model/geometry/_raw/SHPB_<SPEC>_mesh.inp`, puis `scripts/pre/inp_to_geo.py <SPEC>` (Python 3) →
-   `model/geometry/<SPEC>/<PIÈCE>.geo` (voir `docs/mesh.md`, section 10)
-2. `scripts/pre/make_run.py` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
-   (`<case_id>.inp` + `<case_id>_paras.inp` + copies des `.geo` et `.dat` : dossier autonome)
-   - vitesse du striker = (vitesse de déformation × L_eff + 2 F / ρcA) / (2 × 0,487), qui tient compte
-     de la force de l'éprouvette (voir `docs/results.md`, section 4) → 2,48 / 7,69 / 14,20 m/s à 100 / 500 / 1 000 /s ;
-   - durée simulée par cas : arrivée de l'onde (1,234 ms) + 0,30 / vitesse de déformation + 0,3 ms,
-     plafonnée à la fin de l'impulsion (+ 2,119 ms) → 3,65 / 2,13 / 1,83 ms à 100 / 500 / 1 000 /s
-     (colonne optionnelle `t_step_ms` dans `cases.csv` pour imposer une valeur)
-3. `scripts/hpc/submit_study.py <étude>` (depuis le PC) : prépare tous les cas, les copie sur Euler dans
-   `$SCRATCH/<étude>_<date>/` et lance un job array Slurm (`scripts/hpc/run_array.sh`, un calcul par cas)
-4. `scripts/hpc/fetch_study.py <étude>_<date>` (depuis le PC) : sur Euler, `extract_study.sh` lance
-   `scripts/post/extract_history.py` (Python d'Abaqus) sur chaque calcul terminé → `<case>_history.csv`
-   (jauges, forces dans les sections, extensomètre, énergies), puis rapatrie ces fichiers légers dans
-   `results/<étude>_<date>/<case>/`. Options : `--clean` (supprime les fichiers de reprise sur Euler),
-   `--odb <case>` ou `--odb all` (rapatrie aussi les `.odb`, pour CAE)
-5. `scripts/post/plot_case.py results/<étude>_<date>` (PC, Python 3) : un graphe de contrôle `<case>_overview.png`
-   par calcul et `<étude>_<date>_summary.csv` ; voir `docs/results.md`
-6. `scripts/post/report_taskI.py results/<étude>_<date>` (PC, Python 3 + scipy) : livrables de la Task I
-   dans `results/<étude>_<date>/report/` (tableau T1, figures F1 à F5, texte en anglais) ; voir `docs/results.md`
+## 3. Construire le modèle
 
-## Ajouter l'éprouvette UT40 (ou une autre)
+À faire **seulement** si la géométrie, le maillage ou une éprouvette change. Les maillages ne sont pas versionnés :
+ils restent sur le PC qui les a construits (PC du labo).
 
 | Étape | Où | Action |
 |---|---|---|
-| 1 | SolidWorks | exporter la tôle de 1,5 mm (extrudée selon +Z depuis z = 0) en STEP AP214 : `cad/step/XMas_UT40_t1p5.step` |
-| 2 | `scripts/cae/build_bench.py` | vérifier la ligne `UT40` de `SPECIMENS` : fichier, demi-largeur de la partie droite (5,0 mm si 10 mm de large), longueur de l'extensomètre (30 mm, zone DIC de Beerli) |
-| 3 | Abaqus/CAE | `SPEC = 'UT40'`, puis File → Run Script → `build_bench.py`. Lire dans la sortie : longueur de l'éprouvette, position de la barre de sortie, qualité des tétraèdres |
-| 4 | PC, racine du repo | `python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40` → `model/geometry/UT40/` |
-| 5 | `scripts/pre/make_run.py` | `SPECIMENS['UT40']` : L_eff et F sont des **estimations** (34 mm, 15 kN), à recaler après le premier calcul |
-| 6 | `scripts/post/report_taskI.py` | `A0_MM2['UT40']` = largeur × 1,5 mm (15 mm² si 10 mm de large) |
-| 7 | PC | `datacheck` d'un cas à la main, puis `submit_study.py taskI` (les cas UT40 de `cases.csv` sont pris automatiquement) |
+| 1 | Git Bash | si un matériau change : `py shpb-ut-equilibrium/scripts/pre/make_materials.py` |
+| 2 | Abaqus/CAE | ouvrir `scripts/cae/build_bench.py`, régler `SPEC = 'UT19'` (ou `'UT40'`) en haut, puis **File → Run Script** → ce fichier. Quelques minutes |
+| 3 | Abaqus/CAE | vérifier la sortie : placement de l'éprouvette (UT19 : « controle : placement identique… »), nombre d'éléments (UT19 : 214 214), qualité des tétraèdres (hauteur min > 0,3 mm) |
+| 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT19` (ou `UT40`) → `model/geometry/UT19/` |
 
-**Après la mise à jour du 21/10/2026** : les `.geo` de l'UT19 doivent être dans `model/geometry/UT19/`.
-Une fois : `python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT19` (relit `_raw/SHPB_UT19_mesh.inp`).
+Détails : `docs/assembly.md` (placement), `docs/mesh.md` (maillage), `docs/materials.md` (matériaux).
 
-## Lancer Abaqus à la main (PC du labo, Windows)
+---
 
-| Étape | Commande |
-|---|---|
-| Ouvrir l'invite Abaqus | menu Démarrer → taper **Abaqus Command** → Entrée |
-| Aller dans le dossier du calcul | `cd /d C:\Users\jdavion\Documents\eth\shpb-ut-equilibrium\runs\<case_id>` |
-| Vérifier le modèle sans calculer | `abq2023 job=<case_id> datacheck interactive` |
-| Calculer | `abq2023 job=<case_id> cpus=4 double=both interactive` |
+## 4. Lancer une étude sur Euler
 
-Utiliser **`abq2023`** et pas `abaqus` : sur les PC du labo, `abaqus.bat` charge le compilateur puis se place
-d'office dans `C:\APPS\Abaqus2023_Work`, et ne trouve donc pas le `.inp`.
+**a) Choisir les calculs** : `studies/taskI/cases.csv`, une ligne par calcul.
 
-## Lancer une étude sur Euler
-
-Prérequis (une fois) : repo cloné sur Euler dans `~/eth` (`module load eth_proxy` puis `git clone https://github.com/josselindavion/eth.git`).
-
-| Étape | Où | Commande |
+| Colonne | Exemple | Rôle |
 |---|---|---|
-| Préparer, copier, lancer tous les cas | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI` |
-| Vérifier sans rien lancer | PC | ajouter `--dry-run` |
-| Suivre | Euler | `squeue -u $USER` puis `tail -n 3 $SCRATCH/<étude>_<date>/*/*.sta` |
-| Récupérer les courbes (calculs terminés) | PC, racine du repo | `python shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude>_<date>` |
-| … et nettoyer Euler | PC | ajouter `--clean` (garde les `.odb`) |
-| … et rapatrier un `.odb` (ou tous) pour CAE | PC | ajouter `--odb <case_id>` (ou `--odb all`) |
-| Graphes de contrôle | PC, racine du repo | `python shpb-ut-equilibrium/scripts/post/plot_case.py shpb-ut-equilibrium/results/<étude>_<date>` |
-| Livrables Task I | PC, racine du repo | `python shpb-ut-equilibrium/scripts/post/report_taskI.py shpb-ut-equilibrium/results/<étude>_<date>` |
-| Versionner les résultats | PC, racine du repo | `git add shpb-ut-equilibrium/results` puis `git commit` et `git push` |
-| Lancer un seul cas à la main | Euler, dans le dossier du cas | `sbatch ~/eth/shpb-ut-equilibrium/scripts/hpc/run_abaqus.sh` |
+| `case_id` | `UT19_R0500_00` | nom : `<éprouvette>_R<vitesse sur 4 chiffres>_<indice>` |
+| `specimen` | `UT19` | éprouvette (le dossier `model/geometry/<éprouvette>/` doit exister) |
+| `strain_rate` | `500` | vitesse de déformation visée (/s) : `make_run.py` en déduit la vitesse du striker et la durée simulée |
+| `t_step_ms` (optionnelle) | `2.5` | impose la durée simulée (ms) |
 
-Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` est vidé après 15 jours.
+Un calcul dont le maillage n'existe pas encore (UT40 aujourd'hui) est ignoré, avec un message.
 
-## Nommage des calculs
+**b) Vérifier sans rien lancer** :
+```
+py shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI --dry-run
+```
+Chaque ligne affiche la vitesse du striker et la durée simulée.
 
-`<éprouvette>_R<vitesse de déformation sur 4 chiffres>_<indice>`, par ex. `UT19_R0500_00`.
+**c) Lancer** (mot de passe ETH demandé deux fois) :
+```
+py shpb-ut-equilibrium/scripts/hpc/submit_study.py taskI
+```
+Pour quelques calculs seulement : `submit_study.py taskI UT19_R0500_00 UT19_R1000_00`.
+La sortie donne le nom de l'étude (`taskI_<date>-<heure>`) : le noter.
 
-## Documentation
+**d) Suivre** (sur Euler) :
+```
+squeue -u $USER
+tail -n 3 $SCRATCH/<étude>/*/*.sta
+```
+`squeue` vide = plus rien ne tourne. Un calcul fini se termine par « THE ANALYSIS HAS COMPLETED SUCCESSFULLY ».
+Durée : 1 à 2 h par calcul. **`$SCRATCH` est vidé après 15 jours** : rapatrier avant.
+
+---
+
+## 5. Récupérer et dépouiller
+
+**a) Rapatrier** (mot de passe ETH demandé plusieurs fois) :
+```
+py shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude> --clean
+```
+- extrait les courbes de chaque calcul terminé (`.odb` → `<calcul>_history.csv`) et les copie dans
+  `results/<étude>/` ;
+- `--clean` supprime sur Euler les fichiers de reprise d'Abaqus (les `.odb` restent) ;
+- `--odb <calcul>` (ou `--odb all`) copie aussi les `.odb` (≈ 0,7 Go chacun) pour Abaqus/Viewer ;
+- on peut relancer la commande autant de fois que voulu : les calculs déjà extraits ne sont pas refaits.
+
+**b) Rapport et figures** :
+```
+py shpb-ut-equilibrium/scripts/post/report_taskI.py shpb-ut-equilibrium/results/<étude>
+```
+→ `results/<étude>/report/report.md` (texte en anglais avec tableaux et figures) et une figure de contrôle par
+calcul. Lisible directement sur GitHub.
+
+**c) Versionner** :
+```
+git add shpb-ut-equilibrium/results
+git commit -m "Resultats <étude>"
+git push
+```
+Vérifier avec `git status` qu'aucun `.odb` n'apparaît (ils sont exclus par `.gitignore`).
+
+**Voir un calcul dans Abaqus/Viewer** : après `--odb`, File → Open → *Output Database* →
+`results/<étude>/<calcul>/<calcul>.odb`. Fermer l'odb ensuite (File → Close ODB), sinon Windows bloque le fichier.
+
+---
+
+## 6. Où sont les résultats
+
+```
+results/<étude>/                      ex. results/taskI_20261013-1554/
+├── <calcul>/                         un dossier par calcul
+│   ├── <calcul>_history.csv          courbes (jauges, forces, extensomètre, énergies), une ligne par µs
+│   ├── <calcul>_paras.inp            paramètres du calcul (vitesse du striker, durée)
+│   ├── <calcul>.sta, <calcul>.msg    journaux d'Abaqus
+│   ├── <calcul>_inventory.txt        liste des sorties du .odb (diagnostic)
+│   ├── <calcul>_overview.png         figure de contrôle
+│   └── <calcul>.odb                  sur le PC seulement (trop gros pour GitHub), si --odb
+└── report/                           report.md, T1_conditions.csv, figures F1… (.pdf pour le rapport, .png)
+```
+
+Versionné : tout sauf les `.odb`. Les fichiers d'entrée des calculs (`runs/`) ne sont pas gardés : `make_run.py`
+les regénère à l'identique.
+
+---
+
+## 7. Tester un calcul sur le PC (avant de lancer sur Euler)
+
+```
+py shpb-ut-equilibrium/scripts/pre/make_run.py UT19_R0500_00
+```
+crée `runs/UT19_R0500_00/`. Puis dans l'invite **Abaqus Command** (menu Démarrer) :
+```
+cd /d C:\Users\jdavion\Documents\eth\shpb-ut-equilibrium\runs\UT19_R0500_00
+abq2023 job=UT19_R0500_00 datacheck interactive
+```
+`datacheck` vérifie le modèle sans calculer (une minute). Utiliser **`abq2023`** et pas `abaqus` : sur les PC du
+labo, `abaqus.bat` se place d'office dans `C:\APPS\Abaqus2023_Work` et ne trouve pas le fichier.
+
+---
+
+## 8. Ajouter une éprouvette (UT40)
+
+| Étape | Où | Action |
+|---|---|---|
+| 1 | SolidWorks | tôle de 1,5 mm extrudée selon +Z depuis z = 0, exportée en STEP AP214 : `cad/step/XMas_UT40_t1p5.step`. Pousser le fichier |
+| 2 | `build_bench.py` | ligne `UT40` de `SPECIMENS` : demi-largeur de la partie droite (5,0 mm si elle fait 10 mm), longueur de l'extensomètre (30 mm) |
+| 3 | Abaqus/CAE | `SPEC = 'UT40'`, Run Script. Lire la longueur de l'éprouvette et la position de la barre de sortie (recalculées automatiquement) |
+| 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40` |
+| 5 | `make_run.py` | `SPECIMENS['UT40']` : L_eff et F sont des estimations (34 mm, 15 kN), à recaler après le premier calcul |
+| 6 | `report_taskI.py` | `A0_MM2['UT40']` = largeur × 1,5 mm |
+| 7 | | `datacheck` (section 7), puis `submit_study.py taskI UT40_R0100_00 UT40_R0500_00 UT40_R1000_00` |
+
+---
+
+## 9. Problèmes déjà rencontrés
+
+| Symptôme | Cause | Solution |
+|---|---|---|
+| Abaqus demande « Input file: » ou ne trouve pas le `.inp` | `abaqus.bat` du labo change de dossier | utiliser `abq2023` |
+| `Remove-Item: command not found` | commande PowerShell tapée dans Git Bash | `rm -rf …` |
+| « Device or resource busy » en supprimant | `.odb` encore ouvert dans Abaqus/Viewer | File → Close ODB |
+| `ModuleNotFoundError: No module named 'matplotlib'` | bibliothèques absentes sur ce PC | section 2 |
+| « Operation cancelled by user » pendant `pip` | deux commandes collées d'un coup | une commande à la fois |
+| `IGNORE : pas de maillage model/geometry/UT40/` | maillage pas encore construit | section 3 |
+| « PARAMETER … APPEARS IN A COMMENT LINE » | chevrons dans un commentaire d'un gabarit | les retirer (`make_run.py` le signale) |
+| `tail -3` ne marche pas sur plusieurs fichiers | syntaxe | `tail -n 3` |
+| `scp` ou `ssh` refusés | commande tapée dans la fenêtre Euler | les lancer depuis le PC |
+
+---
+
+## 10. Documentation
 
 | Fichier | Contenu |
 |---|---|
-| `docs/assembly.md` | placement des pièces dans le repère global, demi-modèle, découpe des pièces |
-| `docs/materials.md` | matériaux, sources des données, hypothèses |
-| `docs/mesh.md` | maillage : pièces, éléments, techniques, vérifications, paramètres |
-| `docs/results.md` | dépouillement : graphes, définitions des grandeurs, premiers résultats |
+| `docs/assembly.md` | repère global, placement des pièces (automatique pour l'éprouvette), demi-modèle, découpe des pièces |
+| `docs/materials.md` | matériaux, loi d'écrouissage Swift-Voce expliquée, hypothèses |
+| `docs/mesh.md` | maillage, pas de temps, trous M4, virtual topology, guidages, performances |
+| `docs/results.md` | dépouillement : filtre, indicateurs, formule de la vitesse du striker, historique des études |
 
-## Reste à faire
-
-| Sujet | Détail |
-|---|---|
-| UT40 | chaîne prête (section « Ajouter l'éprouvette UT40 ») ; il manque le fichier STEP (le fichier reçu le 21/10 était la NT20 entaillée, renommé `cad/step/Xmas_NT20_t1p5.step`). Vitesses du striker estimées : 6,0 / 19,9 / 37,4 m/s → 37 m/s est-il possible avec le lanceur ? |
-| Jauge de sortie | référence exacte des 400 mm à confirmer ; oscillations fortes à 500 et 1 000 /s (tête de la barre de sortie ?) |
-| Matériau | DP1000 indépendant de la vitesse : en essai la force, donc la vitesse du striker nécessaire, augmentera |
-| 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : écrit comme un résultat (18,5 % max) |
-
-## Mesures de performance
-
-| Date | Modèle | Machine | Résultat |
-|---|---|---|---|
-| 12/10/2026 | UT19_R0500_00, maillage initial, double précision | Euler, 8 cœurs | 1 789 incréments en 59 s (≈ 33 ms/incrément), pas ≈ 1,1e-8 s imposé par des tétraèdres déformés des têtes → ≈ 3,3 h pour 4 ms |
-| 12/10/2026 | têtes remaillées (sans trous M4, virtual topology) | Euler, 8 cœurs | 767 incréments en 26 s (≈ 34 ms/incrément), pas ≈ 2,6e-8 s → ≈ 153 000 incréments, **≈ 1,4 h pour 4 ms** |
-| 12/10/2026 | étude taskI (UT19, 4 ms simulées, double précision) | Euler, 8 cœurs par cas | R0100 : 4 182 s (1,2 h) ; R0500 : 6 473 s (1,8 h) ; R1000 : 11 329 s (**3,1 h**, proche de la limite de 4 h). Plus la vitesse est grande, plus l'éprouvette se déforme et plus le pas de temps baisse en cours de calcul |
+**Reste à faire** : fichier STEP de l'UT40 ; origine des oscillations de la jauge de sortie ; référence exacte des
+400 mm de la jauge ; vitesse maximale du lanceur (37 m/s nécessaires pour l'UT40 à 1 000 /s ?) ; densités et
+matériau du pusher à confirmer.
