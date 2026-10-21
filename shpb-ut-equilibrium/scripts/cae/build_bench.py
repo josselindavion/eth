@@ -637,9 +637,14 @@ Z_AXIS = (0.0, 0.0, 1.0)
 _pts = [v.pointOn[0] for v in full[SPEC].vertices]
 _xs, _ys, _zs = [q[0] for q in _pts], [q[1] for q in _pts], [q[2] for q in _pts]
 SPEC_LENGTH = max(_xs) - min(_xs)
-SPECIMEN_TRANSLATION = (0.5 * (min(_ys) + max(_ys)), Y_SPEC_TIP_PUSHER - max(_xs), Z_SPEC_BOTTOM - min(_zs))
-Y_OUTPUT_BAR = Y_SPEC_TIP_PUSHER - SPEC_LENGTH + OUTPUT_BAR_TO_TIP
-Y_SPLIT_OUTPUT = Y_OUTPUT_BAR - OUTPUT_HEAD_LENGTH
+# Arrondi a 1e-4 mm : sans effet physique, mais donne exactement les memes nombres que le placement
+# verifie de l'UT19, donc exactement le meme maillage (les mailleurs libres sont sensibles au moindre
+# ecart de position : 8561 au lieu de 8753 tetraedres dans OUTPUT_HEAD sans cet arrondi).
+SPECIMEN_TRANSLATION = tuple([round(v_, 4) for v_ in (0.5 * (min(_ys) + max(_ys)),
+                                                      Y_SPEC_TIP_PUSHER - max(_xs),
+                                                      Z_SPEC_BOTTOM - min(_zs))])
+Y_OUTPUT_BAR = round(Y_SPEC_TIP_PUSHER - SPEC_LENGTH + OUTPUT_BAR_TO_TIP, 4)
+Y_SPLIT_OUTPUT = round(Y_OUTPUT_BAR - OUTPUT_HEAD_LENGTH, 4)
 print('Eprouvette %s (%s) : longueur %.3f mm, largeur %.3f mm, epaisseur %.3f mm'
       % (SPEC, STEP_SPECIMEN, SPEC_LENGTH, max(_ys) - min(_ys), max(_zs) - min(_zs)))
 print('  translation (%.4f, %.4f, %.4f) ; bouts en Y = %.3f et %.3f'
