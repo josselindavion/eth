@@ -102,7 +102,7 @@ Chaque figure et chaque tableau a une légende complète : ce qui est tracé, d'
 Les titres de sections ne sont pas numérotés (l'outil de conversion en PDF les numérote).
 
 Plan de `report.md` : 1. Model and assumptions ; 2. Signal processing and definitions ; 3. Task I answers
-(3.1 équilibre : F1, T2 = effet du filtre ; 3.2 vitesses de chargement : F4, T3 = vitesse de déformation selon
+(3.1 équilibre : F1, F1b = zoom sur la mise en équilibre (F_in et F_out en fonction du temps), T2 = effet du filtre ; 3.2 vitesses de chargement : F4, T3 = vitesse de déformation selon
 plusieurs définitions, F5, limite des 30 %) ; 4. What the experiment will measure (F2, F3) ; 5. Numerical quality
 (onde incidente / théorie, énergie cinétique initiale, dérive de l'énergie totale, hourglass) ; 6. Limitations ;
 7. Conclusions (tableau de réponses).

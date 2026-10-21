@@ -90,15 +90,15 @@ def equilibrium(R, valid, eps, k0, i_end):
     last_bad = np.nonzero(bad[:i_end + 1])[0]
     cand = i_start if len(last_bad) == 0 else max(i_start, last_bad[-1] + 1)
     i_eq = cand if eps[cand] < 0.9 * eps[i_end] else None      # equilibre seulement a la toute fin : non
-    best, run = (np.nan, np.nan), None
+    best, i_best, run = (np.nan, np.nan), None, None
     for i in range(i_start, i_end + 1):
         if not bad[i]:
             run = i if run is None else run
             if np.isnan(best[0]) or eps[i] - eps[run] > best[1] - best[0]:
-                best = (eps[run], eps[i])
+                best, i_best = (eps[run], eps[i]), run
         else:
             run = None
-    return i_eq, best
+    return i_eq, best, i_best
 
 
 def analyse(csv):
@@ -134,12 +134,12 @@ def analyse(csv):
     Fm = 0.5 * (Fi + Fo)
     valid = win & (Fm > 0.1 * Fm[win].max())
     R = np.where(valid, (Fi - Fo) / np.where(valid, Fm, 1.0), np.nan)
-    i_eq, eq_int = equilibrium(R, valid, eps, k0, i_end)
+    i_eq, eq_int, i_eq_from = equilibrium(R, valid, eps, k0, i_end)
     # Meme chose sans filtre (pour montrer l'effet du filtre)
     Fm_raw = 0.5 * (Fi_raw + Fo_raw)
     valid_raw = win & (Fm_raw > 0.1 * Fm_raw[win].max())
     R_raw = np.where(valid_raw, (Fi_raw - Fo_raw) / np.where(valid_raw, Fm_raw, 1.0), np.nan)
-    i_eq_raw, _ = equilibrium(R_raw, valid_raw, eps, k0, i_end)
+    i_eq_raw, _, _ = equilibrium(R_raw, valid_raw, eps, k0, i_end)
 
     plateau = win & (eps >= EPS_PLATEAU)
     hi = min(0.25, 0.8 * eps[i_end])
@@ -182,7 +182,7 @@ def analyse(csv):
         'energy_drift': (d.ETOTAL_mJ.max() - d.ETOTAL_mJ.min()) / ke0,
     }
     curves = {'t_ms': 1e3 * (t - t[k0]), 'eps': eps, 'Fi': Fi, 'Fo': Fo, 'Fg': Fg, 'R': R,
-              'rate': rate_t, 'win': win, 'valid': valid, 'iF': iF}
+              'rate': rate_t, 'win': win, 'valid': valid, 'iF': iF, 'i_eq': i_eq, 'i_eq_from': i_eq_from}
     return res, curves
 
 
@@ -224,6 +224,40 @@ def fig_equilibrium(groups, out):
         ax.set_title('%s  (shaded: |R| < %d %%)' % (spec, round(100 * EQ_TOL)), loc='left')
         ax.legend(loc='upper center', ncol=3, fontsize=8)
     save(fig, out, 'F1_equilibrium')
+
+
+def fig_equilibrium_onset(spec, items, out):
+    """Zoom sur la mise en equilibre : F_in et F_out en fonction du temps, du debut du chargement
+    jusqu'un peu apres le debut de l'equilibre (et au moins 5 % de deformation)."""
+    fig, axs = new_axes(len(items), w=3.3, h=3.1)
+    for k, (ax, (col, (r, c))) in enumerate(zip(axs, items)):
+        t, eps = c['t_ms'], c['eps']
+        i_mark = c['i_eq'] if c['i_eq'] is not None else c['i_eq_from']
+        i5 = int(np.argmax((eps >= EPS_PLATEAU) & (t >= 0)))
+        t_end = 1.4 * max(t[i5], t[i_mark] if i_mark is not None else 0.0)
+        m = (t >= -0.02 * t_end) & (t <= t_end)
+        ax.plot(t[m], c['Fi'][m] / 1e3, color=col, lw=1.6, label='F$_{in}$ (input section)')
+        ax.plot(t[m], c['Fo'][m] / 1e3, color=INK, lw=1.1, ls='--', label='F$_{out}$ (output section)')
+        ymax = 1.15 * max(c['Fi'][m].max(), c['Fo'][m].max()) / 1e3
+        for e in (0.01, 0.02, 0.05):                          # reperes de deformation
+            j = int(np.argmax((eps >= e) & (t >= 0)))
+            if t[j] <= t_end:
+                ax.axvline(t[j], color=INK2, lw=0.6, ls=':')
+                ax.text(t[j], ymax * 0.99, ' %d %%' % round(100 * e), color=INK2, fontsize=7, va='top')
+        if i_mark is not None:
+            ax.axvline(t[i_mark], color=col, lw=1.0)
+            txt = '|R| < %d %%\nfrom here' % round(100 * EQ_TOL)
+            if c['i_eq'] is None:
+                txt += '\n(until %s)' % pct(r['eq_to'], 0)
+            ax.text(t[i_mark], ymax * 0.12, ' ' + txt, color=col, fontsize=7, va='bottom')
+        ax.set_ylim(0, ymax)
+        ax.set_xlim(t[m][0], t_end)
+        ax.set_title('%s, %s' % (spec, rate_label(r)), loc='left')
+        ax.set_xlabel('time from loading start (ms)')
+        if k == 0:
+            ax.set_ylabel('force (kN)')
+            ax.legend(loc='center right', fontsize=7)
+    save(fig, out, 'F1b_equilibrium_onset_%s' % spec)
 
 
 def fig_forces(spec, items, out):
@@ -498,6 +532,19 @@ def write_report(study, rows, table, out):
         'the same force: the specimen is in equilibrium. The large values below about 2 %% strain come from the '
         'start of loading (specimen shoulders settling in the pockets) and are cut at ±20 %%.\n'
         % (FC_HZ / 1e3, tol))
+    for s_ in specs:
+        L.append('![F1b](F1b_equilibrium_onset_%s.png)\n' % s_)
+        L.append(
+            '**Figure F1b (%s) - Onset of equilibrium (zoom).** '
+            '*Plotted:* the exact forces F_in (coloured solid line, input section of the specimen, load inversion '
+            'device side) and F_out (black dashed line, output section, output bar side) against the time from '
+            'the loading start, one panel per target rate, from the loading start until shortly after equilibrium '
+            'is reached (and at least 5 %% strain). Dotted vertical lines: instants at which the extensometer '
+            'strain reaches 1, 2 and 5 %%; coloured vertical line: instant from which |R| < %d %% (for a partial '
+            'equilibrium: start of the longest interval with |R| < %d %%). Forces filtered at %d kHz, as in F1. '
+            '*How to read it:* before equilibrium the two forces differ (the load has not yet been transmitted '
+            'through the specimen; the first pulse is the specimen shoulders settling in the pockets); from the '
+            'coloured line onwards they overlap.\n' % (s_, tol, tol, FC_HZ / 1e3))
     L.extend([case_sentence(r) for r in rows])
     L.append('')
     L.append(
@@ -702,6 +749,8 @@ def main():
         groups.append((spec, [(color[r['target_rate']], (r, c)) for r, c in data if r['specimen'] == spec]))
 
     fig_equilibrium(groups, out)
+    for spec, items in groups:
+        fig_equilibrium_onset(spec, items, out)
     for spec, items in groups:
         fig_forces(spec, items, out)
     fig_stress_strain(groups, out)
