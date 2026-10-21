@@ -2,7 +2,7 @@ ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION (( 'STEP AP214' ),
     '1' );
-FILE_NAME ('XMas_UT40_t1p5.step',
+FILE_NAME ('Xmas_NT20_t1p5.step',
     '2026-10-21T12:47:22',
     ( '' ),
     ( '' ),

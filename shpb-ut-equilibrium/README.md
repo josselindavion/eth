@@ -119,7 +119,7 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 
 | Sujet | Détail |
 |---|---|
-| UT40 | géométrie à récupérer, puis `A0_MM2` (report_taskI.py) et `SPECIMENS` (make_run.py) |
+| UT40 | géométrie à récupérer (le fichier reçu le 21/10 était la NT20 entaillée, renommé `cad/step/Xmas_NT20_t1p5.step`), puis `A0_MM2` (report_taskI.py) et `SPECIMENS` (make_run.py) ; barre de sortie probablement à reculer (éprouvette plus longue que l'UT19) |
 | Jauge de sortie | référence exacte des 400 mm à confirmer ; oscillations fortes à 500 et 1 000 /s (tête de la barre de sortie ?) |
 | Matériau | DP1000 indépendant de la vitesse : en essai la force, donc la vitesse du striker nécessaire, augmentera |
 | 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : écrit comme un résultat (18,5 % max) |
