@@ -412,7 +412,7 @@ def write_report(study, rows, table, out):
     L.append('![F5](F5_striker_velocity.png)\n')
     L.append('**Figure F5** - Striker velocity (vertical axis, setting of the test) required for a given strain '
              'rate (horizontal axis). Line: estimate used to set up the simulations. Dots: simulations, placed at '
-             'the striker velocity imposed and at the strain rate achieved (slope between 5 %% and 25 %% strain, '
+             'the striker velocity imposed and at the strain rate achieved (slope between 5 % and 25 % strain, '
              'see section 1).\n')
     L.append(
         'The striker velocity is estimated from the elongation rate of the load inversion device, '
