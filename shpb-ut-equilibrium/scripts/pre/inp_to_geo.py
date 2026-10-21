@@ -3,8 +3,10 @@
 inp_to_geo.py -- Convertit le .inp ecrit par Abaqus/CAE en fichiers .geo "a plat",
 un par piece (convention du labo, comme NT20.geo).
 
-Entree : le .inp brut ecrit par build_bench.py (format Part / Assembly / Instance).
-Sortie : model/geometry/<PIECE>.geo pour chaque instance qui contient un maillage :
+Entree : le .inp brut ecrit par build_bench.py (format Part / Assembly / Instance),
+         model/geometry/_raw/SHPB_<SPEC>_mesh.inp.
+Sortie : model/geometry/<SPEC>/<PIECE>.geo pour chaque instance qui contient un maillage
+(un dossier par eprouvette : la barre de sortie n'est pas au meme endroit pour UT19 et UT40) :
     - noeuds et elements, renumerotes avec un decalage propre a chaque piece
       (piece n -> labels a partir de n * 1 000 000) pour qu'ils ne se chevauchent pas ;
     - groupes (*Nset, *Elset) et surfaces (*Surface), renommes avec le nom de la piece
@@ -13,8 +15,8 @@ Les .geo ne contiennent ni *Part, ni *Assembly, ni section : ils sont inclus dan
 principal par *INCLUDE, qui definit materiaux, sections, contacts, etc.
 
 Lancement (Python 3, depuis la racine du repo) :
-    python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py
-    python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py chemin/vers/brut.inp  [dossier_sortie]
+    python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT19        (ou UT40 ; UT19 par defaut)
+    python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py chemin/vers/brut.inp  dossier_sortie
 """
 import math
 import os
@@ -23,8 +25,8 @@ import sys
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
-DEFAULT_INP = os.path.join(PROJECT_ROOT, 'model', 'geometry', '_raw', 'SHPB_UT19_mesh.inp')
-DEFAULT_OUT = os.path.join(PROJECT_ROOT, 'model', 'geometry')
+GEO_ROOT = os.path.join(PROJECT_ROOT, 'model', 'geometry')
+DEFAULT_SPEC = 'UT19'
 LABEL_OFFSET = 1000000      # piece n -> labels a partir de n * LABEL_OFFSET
 PER_LINE = 16               # Abaqus : 16 valeurs max par ligne de donnees
 
@@ -278,8 +280,13 @@ def write_geo(path, piece, mesh, off, tr, rot, asm_sets, asm_surfaces, src):
 
 
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INP
-    out_dir = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUT
+    arg = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SPEC
+    if arg.lower().endswith('.inp'):
+        src = arg
+        out_dir = sys.argv[2] if len(sys.argv) > 2 else GEO_ROOT
+    else:                                   # nom d'eprouvette : chemins par defaut
+        src = os.path.join(GEO_ROOT, '_raw', 'SHPB_%s_mesh.inp' % arg)
+        out_dir = os.path.join(GEO_ROOT, arg)
     if not os.path.exists(src):
         sys.exit('Fichier introuvable : %s\n(lancer d\'abord build_bench.py dans Abaqus)' % src)
     os.makedirs(out_dir, exist_ok=True)

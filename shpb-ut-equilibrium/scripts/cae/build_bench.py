@@ -22,28 +22,48 @@ Repere global : Y = axe des barres / traction, Z = vers le haut,
                 X = largeur de l'eprouvette. Unites : mm.
 
 Lancement (depuis le dossier de travail Abaqus) :
-  - dans CAE   : File > Run Script... > choisir ce fichier
-  - sans GUI   : abaqus cae noGUI=<chemin>/scripts/cae/build_bench.py
+  - dans CAE   : regler SPEC ci-dessous (UT19 ou UT40), puis File > Run Script... > ce fichier
+  - sans GUI   : abaqus cae noGUI=<chemin>/scripts/cae/build_bench.py -- UT40
+                 (l'eprouvette donnee apres "--" remplace SPEC)
+Une eprouvette = un modele SHPB_<SPEC> : le banc est le meme, mais l'eprouvette, sa position
+et celle de la barre de sortie changent (voir SPECIMENS et "Placement automatique").
 
 ATTENTION : Abaqus 2023 utilise Python 2.7 -> pas de f-strings.
 """
 from abaqus import *
 from abaqusConstants import *
 import os
+import sys
 import inspect
 import mesh
 
 # ============================================================
 # PARAMETRES  (le seul endroit a modifier)
 # ============================================================
-MODEL_NAME = 'SHPB_UT19'
+SPEC = 'UT19'              # eprouvette a construire (cle de SPECIMENS)
 
-# Fichiers STEP (dans <repo>/cad/step/)
+# Eprouvettes (fichiers STEP dans <repo>/cad/step/, tole de 1,5 mm extrudee selon +Z depuis z = 0).
+#   gauge_half_width : demi-largeur de la partie droite de la zone utile, lue sur la geometrie
+#                      pour reperer le debut et la fin de la partie droite (sections SEC_OUT / SEC_IN)
+#   ext_length       : longueur de l'extensometre virtuel (longueur de la zone DIC)
+SPECIMENS = {
+    # sUT de Beerli 2026 (fig. 2a) : partie droite 15 mm x 5 mm ; zone DIC 12 mm
+    'UT19': {'step': 'XMas_UT_t1p5.step', 'gauge_half_width': 2.5, 'ext_length': 12.0},
+    # UT de Beerli 2026 (section 2.2) : partie utile 40 mm x 10 mm ; zone DIC 30 mm x 9 mm.
+    # A VERIFIER des que le fichier STEP est disponible (largeur de la partie droite, zone DIC).
+    'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0},
+}
+# Eprouvette donnee en ligne de commande (abaqus cae noGUI=build_bench.py -- UT40)
+for _arg in sys.argv[1:]:
+    if _arg in SPECIMENS:
+        SPEC = _arg
+MODEL_NAME = 'SHPB_' + SPEC
+
 # Pusher et barre de sortie : versions SANS les trous M4 inutiles du fond des logements,
 # generees par scripts/pre/defeature_step.py (voir docs/mesh.md)
 STEP_PUSHER     = 'Inverter_new_noM4.step'
 STEP_OUTPUT_BAR = 'Stange30mm_Step2_noM4.step'
-STEP_SPECIMEN   = 'XMas_UT_t1p5.step'
+STEP_SPECIMEN   = SPECIMENS[SPEC]['step']
 
 # Barres cylindriques (Beerli et al. 2026, section 2.5)
 BAR_RADIUS        = 10.0      # mm  (diametre 20 mm)
@@ -57,8 +77,17 @@ OUTPUT_BAR_LENGTH = 6000.0    # mm, longueur totale du STEP (tete comprise)
 # Positions (voir docs/assembly.md)
 Z_INPUT_AXIS  = 7.85                     # centre de la face du pusher (20 x 15.7 mm)
 Z_OUTPUT_AXIS = Z_INPUT_AXIS + 21.5      # = 29.35, decalage des axes (fig. 5a)
-Y_OUTPUT_BAR  = 155.713                  # avance de la barre de sortie
-SPECIMEN_TRANSLATION = (356.2728, -1357.7622, 28.6)   # eprouvette centree dans les logements
+# Placement automatique de l'eprouvette et de la barre de sortie (voir docs/assembly.md).
+# Valeurs relevees sur l'UT19 (placement verifie le 08/10/2026) et supposees identiques pour toutes
+# les eprouvettes, qui ont les memes tetes (memes dents) :
+#   - le bout de l'eprouvette cote pusher est toujours au meme endroit (le pusher ne bouge pas) ;
+#   - la barre de sortie suit l'autre bout : son extremite est a 31,700 mm de ce bout.
+# Une eprouvette plus longue recule donc la barre de sortie d'autant (vers -Y).
+Y_SPEC_TIP_PUSHER = 201.7005             # Y du bout de l'eprouvette cote pusher
+OUTPUT_BAR_TO_TIP = 31.7000              # Y_OUTPUT_BAR - Y du bout de l'eprouvette cote barre de sortie
+Z_SPEC_BOTTOM     = 28.6                 # fond des logements : l'eprouvette y est posee
+OUTPUT_HEAD_LENGTH = 55.713              # longueur de la tete de la barre de sortie gardee en tetraedres
+UT19_TRANSLATION  = (356.2728, -1357.7622, 28.6)   # placement verifie de l'UT19 (controle)
 
 # Demi-modele : True = on coupe tout au plan X = 0 et on garde X >= 0
 # (comme le labo : Beerli et al. 2026, Roth et al. 2015)
@@ -66,7 +95,8 @@ HALF_MODEL = True
 
 # Decoupe des pieces complexes (plans perpendiculaires a Y)
 Y_SPLIT_PUSHER = 125.0    # corps rectangulaire du pusher : Y de 0 a 130
-Y_SPLIT_OUTPUT = 100.0    # partie ronde de la barre de sortie : Y < 105.05
+# Decoupe de la barre de sortie : Y_OUTPUT_BAR - OUTPUT_HEAD_LENGTH (= 100.0 pour l'UT19),
+# calculee apres le placement de l'eprouvette (partie ronde : jusqu'a 50,66 mm du bout)
 
 # Maillage des barres (Roth et al. 2015, Beerli et al. 2026) : hexaedres C3D8R balayes
 BAR_SEED_AXIAL   = 5.0    # mm, taille des elements dans l'axe des barres
@@ -77,13 +107,13 @@ SPEC_SEED_INPLANE = 0.5   # mm
 SPEC_N_THICKNESS  = 4     # nombre d'elements dans l'epaisseur
 # Demi-largeur de la partie droite de la zone utile (sUT : 5 mm de large, Beerli 2026 fig. 2a).
 # Sert a reperer, sur la geometrie, le debut et la fin de la partie droite.
-SPEC_GAUGE_HALF_WIDTH = 2.5   # mm
+SPEC_GAUGE_HALF_WIDTH = SPECIMENS[SPEC]['gauge_half_width']   # mm
 
 # Jauges virtuelles et extensometre (Beerli et al. 2026, section 2.5 et fig. 5a)
 GAUGE_IN_DIST   = 400.0   # mm, jauge d'entree : distance depuis l'interface striker / barre d'entree
 GAUGE_OUT_DIST  = 400.0   # mm, jauge de sortie : distance depuis le bout de la barre de sortie cote eprouvette
 GAUGE_LENGTH    = 10.0    # mm, longueur de barre moyennee par une jauge virtuelle
-EXT_LENGTH      = 12.0    # mm, longueur de l'extensometre virtuel (zone DIC de la sUT : 12 mm)
+EXT_LENGTH      = SPECIMENS[SPEC]['ext_length']   # mm, extensometre virtuel (zone DIC)
 
 # Maillage des tetes (pusher, barre de sortie) : tetraedres quadratiques C3D10M
 HEAD_SEED = 2.0           # mm (taille utilisee par Roth et al. 2015 pour le pusher et la barre de sortie)
@@ -106,7 +136,7 @@ VT_ASPECT     = 10.0      # faces plus elancees fusionnees (lanieres de la jonct
 CAE_NAME = MODEL_NAME + '.cae'
 
 # .inp brut ecrit par CAE (maillage + groupes), converti ensuite en .geo par scripts/pre/inp_to_geo.py
-RAW_INP_NAME = MODEL_NAME + '_mesh'      # -> model/geometry/_raw/SHPB_UT19_mesh.inp
+RAW_INP_NAME = MODEL_NAME + '_mesh'      # -> model/geometry/_raw/SHPB_<SPEC>_mesh.inp
 
 # ============================================================
 # CHEMINS : on retrouve la racine du repo a partir de ce script
@@ -300,7 +330,10 @@ def partition_specimen_gauge(part, half_width, tol=1.0e-3):
     ys = [v.pointOn[0][1] for v in part.vertices
           if abs(abs(v.pointOn[0][0]) - half_width) < tol]
     if len(ys) < 2:
-        raise ValueError('Partie droite de la zone utile introuvable (|X| = %g)' % half_width)
+        xs = sorted(set(round(abs(v.pointOn[0][0]), 3) for v in part.vertices))
+        raise ValueError('Partie droite de la zone utile introuvable (|X| = %g). Demi-largeurs presentes '
+                         'sur les sommets : %s -> corriger gauge_half_width dans SPECIMENS'
+                         % (half_width, ', '.join('%g' % x for x in xs)))
     y_out, y_in = min(ys), max(ys)
     for y in (y_out, y_in):
         dp = part.DatumPlaneByPrincipalPlane(principalPlane=XZPLANE, offset=y)
@@ -416,7 +449,7 @@ def make_interface_surfaces(model, y_impact, y_push, y_tie_pusher, y_tie_output)
       STRIKER.S_IMPACT / INPUT_BAR.S_IMPACT  en Y = y_impact (impact du striker)
       INPUT_BAR.S_PUSH / PUSHER_ROD.S_PUSH   en Y = y_push   (barre d'entree -> pusher)
     Contact eprouvette / logements (peau exterieure) :
-      UT19.S_SKIN, PUSHER_HEAD.S_SKIN, OUTPUT_HEAD.S_SKIN
+      <SPEC>.S_SKIN, PUSHER_HEAD.S_SKIN, OUTPUT_HEAD.S_SKIN
     """
     P = model.parts
     for name, y in (('PUSHER_ROD', y_tie_pusher), ('PUSHER_HEAD', y_tie_pusher),
@@ -426,7 +459,7 @@ def make_interface_surfaces(model, y_impact, y_push, y_tie_pusher, y_tie_output)
         P[name].Surface(name='S_IMPACT', side1Faces=faces_at_y(P[name], y_impact))
     for name in ('INPUT_BAR', 'PUSHER_ROD'):
         P[name].Surface(name='S_PUSH', side1Faces=faces_at_y(P[name], y_push))
-    for name in ('UT19', 'PUSHER_HEAD', 'OUTPUT_HEAD'):
+    for name in (SPEC, 'PUSHER_HEAD', 'OUTPUT_HEAD'):
         P[name].Surface(name='S_SKIN', side1Faces=skin_faces(P[name]))
 
 
@@ -472,12 +505,12 @@ def make_measurement_sets(model, y_gauge_in, y_gauge_out, y_sec_out, y_sec_in):
     print('  GAUGE_OUT  OUTPUT_BAR  Y = %9.3f   %4d elements' % (y_gauge_out, n))
     # Extensometre : sur le dessus de l'eprouvette, au milieu de la largeur (X = 0),
     # centre sur la partie droite de la zone utile
-    spec = model.parts['UT19']
+    spec = model.parts[SPEC]
     z_top = max(v.pointOn[0][2] for v in spec.vertices)
     y_mid = 0.5 * (y_sec_out + y_sec_in)
     for name, y in (('EXT_OUT', y_mid - 0.5 * EXT_LENGTH), ('EXT_IN', y_mid + 0.5 * EXT_LENGTH)):
         label = node_set_at(spec, name, (0.0, y, z_top))
-        print('  %-9s  UT19        Y = %9.3f   noeud %d' % (name, y, label))
+        print('  %-9s  %-10s  Y = %9.3f   noeud %d' % (name, SPEC, y, label))
 
 
 def report_sets(model, part_names):
@@ -589,7 +622,7 @@ a.DatumCsysByDefault(CARTESIAN)
 full = {
     'PUSHER':     import_step_part(model, 'PUSHER_FULL',     STEP_PUSHER),
     'OUTPUT_BAR': import_step_part(model, 'OUTPUT_BAR_FULL', STEP_OUTPUT_BAR),
-    'UT19':       import_step_part(model, 'UT19_FULL',       STEP_SPECIMEN),
+    SPEC:         import_step_part(model, SPEC + '_FULL',      STEP_SPECIMEN),
     'STRIKER':    make_cylinder(model, 'STRIKER_FULL',   BAR_RADIUS, STRIKER_LENGTH),
     'INPUT_BAR':  make_cylinder(model, 'INPUT_BAR_FULL', BAR_RADIUS, INPUT_BAR_LENGTH),
     'OUTPUT_ROD': make_cylinder(model, 'OUTPUT_ROD_FULL', BAR_RADIUS, OUTPUT_BAR_LENGTH),
@@ -598,11 +631,31 @@ full = {
 # --- 2. Placement : (axe de rotation, angle, translation) ---
 X_AXIS = (1.0, 0.0, 0.0)
 Z_AXIS = (0.0, 0.0, 1.0)
+# Eprouvette : tournee de +90 deg autour de Z, (x, y, z) -> (-y, x, z) : sa longueur (X du STEP)
+# devient Y. Translation calculee sur les sommets du STEP : centree en X, bout cote pusher en
+# Y_SPEC_TIP_PUSHER, posee sur le fond des logements.
+_pts = [v.pointOn[0] for v in full[SPEC].vertices]
+_xs, _ys, _zs = [q[0] for q in _pts], [q[1] for q in _pts], [q[2] for q in _pts]
+SPEC_LENGTH = max(_xs) - min(_xs)
+SPECIMEN_TRANSLATION = (0.5 * (min(_ys) + max(_ys)), Y_SPEC_TIP_PUSHER - max(_xs), Z_SPEC_BOTTOM - min(_zs))
+Y_OUTPUT_BAR = Y_SPEC_TIP_PUSHER - SPEC_LENGTH + OUTPUT_BAR_TO_TIP
+Y_SPLIT_OUTPUT = Y_OUTPUT_BAR - OUTPUT_HEAD_LENGTH
+print('Eprouvette %s (%s) : longueur %.3f mm, largeur %.3f mm, epaisseur %.3f mm'
+      % (SPEC, STEP_SPECIMEN, SPEC_LENGTH, max(_ys) - min(_ys), max(_zs) - min(_zs)))
+print('  translation (%.4f, %.4f, %.4f) ; bouts en Y = %.3f et %.3f'
+      % (SPECIMEN_TRANSLATION + (Y_SPEC_TIP_PUSHER - SPEC_LENGTH, Y_SPEC_TIP_PUSHER)))
+print('  barre de sortie : bout en Y = %.3f, decoupe tete / barre en Y = %.3f'
+      % (Y_OUTPUT_BAR, Y_SPLIT_OUTPUT))
+if SPEC == 'UT19':
+    _d = max([abs(a_ - b_) for a_, b_ in zip(SPECIMEN_TRANSLATION, UT19_TRANSLATION)])
+    if _d > 1.0e-3 or abs(Y_OUTPUT_BAR - 155.713) > 1.0e-3:
+        raise ValueError('Placement automatique de l UT19 different du placement verifie (ecart %.4f mm)' % _d)
+    print('  controle : placement identique a celui verifie le 08/10/2026')
 placement = {
     'STRIKER':    (X_AXIS, 90.0, (0.0, -INPUT_BAR_LENGTH, Z_INPUT_AXIS)),
     'INPUT_BAR':  (X_AXIS, 90.0, (0.0, 0.0, Z_INPUT_AXIS)),
     'PUSHER':     (X_AXIS, 90.0, None),
-    'UT19':       (Z_AXIS, 90.0, SPECIMEN_TRANSLATION),
+    SPEC:         (Z_AXIS, 90.0, SPECIMEN_TRANSLATION),
     'OUTPUT_BAR': (X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS)),
     'OUTPUT_ROD': (X_AXIS, 90.0, (0.0, Y_OUTPUT_BAR, Z_OUTPUT_AXIS)),   # meme axe que la barre du STEP
 }
@@ -613,7 +666,7 @@ PIECES = [
     ('INPUT_BAR',   'INPUT_BAR',  None,           None),
     ('PUSHER_ROD',  'PUSHER',     None,           Y_SPLIT_PUSHER),
     ('PUSHER_HEAD', 'PUSHER',     Y_SPLIT_PUSHER, None),
-    ('UT19',        'UT19',       None,           None),
+    (SPEC,          SPEC,         None,           None),
     ('OUTPUT_BAR',  'OUTPUT_ROD', None,           Y_SPLIT_OUTPUT),   # cylindre plein, sans le trou taraude
     ('OUTPUT_HEAD', 'OUTPUT_BAR', Y_SPLIT_OUTPUT, None),
 ]
@@ -631,7 +684,7 @@ report_x_range(model, PIECE_NAMES)
 # --- 4. Maillage ---
 for name in ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'OUTPUT_BAR']:
     mesh_bar(model.parts[name], BAR_SEED_AXIAL, BAR_SEED_SECTION)
-spec = model.parts['UT19']
+spec = model.parts[SPEC]
 y_sec_out, y_sec_in = partition_specimen_gauge(spec, SPEC_GAUGE_HALF_WIDTH)
 mesh_specimen(spec, SPEC_SEED_INPLANE, SPEC_N_THICKNESS, y_sec_out, y_sec_in)
 for name in ['PUSHER_HEAD', 'OUTPUT_HEAD']:
@@ -682,4 +735,4 @@ try:
 finally:
     os.chdir(old_cwd)
 print('.inp brut ecrit : ' + os.path.join(RAW_DIR, RAW_INP_NAME + '.inp'))
-print('Etape suivante (Python 3, racine du repo) : python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py')
+print('Etape suivante (Python 3, racine du repo) : python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py ' + SPEC)

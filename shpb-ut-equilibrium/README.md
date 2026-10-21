@@ -10,7 +10,7 @@ shpb-ut-equilibrium/
 │   ├── native/        sources SolidWorks (.SLDPRT / .SLDASM)
 │   └── step/          exports STEP importés par Abaqus
 ├── model/             modèle Abaqus « source », conventions du labo
-│   ├── geometry/      UT19.geo, UT40.geo, LID.geo, BARS.geo (maillage + sets)
+│   ├── geometry/      un dossier par éprouvette : UT19/*.geo, UT40/*.geo (7 pièces, générés, non versionnés)
 │   ├── materials/     A2_tool_steel.dat, A286.dat, specimen_*.dat
 │   ├── templates/     SHPB_UT_main.inp (avec *INCLUDE et <PARAMÈTRES>)
 │   └── subroutines/   VUMAT du labo, le cas échéant
@@ -50,8 +50,10 @@ ils restent sur le PC dans `results/…/<case>/`, et sur Euler jusqu'à la purge
 ## Chaîne de calcul
 
 0. `scripts/pre/make_materials.py` : paramètres matériaux → `model/materials/*.dat` (voir `docs/materials.md`)
-1. `scripts/cae/build_bench.py` (Abaqus/CAE) : STEP (`cad/step/`) → maillage → `model/geometry/_raw/SHPB_UT19_mesh.inp`,
-   puis `scripts/pre/inp_to_geo.py` (Python 3) → un `model/geometry/<PIÈCE>.geo` par pièce (voir `docs/mesh.md`, section 10)
+1. `scripts/cae/build_bench.py` (Abaqus/CAE, `SPEC = 'UT19'` ou `'UT40'` en tête du script) : STEP (`cad/step/`) →
+   placement automatique de l'éprouvette et de la barre de sortie (`docs/assembly.md`) → maillage →
+   `model/geometry/_raw/SHPB_<SPEC>_mesh.inp`, puis `scripts/pre/inp_to_geo.py <SPEC>` (Python 3) →
+   `model/geometry/<SPEC>/<PIÈCE>.geo` (voir `docs/mesh.md`, section 10)
 2. `scripts/pre/make_run.py` : `studies/<étude>/cases.csv` + `model/templates/` → `runs/<case_id>/`
    (`<case_id>.inp` + `<case_id>_paras.inp` + copies des `.geo` et `.dat` : dossier autonome)
    - vitesse du striker = (vitesse de déformation × L_eff + 2 F / ρcA) / (2 × 0,487), qui tient compte
@@ -70,6 +72,21 @@ ils restent sur le PC dans `results/…/<case>/`, et sur Euler jusqu'à la purge
    par calcul et `<étude>_<date>_summary.csv` ; voir `docs/results.md`
 6. `scripts/post/report_taskI.py results/<étude>_<date>` (PC, Python 3 + scipy) : livrables de la Task I
    dans `results/<étude>_<date>/report/` (tableau T1, figures F1 à F5, texte en anglais) ; voir `docs/results.md`
+
+## Ajouter l'éprouvette UT40 (ou une autre)
+
+| Étape | Où | Action |
+|---|---|---|
+| 1 | SolidWorks | exporter la tôle de 1,5 mm (extrudée selon +Z depuis z = 0) en STEP AP214 : `cad/step/XMas_UT40_t1p5.step` |
+| 2 | `scripts/cae/build_bench.py` | vérifier la ligne `UT40` de `SPECIMENS` : fichier, demi-largeur de la partie droite (5,0 mm si 10 mm de large), longueur de l'extensomètre (30 mm, zone DIC de Beerli) |
+| 3 | Abaqus/CAE | `SPEC = 'UT40'`, puis File → Run Script → `build_bench.py`. Lire dans la sortie : longueur de l'éprouvette, position de la barre de sortie, qualité des tétraèdres |
+| 4 | PC, racine du repo | `python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40` → `model/geometry/UT40/` |
+| 5 | `scripts/pre/make_run.py` | `SPECIMENS['UT40']` : L_eff et F sont des **estimations** (34 mm, 15 kN), à recaler après le premier calcul |
+| 6 | `scripts/post/report_taskI.py` | `A0_MM2['UT40']` = largeur × 1,5 mm (15 mm² si 10 mm de large) |
+| 7 | PC | `datacheck` d'un cas à la main, puis `submit_study.py taskI` (les cas UT40 de `cases.csv` sont pris automatiquement) |
+
+**Après la mise à jour du 21/10/2026** : les `.geo` de l'UT19 doivent être dans `model/geometry/UT19/`.
+Une fois : `python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT19` (relit `_raw/SHPB_UT19_mesh.inp`).
 
 ## Lancer Abaqus à la main (PC du labo, Windows)
 
@@ -119,7 +136,7 @@ Chaque lancement a son propre dossier daté : rien n'est écrasé. `$SCRATCH` es
 
 | Sujet | Détail |
 |---|---|
-| UT40 | géométrie à récupérer (le fichier reçu le 21/10 était la NT20 entaillée, renommé `cad/step/Xmas_NT20_t1p5.step`), puis `A0_MM2` (report_taskI.py) et `SPECIMENS` (make_run.py) ; barre de sortie probablement à reculer (éprouvette plus longue que l'UT19) |
+| UT40 | chaîne prête (section « Ajouter l'éprouvette UT40 ») ; il manque le fichier STEP (le fichier reçu le 21/10 était la NT20 entaillée, renommé `cad/step/Xmas_NT20_t1p5.step`). Vitesses du striker estimées : 6,0 / 19,9 / 37,4 m/s → 37 m/s est-il possible avec le lanceur ? |
 | Jauge de sortie | référence exacte des 400 mm à confirmer ; oscillations fortes à 500 et 1 000 /s (tête de la barre de sortie ?) |
 | Matériau | DP1000 indépendant de la vitesse : en essai la force, donc la vitesse du striker nécessaire, augmentera |
 | 30 % à 100 /s | impossible avec l'impulsion de 2,12 ms (striker de 5 m) : écrit comme un résultat (18,5 % max) |

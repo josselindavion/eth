@@ -199,8 +199,10 @@ Le `.inp` principal ne contient pas le maillage : il l'inclut par `*INCLUDE`, un
 
 | Étape | Outil | Entrée | Sortie |
 |---|---|---|---|
-| 1 | `scripts/cae/build_bench.py` (Abaqus/CAE, *File → Run Script*) | STEP de `cad/step/` | `SHPB_UT19.cae` (dossier de travail) **et** `model/geometry/_raw/SHPB_UT19_mesh.inp` |
-| 2 | `scripts/pre/inp_to_geo.py` (Python 3, sans Abaqus) | `model/geometry/_raw/SHPB_UT19_mesh.inp` | `model/geometry/<PIÈCE>.geo` (7 fichiers) |
+| 1 | `scripts/cae/build_bench.py` (Abaqus/CAE, *File → Run Script*, après avoir réglé `SPEC = 'UT19'` ou `'UT40'` ; ou `abaqus cae noGUI=build_bench.py -- UT40`) | STEP de `cad/step/` | `SHPB_<SPEC>.cae` (dossier de travail) **et** `model/geometry/_raw/SHPB_<SPEC>_mesh.inp` |
+| 2 | `scripts/pre/inp_to_geo.py <SPEC>` (Python 3, sans Abaqus) | `model/geometry/_raw/SHPB_<SPEC>_mesh.inp` | `model/geometry/<SPEC>/<PIÈCE>.geo` (7 fichiers) |
+
+**Un dossier de `.geo` par éprouvette** (`model/geometry/UT19/`, `model/geometry/UT40/`) : la barre de sortie et sa tête ne sont pas au même endroit selon la longueur de l'éprouvette (voir `docs/assembly.md`), donc `OUTPUT_BAR.geo` et `OUTPUT_HEAD.geo` diffèrent. `make_run.py` copie les 7 `.geo` du dossier de l'éprouvette du calcul.
 
 ```bash
 # depuis la racine du repo

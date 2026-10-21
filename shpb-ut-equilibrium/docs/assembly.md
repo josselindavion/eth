@@ -17,6 +17,31 @@ Repères :
 - UT19 : Y de 124.013 à 201.700, centrée dans les deux logements
 - STRIKER : Y de -11010 à -6010, en contact avec la barre d'entrée
 
+## Placement automatique de l'éprouvette (UT19, UT40)
+
+Depuis le 21/10/2026, `build_bench.py` calcule lui-même la position de l'éprouvette et celle de la barre de
+sortie à partir des sommets du fichier STEP de l'éprouvette (paramètre `SPEC`, tableau `SPECIMENS`). Hypothèse :
+toutes les éprouvettes ont les mêmes têtes (mêmes dents), donc s'emboîtent de la même façon dans les deux logements.
+
+| Grandeur | Règle | UT19 | UT40 (si 102,6875 mm de long, comme la NT20) |
+|---|---|---|---|
+| Rotation | +90° autour de Z : (x, y, z) → (−y, x, z), la longueur du STEP devient Y | | |
+| Translation X | centre de la largeur du STEP → X = 0 | 356.2728 | dépend du fichier |
+| Bout côté pusher | toujours en **Y = 201,7005** (le pusher ne bouge pas) | 201,7005 | 201,7005 |
+| Bout côté barre de sortie | 201,7005 − longueur | 124,013 | 99,013 |
+| Bout de la barre de sortie `Y_OUTPUT_BAR` | bout de l'éprouvette côté sortie + **31,700** | 155,713 | 130,713 |
+| Découpe tête / barre de sortie | `Y_OUTPUT_BAR` − 55,713 (tête de même longueur) | 100,000 | 75,000 |
+| Translation Z | fond de l'éprouvette sur Z = 28,6 (fond des logements) | 28,6 | 28,6 |
+| Jauge de sortie | `Y_OUTPUT_BAR` − 400 | −244,287 | −269,287 |
+
+Une éprouvette plus longue **recule la barre de sortie** d'autant. Contrôle : pour l'UT19, le script vérifie
+que le placement calculé est identique (à 0,001 mm près) au placement vérifié le 08/10/2026, et s'arrête sinon.
+Règles vérifiées hors Abaqus (OpenCascade) sur `XMas_UT_t1p5.step` : translation (356,2728 ; −1357,7622 ; 28,6),
+barre de sortie en 155,713, découpe en 100,000.
+
+**À vérifier sur le vrai fichier de l'UT40** : mêmes têtes que l'UT19 (sinon les deux constantes 201,7005 et
+31,700 ne s'appliquent pas), et absence de collision entre la tête de la barre de sortie reculée et le pusher.
+
 ## Demi-modèle (symétrie au plan X = 0)
 
 `build_bench.py` (paramètre `HALF_MODEL = True`) ne garde que la moitié **X ≥ 0** de chaque pièce,

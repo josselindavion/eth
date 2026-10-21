@@ -6,7 +6,7 @@ Pour chaque calcul (une ligne de studies/<etude>/cases.csv), le script :
   1. copie model/templates/SHPB_UT_main.inp  -> runs/<case_id>/<case_id>.inp
      et  model/templates/SHPB_UT_paras.inp -> runs/<case_id>/<case_id>_paras.inp
      en remplacant les jetons __SPEC__, __CASE_ID__, __V_STRIKER_MS__ ;
-  2. copie a cote les 7 maillages (model/geometry/*.geo)
+  2. copie a cote les 7 maillages de l'eprouvette (model/geometry/<SPEC>/*.geo, ecrits par inp_to_geo.py)
      et les materiaux (model/materials/*.dat).
 Le dossier est autonome : on peut le lancer tel quel, ou l'envoyer sur Euler.
 
@@ -39,11 +39,19 @@ Z_BARRE = RHO_BARRE * C_BARRE * A_BARRE_M2    # 12 242 N.s/m
 K_IMP = RHO_STRIKER * C_STRIKER / (RHO_STRIKER * C_STRIKER + RHO_BARRE * C_BARRE)   # 0,487
 
 # Par eprouvette : L_eff = longueur efficace (mm) qui relie l'allongement a la deformation de
-# l'extensometre ; F = force moyenne de l'eprouvette pendant l'essai (N). Calees sur l'etude
-# taskI_20261013-1127 (UT19 a 500 /s : 485 /s obtenus, F moyenne 6,4 a 6,8 kN).
+# l'extensometre ; F = force moyenne de l'eprouvette pendant l'essai (N) ; source = origine des valeurs
+# (reprise dans le rapport).
 SPECIMENS = {
-    'UT19': {'L_eff_mm': 12.7, 'F_N': 7000.0},
-    'UT40': None,                     # geometrie pas encore disponible
+    # Calees sur l'etude taskI_20261013-1127 (UT19 a 500 /s : 485 /s obtenus, F moyenne 6,4 a 6,8 kN)
+    'UT19': {'L_eff_mm': 12.7, 'F_N': 7000.0,
+             'source': 'calibrated on a first simulation at 500 s-1'},
+    # ESTIMATIONS en attendant la geometrie (partie utile 40 x 10 mm, Beerli 2026), a caler sur le
+    # premier calcul UT40 comme pour l'UT19 :
+    #   L_eff = 40 mm x (12,7 / 15) = 34 mm (meme rapport longueur efficace / partie droite que l'UT19)
+    #   F = 15 kN (section 10 x 1,5 = 15 mm2, deux fois l'UT19 -> deux fois sa force)
+    'UT40': {'L_eff_mm': 34.0, 'F_N': 15000.0,
+             'source': 'estimated from the UT19 values (same ratio L_eff / parallel length, force '
+                       'scaled with the cross-section), to be calibrated'},
 }
 
 # Duree simulee T_STEP, calculee pour chaque cas (on s'arrete juste apres les 30 %) :
@@ -69,7 +77,7 @@ MATERIALS = ['MARAGING', 'STRIKER_STEEL', 'DP1000']
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
 TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'model', 'templates')
-GEO_DIR = os.path.join(PROJECT_ROOT, 'model', 'geometry')
+GEO_ROOT = os.path.join(PROJECT_ROOT, 'model', 'geometry')     # un sous-dossier par eprouvette
 MAT_DIR = os.path.join(PROJECT_ROOT, 'model', 'materials')
 RUNS_DIR = os.path.join(PROJECT_ROOT, 'runs')
 CASES_CSV = os.path.join(PROJECT_ROOT, 'studies', STUDY, 'cases.csv')
@@ -123,7 +131,12 @@ def make_run(case):
         print('%-15s IGNORE : pas de parametres (SPECIMENS) pour %s' % (case_id, spec))
         return False
     needed_geo = BENCH_PIECES + [spec]
-    missing = [p + '.geo' for p in needed_geo if not os.path.exists(os.path.join(GEO_DIR, p + '.geo'))]
+    geo_dir = os.path.join(GEO_ROOT, spec)
+    if not os.path.isdir(geo_dir):
+        print('%-15s IGNORE : pas de maillage model/geometry/%s/ (build_bench.py avec SPEC = %s, '
+              'puis inp_to_geo.py %s)' % (case_id, spec, spec, spec))
+        return False
+    missing = [spec + '/' + p + '.geo' for p in needed_geo if not os.path.exists(os.path.join(geo_dir, p + '.geo'))]
     missing += [m + '.dat' for m in MATERIALS if not os.path.exists(os.path.join(MAT_DIR, m + '.dat'))]
     if missing:
         print('%-15s IGNORE : fichiers manquants : %s' % (case_id, ', '.join(missing)))
@@ -139,7 +152,7 @@ def make_run(case):
     with open(os.path.join(run_dir, case_id + '_paras.inp'), 'w') as f:
         f.write(fill('SHPB_UT_paras.inp', tokens))
     for p in needed_geo:
-        shutil.copy(os.path.join(GEO_DIR, p + '.geo'), run_dir)
+        shutil.copy(os.path.join(geo_dir, p + '.geo'), run_dir)
     for m in MATERIALS:
         shutil.copy(os.path.join(MAT_DIR, m + '.dat'), run_dir)
     print('%-15s %-5s %6.0f /s   V_striker = %6.2f m/s   T_STEP = %5.3f ms  %-34s -> %s'

@@ -88,6 +88,17 @@ Durée simulée = 1,234 ms (arrivée de l'onde au pusher) + 0,30 / vitesse de d�
 plafonnée à 1,234 + 2,119 + 0,3 ms. La marge est passée de 0,2 à 0,3 ms : à 500 /s, les 30 % étaient atteints
 à 1,995 ms pour 2,034 ms simulées.
 
+### UT40 : valeurs estimées en attendant la géométrie (21/10/2026)
+
+| Terme | UT40 | Raisonnement |
+|---|---|---|
+| L_eff | 34 mm | même rapport longueur efficace / partie droite que l'UT19 : 40 × 12,7 / 15 |
+| F | 15 kN | section 10 × 1,5 = 15 mm², deux fois celle de l'UT19, donc deux fois sa force (≈ 1 000 MPa) |
+| Vitesse du striker | 6,0 / 19,9 / 37,4 m/s à 100 / 500 / 1 000 /s | formule ci-dessus |
+| Onde incidente à 37,4 m/s | contrainte ≈ 0,487 × 37,4 × 8000 × 4871 ≈ 710 MPa dans les barres | élastique pour du maraging, mais **à confirmer : vitesse max du lanceur** |
+
+Les deux premières valeurs sont à recaler sur le premier calcul UT40, comme pour l'UT19.
+
 ## 5. Livrables de la Task I (`report_taskI.py`)
 
 ```
