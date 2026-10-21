@@ -8,7 +8,7 @@ The complete bench (5 m striker, 6.01 m input bar, load inversion device, output
 
 The simulated signals are processed as in the experiments. Forces and strain are low-pass filtered (4th-order Butterworth, 100 kHz cut-off, zero phase), the cut-off used for the output bar strain gauge signal in the laboratory. The axial force is taken in two cross-sections at both ends of the specimen parallel section (F_in on the load inversion device side, F_out on the output bar side) and, as in the experiment, from the strain gauge on the output bar (F = A E ε). The gauge signal is shifted in time by 400 mm / 4871 m/s = 82 µs to the specimen (no dispersion correction). The engineering strain is measured by a 12 mm virtual extensometer on the parallel section, equivalent to the DIC extensometer.
 
-Force equilibrium is quantified by R = (F_in - F_out) / F_mean with F_mean = (F_in + F_out) / 2. The specimen is considered in equilibrium when |R| < 5 %. The reported equilibrium strain is the strain from which |R| stays below this limit until 30 % strain (or until the end of loading). The achieved strain rate is the mean slope of the extensometer strain between 5 % and 25 %.
+Force equilibrium is quantified by R = (F_in - F_out) / F_mean with F_mean = (F_in + F_out) / 2. The specimen is considered in equilibrium when |R| < 5 %. The reported equilibrium strain is the strain from which |R| stays below this limit until 30 % strain (or until the end of loading). The achieved strain rate is the slope of the extensometer strain between 5 % strain and min(25 %, 0.8 x maximum strain), i.e. the strain gained in this interval divided by the time taken. The interval excludes the start-up transient (rise of the incident pulse, settling of the specimen shoulders in the pockets, build-up of the specimen force up to its maximum at about 5 % strain) and the end of the loading, so that it covers the established regime described by the striker velocity estimate (section 2). The complete strain rate history is given in F4.
 
 ## 2. Results
 
@@ -60,7 +60,7 @@ The force in the specimen itself is smooth, whereas the output bar gauge signal 
 
 ![F5](F5_striker_velocity.png)
 
-**Figure F5** - Striker velocity required for a given strain rate: estimate used to set up the simulations and simulated points.
+**Figure F5** - Striker velocity (vertical axis, setting of the test) required for a given strain rate (horizontal axis). Line: estimate used to set up the simulations. Dots: simulations, placed at the striker velocity imposed and at the strain rate achieved (slope between 5 % and 25 % strain, see section 1).
 
 The striker velocity is estimated from the elongation rate of the load inversion device, v ≈ 2 v_i - 2 F / (ρ c A), where v_i = 0.487 V_striker is the particle velocity of the incident wave and F the specimen force: the specimen force both slows the inverter and pushes the output bar. With an effective length of 12.7 mm and F = 7 kN for the UT19 specimen this gives V_striker = (ε̇ × 12.7 mm + 2F/ρcA) / (2 × 0.487). With the 5 m striker the loading pulse lasts 2.12 ms, so 30 % strain requires at least 0.30 / 2.12 ms ≈ 142 s⁻¹ (shaded region in F5).
 
