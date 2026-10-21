@@ -410,7 +410,7 @@ def write_report(study, rows, table, out):
              'reach an engineering strain of 30 %?\n')
 
     # ---------------------------------------------------------------- 1
-    L.append('## 1. Model and assumptions\n')
+    L.append('## Model and assumptions\n')
     L.append(md_table(['Item', 'Model'], [
         ['Bench', 'Ø20 mm steel striker (5 m), maraging input bar (6.01 m), load inversion device (pusher), '
                   'specimen and output bar (≈ 6 m), as in Beerli et al. (2026); virtual strain gauges at '
@@ -439,7 +439,7 @@ def write_report(study, rows, table, out):
     ]) + '\n')
 
     # ---------------------------------------------------------------- 2
-    L.append('## 2. Signal processing and definitions\n')
+    L.append('## Signal processing and definitions\n')
     L.append(
         'The simulated signals are processed as in the experiments. Forces and strain are low-pass filtered '
         '(4th-order Butterworth, %d kHz cut-off, zero phase), the cut-off used for the output bar strain gauge '
@@ -451,7 +451,7 @@ def write_report(study, rows, table, out):
         '(F_in on the load inversion device side, F_out on the output bar side). These exact forces are used '
         'to answer the equilibrium question. In the experiment only the strain gauge of the output bar is '
         'available (F = A E ε); its simulated signal is shifted in time by %.0f mm / %.0f m/s = %.0f µs to the '
-        'specimen (no dispersion correction) and used in section 4 only. The engineering strain is measured '
+        'specimen (no dispersion correction) and used only in the section "What the experiment will measure". The engineering strain is measured '
         'by a 12 mm virtual extensometer on the parallel section, equivalent to the DIC extensometer.\n'
         % (GAUGE_TO_SPEC_MM, C_BAR, 1e3 * GAUGE_TO_SPEC_MM / C_BAR))
     L.append(
@@ -465,19 +465,39 @@ def write_report(study, rows, table, out):
         'The interval excludes the start-up transient (rise of the incident pulse, settling of the specimen '
         'shoulders in the pockets, build-up of the specimen force up to its maximum at about 5 % strain) and the '
         'end of the loading, so that it covers the established regime described by the striker velocity '
-        'estimate (section 3.2). The complete strain rate history is given in F4 and other definitions in '
+        'estimate (section "Loading speeds"). The complete strain rate history is given in F4 and other definitions in '
         'Table T3.\n')
 
     # ---------------------------------------------------------------- 3
-    L.append('## 3. Task I answers\n')
+    L.append('## Task I answers\n')
     L.append('**Table T1** - Test conditions and indicators (`T1_conditions.csv`).\n')
     L.append(table + '\n')
     L.append('Striker velocities taken from: %s.\n' % ', '.join(v_note))
+    L.append(
+        'Columns of T1: *incident strain*: plateau of the strain measured by the virtual gauge on the input bar; '
+        '*achieved rate*: strain rate between 5 and 25 % strain (see above); *time to 30 %*: from the loading start; '
+        '*max strain reached*: at 30 % or at the end of the pulse; *max force* and *strain at max force*: exact '
+        'force in the input section; *equilibrium from strain* and *equilibrium after*: strain and time (from the '
+        'loading start) from which |R| < 5 % holds until the end of loading, empty if never; *max |R| after 5 %* '
+        'and *max |dF| after 5 %*: largest relative and absolute force difference between both ends of the '
+        'specimen after 5 % strain; *max gauge error after 5 %*: largest difference between the force given by '
+        'the output bar gauge and the exact specimen force, divided by the maximum force; *hourglass / internal '
+        'energy*: numerical check (section "Numerical quality").\n')
 
-    L.append('### 3.1 Force equilibrium\n')
+    L.append('### Force equilibrium\n')
     L.append('![F1](F1_equilibrium.png)\n')
-    L.append('**Figure F1** - Equilibrium ratio R (exact section forces, filtered) as a function of the '
-             'engineering strain. Shaded band: |R| < %d %%.\n' % tol)
+    L.append(
+        '**Figure F1 - Force equilibrium in the specimen.** '
+        '*Plotted:* the equilibrium ratio R = (F_in - F_out) / F_mean (vertical axis) against the engineering '
+        'strain of the specimen (horizontal axis), one curve per target rate. '
+        '*Where it comes from:* F_in and F_out are the exact axial forces in two cross-sections of the simulated '
+        'specimen, at both ends of its parallel section (F_in on the load inversion device side, F_out on the '
+        'output bar side), filtered at %d kHz; they are not measured by a strain gauge. The strain is given by the '
+        '12 mm virtual extensometer on the specimen. '
+        '*How to read it:* when a curve is inside the shaded band (|R| < %d %%), both ends of the specimen carry '
+        'the same force: the specimen is in equilibrium. The large values below about 2 %% strain come from the '
+        'start of loading (specimen shoulders settling in the pockets) and are cut at ±20 %%.\n'
+        % (FC_HZ / 1e3, tol))
     L.extend([case_sentence(r) for r in rows])
     L.append('')
     L.append(
@@ -497,11 +517,26 @@ def write_report(study, rows, table, out):
         [[r['case_id'], fmt(100 * r['eps_eq_raw'], '%.1f %%'), fmt(100 * r['eps_eq'], '%.1f %%'),
           pct(r['R_max_after5_raw'], 1), pct(r['R_max_after5'], 1)] for r in rows]) + '\n')
 
-    L.append('### 3.2 Loading speeds\n')
+    L.append('### Loading speeds\n')
     L.append('![F4](F4_strain_rate.png)\n')
-    L.append('**Figure F4** - Strain rate (extensometer) as a function of the engineering strain; dotted lines: '
-             'target rates; dots: force maximum.\n')
-    L.append('**Table T3** - Strain rate of each simulation with different definitions (s⁻¹).\n')
+    L.append(
+        '**Figure F4 - Strain rate in the specimen.** '
+        '*Plotted:* the strain rate (vertical axis, logarithmic scale) against the engineering strain (horizontal '
+        'axis), one curve per target rate; dotted horizontal lines: target rates; dots: force maximum (onset of '
+        'necking). '
+        '*Where it comes from:* time derivative of the strain of the 12 mm virtual extensometer on the specimen '
+        '(strain filtered at %d kHz before derivation). It is a kinematic quantity, equivalent to what DIC gives in '
+        'the experiment; it is not a force and has nothing to do with the output bar gauge. '
+        '*How to read it:* the curve should stay close to its dotted target line. Being a derivative, it amplifies '
+        'small vibrations of the specimen: the oscillations of about ±10 to 30 %% around the mean (period of about '
+        '10 to 20 µs at 1000 s⁻¹) are such vibrations; on the logarithmic scale the 100 s⁻¹ curve looks noisier '
+        'than it is. A curve that drops before 30 %% strain (100 s⁻¹, at about 18 %%) shows the end of the loading '
+        'pulse. Mean values are given in Table T3.\n' % (FC_HZ / 1e3))
+    L.append('**Table T3 - Strain rate of each simulation with different definitions (s⁻¹).** '
+             '*achieved*: strain gained between 5 and 25 % strain divided by the time taken (value used in T1 and '
+             'F5); *at force maximum*: value of the F4 curve at the dot; *nominal*: final strain divided by the '
+             'whole loading time (start-up included); *before / after force maximum*: range of the F4 curve '
+             'before and after the dot (10 % of the points are below the first value, 10 % above the second).\n')
     L.append(md_table(
         ['case', 'target', 'achieved (5-25 %)', 'at force maximum', 'nominal (ε_end / loading time)',
          'before force maximum (10th-90th percentile)', 'after force maximum (10th-90th percentile)'],
@@ -514,9 +549,15 @@ def write_report(study, rows, table, out):
         'i.e. during the uniform hardening phase, the strain rate is not yet stable at the higher rates '
         '(negative values: rebound of the specimen in the pockets).\n')
     L.append('![F5](F5_striker_velocity.png)\n')
-    L.append('**Figure F5** - Striker velocity (vertical axis, setting of the test) required for a given strain '
-             'rate (horizontal axis). Line: estimate used to set up the simulations. Dots: simulations, placed at '
-             'the striker velocity imposed and at the achieved strain rate (Table T3).\n')
+    L.append(
+        '**Figure F5 - Striker velocity required for a given strain rate.** '
+        '*Plotted:* the striker velocity (vertical axis), i.e. the setting of the test, against the strain rate '
+        'in the specimen (horizontal axis). Line: the estimate V_striker = (ε̇ × L_eff + 2F/ρcA) / (2 × %.3f) '
+        'explained below, used to choose the velocities of the simulations. Dots: the simulations, placed at the '
+        'striker velocity that was imposed and at the strain rate that was achieved (5-25 %% window, Table T3). '
+        'Shaded region: strain rates for which 30 %% strain cannot be reached with the 5 m striker. '
+        '*How to read it:* choose a strain rate on the horizontal axis and read the striker velocity on the line. '
+        'Dots lying on the line confirm the estimate.\n' % make_run.K_IMP)
     sp = make_run.SPECIMENS
     eff = '; '.join('L_eff = %.1f mm and F = %.0f kN for the %s' % (sp[s]['L_eff_mm'], sp[s]['F_N'] / 1e3, s)
                     for s in specs if sp.get(s))
@@ -547,16 +588,35 @@ def write_report(study, rows, table, out):
     L[-1] += '\n'
 
     # ---------------------------------------------------------------- 4
-    L.append('## 4. What the experiment will measure\n')
+    L.append('## What the experiment will measure\n')
     L.append('In the experiment the force is only known from the output bar gauge. Figures F2 and F3 compare '
              'this signal, as it would be recorded, with the exact force in the specimen.\n')
     for s in specs:
         L.append('![F2](F2_forces_%s.png)\n' % s)
-        L.append('**Figure F2 (%s)** - Forces at the specimen input and output sections and force measured by '
-                 'the output bar gauge, shifted to the specimen.\n' % s)
+        L.append(
+            '**Figure F2 (%s) - Forces in the specimen and force measured by the output bar gauge.** '
+            '*Plotted:* the axial force (vertical axis) against the time from the start of loading (horizontal '
+            'axis), one panel per target rate. Coloured solid line: exact force in the input section of the '
+            'specimen (F_in); coloured dashed line: exact force in the output section (F_out); black line: force '
+            'given by the virtual strain gauge on the output bar, as recorded in the experiment. '
+            '*Where it comes from:* the gauge force is the axial stress of the gauge elements times the bar '
+            'cross-section, shifted in time by %.0f µs (travel time of the wave over the %.0f mm between the '
+            'specimen and the gauge) so that it can be compared with the specimen forces; all signals are filtered '
+            'at %d kHz. '
+            '*How to read it:* when the two coloured lines overlap, the specimen is in equilibrium; the distance '
+            'between the black line and the coloured lines is the measurement error of the gauge.\n'
+            % (s, 1e3 * GAUGE_TO_SPEC_MM / C_BAR, GAUGE_TO_SPEC_MM, FC_HZ / 1e3))
     L.append('![F3](F3_stress_strain.png)\n')
-    L.append('**Figure F3** - Engineering stress-strain curves as they would be measured (output bar gauge / A0, '
-             'extensometer strain), compared with the exact force in the specimen output section (dotted).\n')
+    a0 = ', '.join('A0 = %.1f mm² for the %s' % (A0_MM2[s_], s_) for s_ in specs if A0_MM2.get(s_))
+    L.append(
+        '**Figure F3 - Engineering stress-strain curves.** '
+        '*Plotted:* engineering stress = force / initial cross-section of the parallel section (%s) on the '
+        'vertical axis, against the engineering strain of the 12 mm extensometer on the horizontal axis; one colour '
+        'per target rate. Solid line: force from the output bar gauge, i.e. the curve that the experiment will '
+        'give. Dotted line: exact force in the output section of the specimen. '
+        '*How to read it:* the gap between the solid and the dotted line of the same colour is the error of the '
+        'measured curve. As the simulated material is rate independent, the dotted curves of the three rates '
+        'coincide. The vertical axis is cut at 1600 MPa (spike of the gauge signal below 2 %% strain).\n' % a0)
     for r in rows:
         L.append('- %s, %d s⁻¹: maximum force %.2f kN at %s strain; the output bar gauge deviates from the '
                  'specimen force by up to %s of the maximum force after 5 %% strain.' % (
@@ -572,7 +632,7 @@ def write_report(study, rows, table, out):
         'the experiments.\n')
 
     # ---------------------------------------------------------------- 5
-    L.append('## 5. Numerical quality\n')
+    L.append('## Numerical quality\n')
     L.append(md_table(
         ['case', 'incident strain, simulated / theory', 'initial kinetic energy / ½ m V²',
          'total energy drift / initial energy', 'hourglass / internal energy'],
@@ -583,7 +643,7 @@ def write_report(study, rows, table, out):
              'usual 5 %% limit.\n' % make_run.K_IMP)
 
     # ---------------------------------------------------------------- 6
-    L.append('## 6. Limitations\n')
+    L.append('## Limitations\n')
     lim = [
         'Rate-independent specimen material: in the experiments the force level, and hence the required '
         'striker velocity (term 2F/ρcA), will increase with the strain rate.',
@@ -591,7 +651,8 @@ def write_report(study, rows, table, out):
         'force F.',
         'The output bar gauge signal is shifted, not corrected for dispersion; the exact reference of the '
         '400 mm gauge distance is to be confirmed (about 6 µs uncertainty).',
-        'The origin of the oscillations of the output bar gauge (section 4) is not identified yet.',
+        'The origin of the oscillations of the output bar gauge (section "What the experiment will measure") '
+        'is not identified yet.',
         'Assumed values: densities of the bars and of the striker, material of the pusher (maraging).',
     ]
     if 'UT40' not in specs:
@@ -599,7 +660,7 @@ def write_report(study, rows, table, out):
     L.append('\n'.join('- ' + x for x in lim) + '\n')
 
     # ---------------------------------------------------------------- 7
-    L.append('## 7. Conclusions\n')
+    L.append('## Conclusions\n')
     concl = []
     for r in rows:
         if r['reached_30']:
