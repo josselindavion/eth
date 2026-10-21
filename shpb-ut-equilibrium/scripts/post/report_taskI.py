@@ -142,7 +142,7 @@ def analyse(csv):
     i_eq_raw, _, _ = equilibrium(R_raw, valid_raw, eps, k0, i_end)
 
     plateau = win & (eps >= EPS_PLATEAU)
-    hi = min(0.25, 0.8 * eps[i_end])
+    hi = 0.8 * eps[i_end]                                       # eps_2 = 0,8 x deformation max
     rate_win = plateau & (eps <= hi)
     i5 = int(np.argmax(eps >= EPS_PLATEAU))
     iF = k0 + int(np.argmax(Fi[k0:i_end + 1]))
@@ -160,6 +160,7 @@ def analyse(csv):
         'incident_strain': np.median(inc[inc < 0.5 * inc.min()]),
         'incident_theory': -make_run.K_IMP * v / C_BAR,
         'achieved_rate': achieved,
+        'eps2': hi, 't1_ms': 1e3 * t[i5], 't2_ms': 1e3 * t[int(np.argmax(eps >= hi))],
         'rate_at_Fmax': rate_t[iF],
         'rate_nominal': eps[i_end] / (t[i_end] - t[k0]),
         'rate_pre_p10': np.percentile(rate_t[pre], 10), 'rate_pre_p90': np.percentile(rate_t[pre], 90),
@@ -434,8 +435,12 @@ def sci(x):
     return '$%s \\times 10^{%d}$' % (m, int(e))
 
 
+def label_long(r):
+    return '%s at %d s⁻¹' % (r['specimen'], r['target_rate'])
+
+
 def label(r):
-    return '%s, %d s⁻¹' % (r['specimen'], r['target_rate'])
+    return '%s / %d' % (r['specimen'], r['target_rate'])          # court : tient sur une ligne dans le PDF
 
 
 def eq_ok(r):
@@ -458,7 +463,7 @@ def needed_striker(r):
 
 
 def case_sentence(r):
-    s = '- **%s** (striker %.2f m/s): ' % (label(r), r['v_striker'])
+    s = '- **%s** (striker %.2f m/s): ' % (label_long(r), r['v_striker'])
     if eq_ok(r):
         s += ('equilibrium is established at %s strain, %.2f ms after the loading start, and holds until the end '
               'of the loading (max $\\lvert R\\rvert$ after 5 %% strain: %s).' % (
@@ -506,7 +511,7 @@ def write_report(study, rows, out):
 
     # ------------------------------------------------------------ conclusions d'abord
     P('## Summary')
-    P(md_table(['Case', 'Equilibrium ($\\lvert R\\rvert$ < %d %%)' % tol, 'Striker velocity', '30 % strain',
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Equilibrium ($\\lvert R\\rvert$ < %d %%)' % tol, 'Striker velocity', '30 % strain',
                 'Gauge error'],
                [[label(r), eq_short(r), '%.2f m/s' % r['v_striker'],
                  ('in %.2f ms' % r['time_to_30_ms']) if r['reached_30'] else 'no (%s max)' % pct(r['eps_max'], 1),
@@ -571,24 +576,36 @@ def write_report(study, rows, out):
     P('The specimen is considered in equilibrium when $\\lvert R\\rvert$ < %d %%. The *equilibrium strain* is the '
       'strain from which $\\lvert R\\rvert$ stays below this limit until 30 %% strain (or until the end of loading). '
       'The *loading start* is the first instant where $F_{in}$ exceeds 2 %% of its maximum.' % tol)
-    P('**Achieved strain rate.**')
+    P('**Achieved strain rate.** The strain rate varies during the test (F4). To give one value per simulation, it '
+      'is measured on the part of the test where the loading is established: the strain gained between two '
+      'instants divided by the time between them,')
     P('$$\n\\dot\\varepsilon = \\frac{\\varepsilon_2 - \\varepsilon_1}{t_2 - t_1}, \\qquad '
-      '\\varepsilon_1 = 5\\ \\%, \\quad \\varepsilon_2 = \\min(25\\ \\%,\\ 0.8\\,\\varepsilon_{max})\n$$')
-    P('i.e. the strain gained in this interval divided by the time taken. The interval excludes the start-up '
-      '(rise of the incident pulse, settling of the specimen shoulders in the pockets, build-up of the force up '
-      'to its maximum at about 5 % strain) and the end of the loading, so that it covers the established regime '
-      'described by the striker velocity estimate. The full history is shown in F4 and other definitions in T4.')
+      '\\varepsilon_1 = 5\\ \\%, \\qquad \\varepsilon_2 = 0.8\\,\\varepsilon_{max}\n$$')
+    ex = [r for r in rows if r['reached_30']]
+    ex = ex[0] if ex else rows[0]
+    P('where $t_1$ and $t_2$ are the instants at which the extensometer reaches $\\varepsilon_1$ and '
+      '$\\varepsilon_2$, and $\\varepsilon_{max}$ is the maximum strain of the test (30 %, or less if the loading '
+      'pulse ends before).')
+    P('- $\\varepsilon_1$ = 5 %: before, the loading is not established (rise of the incident pulse, specimen '
+      'shoulders settling in the pockets, force rising to its maximum, reached at about 5 % strain).\n'
+      '- $\\varepsilon_2$ = 80 % of the maximum strain: the end of the test is excluded, where the strain rate '
+      'drops when the pulse ends. This gives 24 % when 30 % is reached, and less otherwise (Table T4).')
+    P('Example (%s): the strain reaches 5 %% at $t_1$ = %.3f ms and %s at $t_2$ = %.3f ms, so '
+      '$\\dot\\varepsilon$ = (%.3f − 0.05) / (%.3f × 10⁻³ s) ≈ %.0f s⁻¹. The full history is shown in F4 and '
+      'other definitions in T4.' % (label_long(ex), ex['t1_ms'], pct(ex['eps2'], 1), ex['t2_ms'], ex['eps2'],
+                                   ex['t2_ms'] - ex['t1_ms'], ex['achieved_rate']))
 
     # ------------------------------------------------------------ resultats
     P('## Task I answers')
     P('**Table T1 – Test conditions.**')
-    P(md_table(['Case', 'Striker (m/s)', 'Incident strain', 'Achieved rate (s⁻¹)', '30 % strain', 'Max strain'],
-               [[label(r), '%.2f' % r['v_striker'], sci(r['incident_strain']), '%.0f' % r['achieved_rate'],
-                 ('in %.2f ms' % r['time_to_30_ms']) if r['reached_30'] else 'not reached',
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Striker velocity (m/s)', 'Achieved rate (s⁻¹)',
+                'Time to 30 % strain', 'Max strain'],
+               [[label(r), '%.2f' % r['v_striker'], '%.0f' % r['achieved_rate'],
+                 ('%.2f ms' % r['time_to_30_ms']) if r['reached_30'] else 'not reached',
                  pct(r['eps_max'], 1)] for r in rows]))
-    P('*Incident strain*: plateau of the strain on the input bar gauge. *30 % strain*: time from the loading '
-      'start. *Max strain*: at 30 % or at the end of the pulse. The complete table, with all indicators, is '
-      '`T1_conditions.csv`.')
+    P('*Striker velocity*: setting of the test. *Achieved rate*: see above. *Time to 30 % strain*: from the loading '
+      'start. *Max strain*: 30 %, or less if the loading pulse ends before. The complete table, with all '
+      'indicators, is `T1_conditions.csv`.')
 
     P('### Force equilibrium')
     figure('F1_equilibrium.png', 'Figure F1 – Force equilibrium in the specimen',
@@ -610,7 +627,7 @@ def write_report(study, rows, out):
                'before equilibrium the two forces differ (the first pulse is the specimen shoulders settling in the '
                'pockets); from the coloured line onwards they overlap.')
     P('**Table T2 – Equilibrium indicators.**')
-    P(md_table(['Case', 'Equilibrium from', 'Max $\\lvert R\\rvert$ after 5 %', 'Max $\\lvert\\Delta F\\rvert$ after 5 %',
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Equilibrium from', 'Max $\\lvert R\\rvert$ after 5 %', 'Max $\\lvert\\Delta F\\rvert$ after 5 %',
                 'Max force'],
                [[label(r),
                  ('%s (%.2f ms)' % (pct(r['eps_eq'], 1), r['t_eq_ms'])) if eq_ok(r) else
@@ -629,7 +646,7 @@ def write_report(study, rows, out):
       'therefore gives a larger ratio $R$ late in the test, which is why the absolute difference $\\Delta F$ is '
       'given as well.')
     P('**Table T3 – Effect of the %d kHz filter** (exact section forces).' % fc)
-    P(md_table(['Case', 'Equilibrium from (raw)', 'Equilibrium from (filtered)',
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Equilibrium from (raw)', 'Equilibrium from (filtered)',
                 'Max $\\lvert R\\rvert$ (raw)', 'Max $\\lvert R\\rvert$ (filtered)'],
                [[label(r), fmt(100 * r['eps_eq_raw'], '%.1f %%'), fmt(100 * r['eps_eq'], '%.1f %%'),
                  pct(r['R_max_after5_raw'], 1), pct(r['R_max_after5'], 1)] for r in rows]))
@@ -646,8 +663,9 @@ def write_report(study, rows, out):
            '100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain (100 s⁻¹, at about 18 %) '
            'shows the end of the loading pulse.')
     P('**Table T4 – Strain rate with different definitions** (s⁻¹).')
-    P(md_table(['Case', 'Achieved (5–25 %)', 'At max force', 'Nominal', 'Before max force', 'After max force'],
-               [[label(r), '%.0f' % r['achieved_rate'], '%.0f' % r['rate_at_Fmax'], '%.0f' % r['rate_nominal'],
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Achieved ($\\varepsilon_1 \\to \\varepsilon_2$)', 'At max force', 'Nominal', 'Before max force', 'After max force'],
+               [[label(r), '%.0f (5 → %.1f %%)' % (r['achieved_rate'], 100 * r['eps2']), '%.0f' % r['rate_at_Fmax'],
+                 '%.0f' % r['rate_nominal'],
                  '%.0f to %.0f' % (r['rate_pre_p10'], r['rate_pre_p90']),
                  '%.0f to %.0f' % (r['rate_post_p10'], r['rate_post_p90'])] for r in rows]))
     P('*Achieved*: definition above (used in T1 and F5). *At max force*: value of F4 at the dot. *Nominal*: final '
@@ -712,7 +730,7 @@ def write_report(study, rows, out):
            'As the material is rate independent, the dotted curves coincide. Axis cut at 1600 MPa (spike of the '
            'gauge signal below 2 % strain).')
     P('**Table T5 – Error of the output bar gauge.**')
-    P(md_table(['Case', 'Max force', 'Max gauge error after 5 %'],
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Max force', 'Max gauge error after 5 %'],
                [[label(r), '%.2f kN' % r['F_max_kN'], '%s of the max force' % pct(r['gauge_err_after5'], 1)]
                 for r in rows]))
     P('The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude that '
@@ -724,7 +742,7 @@ def write_report(study, rows, out):
     # ------------------------------------------------------------ qualite
     P('## Numerical quality')
     P('**Table T6 – Numerical checks.**')
-    P(md_table(['Case', 'Incident strain / theory', 'Kinetic energy / ½mV²', 'Energy drift',
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Incident strain / theory', 'Kinetic energy / ½mV²', 'Energy drift',
                 'Hourglass / internal energy'],
                [[label(r), '%.3f' % (r['incident_strain'] / r['incident_theory']), '%.3f' % r['ke0_ratio'],
                  pct(r['energy_drift'], 2), pct(r['hourglass'], 1)] for r in rows]))
@@ -754,7 +772,7 @@ def write_report(study, rows, out):
       'and gauge force (not shifted), $R$ and extensometer strain. Shaded: from the loading start to 30 % strain.')
     for r in rows:
         P('![%s](../%s/%s_overview.png)' % (r['case_id'], r['case_id'], r['case_id']))
-        P('*Control figure – %s.*' % label(r))
+        P('*Control figure – %s.*' % label_long(r))
 
     with open(os.path.join(out, 'report.md'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(L).rstrip() + '\n')

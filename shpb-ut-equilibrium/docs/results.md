@@ -59,7 +59,7 @@ $$
 **Vitesse de déformation obtenue** (une valeur par calcul) :
 
 $$
-\dot\varepsilon = \frac{\varepsilon_2 - \varepsilon_1}{t_2 - t_1}, \qquad \varepsilon_1 = 5\ \%, \qquad \varepsilon_2 = \min(25\ \%,\ 0{,}8\,\varepsilon_{max})
+\dot\varepsilon = \frac{\varepsilon_2 - \varepsilon_1}{t_2 - t_1}, \qquad \varepsilon_1 = 5\ \%, \qquad \varepsilon_2 = 0{,}8\,\varepsilon_{max}
 $$
 
 La vitesse n'est pas constante pendant l'essai : un chiffre unique doit dire sur quelle partie il est pris. Il sert
@@ -69,7 +69,7 @@ constante, force de l'éprouvette à peu près constante). La fenêtre couvre ce
 | Borne | Raison |
 |---|---|
 | 5 % | avant : démarrage (montée de l'impulsion ≈ 40–60 µs, épaulements qui se calent dans les logements avec rebond, force qui monte de 0 à son maximum). Le maximum de force est atteint vers 5 % (5,0 / 5,8 / 7,6 % à 500 / 100 / 1 000 /s) |
-| min(25 %, 0,8 × déformation max) | s'arrêter avant la fin de la fenêtre : 24 % quand 30 % sont atteints ; 14,8 % à 100 /s, où l'impulsion s'arrête à 18,5 % |
+| 0,8 × déformation max | s'arrêter avant la fin, où la vitesse retombe quand l'impulsion s'arrête : 24 % quand 30 % sont atteints ; 14,8 % à 100 /s, où l'impulsion s'arrête à 18,5 %. (Jusqu'au 21/10 la formule était min(25 %, 0,8 × déformation max), qui donne exactement les mêmes valeurs : la borne de 25 % ne servait jamais) |
 
 Les points étant équidistants en temps, c'est exactement la **déformation gagnée divisée par le temps mis**. Le
 rapport donne aussi d'autres définitions (valeur au maximum de force, valeur nominale = déformation finale / durée

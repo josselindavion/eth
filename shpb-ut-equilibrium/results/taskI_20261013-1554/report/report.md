@@ -9,11 +9,11 @@
 
 ## Summary
 
-| Case | Equilibrium ($\lvert R\rvert$ < 5 %) | Striker velocity | 30 % strain | Gauge error |
+| Specimen / target rate (s⁻¹) | Equilibrium ($\lvert R\rvert$ < 5 %) | Striker velocity | 30 % strain | Gauge error |
 |---|---|---|---|---|
-| UT19, 100 s⁻¹ | yes, from 0.9 % | 2.48 m/s | no (18.5 % max) | 3 % |
-| UT19, 500 s⁻¹ | yes, from 2.5 % | 7.69 m/s | in 0.63 ms | 15 % |
-| UT19, 1000 s⁻¹ | partial, 2.7 % to 13.7 % | 14.20 m/s | in 0.33 ms | 39 % |
+| UT19 / 100 | yes, from 0.9 % | 2.48 m/s | no (18.5 % max) | 3 % |
+| UT19 / 500 | yes, from 2.5 % | 7.69 m/s | in 0.63 ms | 15 % |
+| UT19 / 1000 | partial, 2.7 % to 13.7 % | 14.20 m/s | in 0.33 ms | 39 % |
 
 - Equilibrium is reached early and maintained at the lower rates. At the highest rate it is only partly reached; the largest differences occur late in the test, when the force decreases (necking).
 - The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, 30 % strain cannot be reached below about 142 s⁻¹.
@@ -63,25 +63,30 @@ $$
 
 The specimen is considered in equilibrium when $\lvert R\rvert$ < 5 %. The *equilibrium strain* is the strain from which $\lvert R\rvert$ stays below this limit until 30 % strain (or until the end of loading). The *loading start* is the first instant where $F_{in}$ exceeds 2 % of its maximum.
 
-**Achieved strain rate.**
+**Achieved strain rate.** The strain rate varies during the test (F4). To give one value per simulation, it is measured on the part of the test where the loading is established: the strain gained between two instants divided by the time between them,
 
 $$
-\dot\varepsilon = \frac{\varepsilon_2 - \varepsilon_1}{t_2 - t_1}, \qquad \varepsilon_1 = 5\ \%, \quad \varepsilon_2 = \min(25\ \%,\ 0.8\,\varepsilon_{max})
+\dot\varepsilon = \frac{\varepsilon_2 - \varepsilon_1}{t_2 - t_1}, \qquad \varepsilon_1 = 5\ \%, \qquad \varepsilon_2 = 0.8\,\varepsilon_{max}
 $$
 
-i.e. the strain gained in this interval divided by the time taken. The interval excludes the start-up (rise of the incident pulse, settling of the specimen shoulders in the pockets, build-up of the force up to its maximum at about 5 % strain) and the end of the loading, so that it covers the established regime described by the striker velocity estimate. The full history is shown in F4 and other definitions in T4.
+where $t_1$ and $t_2$ are the instants at which the extensometer reaches $\varepsilon_1$ and $\varepsilon_2$, and $\varepsilon_{max}$ is the maximum strain of the test (30 %, or less if the loading pulse ends before).
+
+- $\varepsilon_1$ = 5 %: before, the loading is not established (rise of the incident pulse, specimen shoulders settling in the pockets, force rising to its maximum, reached at about 5 % strain).
+- $\varepsilon_2$ = 80 % of the maximum strain: the end of the test is excluded, where the strain rate drops when the pulse ends. This gives 24 % when 30 % is reached, and less otherwise (Table T4).
+
+Example (UT19 at 500 s⁻¹): the strain reaches 5 % at $t_1$ = 1.523 ms and 24.0 % at $t_2$ = 1.872 ms, so $\dot\varepsilon$ = (0.240 − 0.05) / (0.349 × 10⁻³ s) ≈ 546 s⁻¹. The full history is shown in F4 and other definitions in T4.
 
 ## Task I answers
 
 **Table T1 – Test conditions.**
 
-| Case | Striker (m/s) | Incident strain | Achieved rate (s⁻¹) | 30 % strain | Max strain |
-|---|---|---|---|---|---|
-| UT19, 100 s⁻¹ | 2.48 | $-2.48 \times 10^{-4}$ | 105 | not reached | 18.5 % |
-| UT19, 500 s⁻¹ | 7.69 | $-7.69 \times 10^{-4}$ | 546 | in 0.63 ms | 30.0 % |
-| UT19, 1000 s⁻¹ | 14.20 | $-1.42 \times 10^{-3}$ | 1073 | in 0.33 ms | 30.1 % |
+| Specimen / target rate (s⁻¹) | Striker velocity (m/s) | Achieved rate (s⁻¹) | Time to 30 % strain | Max strain |
+|---|---|---|---|---|
+| UT19 / 100 | 2.48 | 105 | not reached | 18.5 % |
+| UT19 / 500 | 7.69 | 546 | 0.63 ms | 30.0 % |
+| UT19 / 1000 | 14.20 | 1073 | 0.33 ms | 30.1 % |
 
-*Incident strain*: plateau of the strain on the input bar gauge. *30 % strain*: time from the loading start. *Max strain*: at 30 % or at the end of the pulse. The complete table, with all indicators, is `T1_conditions.csv`.
+*Striker velocity*: setting of the test. *Achieved rate*: see above. *Time to 30 % strain*: from the loading start. *Max strain*: 30 %, or less if the loading pulse ends before. The complete table, with all indicators, is `T1_conditions.csv`.
 
 ### Force equilibrium
 
@@ -95,17 +100,17 @@ i.e. the strain gained in this interval divided by the time taken. The interval 
 
 **Table T2 – Equilibrium indicators.**
 
-| Case | Equilibrium from | Max $\lvert R\rvert$ after 5 % | Max $\lvert\Delta F\rvert$ after 5 % | Max force |
+| Specimen / target rate (s⁻¹) | Equilibrium from | Max $\lvert R\rvert$ after 5 % | Max $\lvert\Delta F\rvert$ after 5 % | Max force |
 |---|---|---|---|---|
-| UT19, 100 s⁻¹ | 0.9 % (0.29 ms) | 0.9 % | 0.05 kN | 7.50 kN at 5.8 % |
-| UT19, 500 s⁻¹ | 2.5 % (0.12 ms) | 3.8 % | 0.28 kN | 7.56 kN at 5.0 % |
-| UT19, 1000 s⁻¹ | 2.7 % to 13.7 % only | 13.2 % | 0.60 kN | 7.58 kN at 7.6 % |
+| UT19 / 100 | 0.9 % (0.29 ms) | 0.9 % | 0.05 kN | 7.50 kN at 5.8 % |
+| UT19 / 500 | 2.5 % (0.12 ms) | 3.8 % | 0.28 kN | 7.56 kN at 5.0 % |
+| UT19 / 1000 | 2.7 % to 13.7 % only | 13.2 % | 0.60 kN | 7.58 kN at 7.6 % |
 
 *Equilibrium from*: strain (and time after the loading start) from which $\lvert R\rvert$ < 5 % holds until the end of loading. $\Delta F = F_{in} - F_{out}$.
 
-- **UT19, 100 s⁻¹** (striker 2.48 m/s): equilibrium is established at 0.9 % strain, 0.29 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 0.9 %).
-- **UT19, 500 s⁻¹** (striker 7.69 m/s): equilibrium is established at 2.5 % strain, 0.12 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 3.8 %).
-- **UT19, 1000 s⁻¹** (striker 14.20 m/s): equilibrium is **only partly reached**: $\lvert R\rvert$ < 5 % from 2.7 % to 13.7 % strain, but it reaches 13.2 % at other instants after 5 % strain ($\lvert F_{in} - F_{out}\rvert$ up to 0.60 kN, i.e. 8.0 % of the maximum force).
+- **UT19 at 100 s⁻¹** (striker 2.48 m/s): equilibrium is established at 0.9 % strain, 0.29 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 0.9 %).
+- **UT19 at 500 s⁻¹** (striker 7.69 m/s): equilibrium is established at 2.5 % strain, 0.12 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 3.8 %).
+- **UT19 at 1000 s⁻¹** (striker 14.20 m/s): equilibrium is **only partly reached**: $\lvert R\rvert$ < 5 % from 2.7 % to 13.7 % strain, but it reaches 13.2 % at other instants after 5 % strain ($\lvert F_{in} - F_{out}\rvert$ up to 0.60 kN, i.e. 8.0 % of the maximum force).
 
 In all cases the first few tens of microseconds show a short force pulse followed by a drop to zero before continuous loading starts (F1b). This is most likely the impact of the specimen shoulders in the pockets, the specimen being inserted without pre-load.
 
@@ -113,11 +118,11 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 **Table T3 – Effect of the 100 kHz filter** (exact section forces).
 
-| Case | Equilibrium from (raw) | Equilibrium from (filtered) | Max $\lvert R\rvert$ (raw) | Max $\lvert R\rvert$ (filtered) |
+| Specimen / target rate (s⁻¹) | Equilibrium from (raw) | Equilibrium from (filtered) | Max $\lvert R\rvert$ (raw) | Max $\lvert R\rvert$ (filtered) |
 |---|---|---|---|---|
-| UT19, 100 s⁻¹ | 0.9 % | 0.9 % | 1.1 % | 0.9 % |
-| UT19, 500 s⁻¹ | 10.0 % | 2.5 % | 5.5 % | 3.8 % |
-| UT19, 1000 s⁻¹ | n/a | n/a | 15.5 % | 13.2 % |
+| UT19 / 100 | 0.9 % | 0.9 % | 1.1 % | 0.9 % |
+| UT19 / 500 | 10.0 % | 2.5 % | 5.5 % | 3.8 % |
+| UT19 / 1000 | n/a | n/a | 15.5 % | 13.2 % |
 
 *Raw*: forces as written by Abaqus (one point per µs). Max $\lvert R\rvert$ after 5 % strain.
 
@@ -129,11 +134,11 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 **Table T4 – Strain rate with different definitions** (s⁻¹).
 
-| Case | Achieved (5–25 %) | At max force | Nominal | Before max force | After max force |
+| Specimen / target rate (s⁻¹) | Achieved ($\varepsilon_1 \to \varepsilon_2$) | At max force | Nominal | Before max force | After max force |
 |---|---|---|---|---|---|
-| UT19, 100 s⁻¹ | 105 | 100 | 87 | 51 to 120 | 63 to 124 |
-| UT19, 500 s⁻¹ | 546 | 516 | 475 | -147 to 531 | 481 to 606 |
-| UT19, 1000 s⁻¹ | 1073 | 1010 | 915 | -114 to 1201 | 880 to 1282 |
+| UT19 / 100 | 105 (5 → 14.8 %) | 100 | 87 | 51 to 120 | 63 to 124 |
+| UT19 / 500 | 546 (5 → 24.0 %) | 516 | 475 | -147 to 531 | 481 to 606 |
+| UT19 / 1000 | 1073 (5 → 24.1 %) | 1010 | 915 | -114 to 1201 | 880 to 1282 |
 
 *Achieved*: definition above (used in T1 and F5). *At max force*: value of F4 at the dot. *Nominal*: final strain divided by the whole loading time, start-up included. *Before / after max force*: range of the F4 curve before and after the dot (10th to 90th percentile).
 
@@ -175,11 +180,11 @@ In the experiment the force is only known from the output bar gauge. F2 and F3 c
 
 **Table T5 – Error of the output bar gauge.**
 
-| Case | Max force | Max gauge error after 5 % |
+| Specimen / target rate (s⁻¹) | Max force | Max gauge error after 5 % |
 |---|---|---|
-| UT19, 100 s⁻¹ | 7.50 kN | 3.1 % of the max force |
-| UT19, 500 s⁻¹ | 7.56 kN | 15.0 % of the max force |
-| UT19, 1000 s⁻¹ | 7.58 kN | 38.9 % of the max force |
+| UT19 / 100 | 7.50 kN | 3.1 % of the max force |
+| UT19 / 500 | 7.56 kN | 15.0 % of the max force |
+| UT19 / 1000 | 7.58 kN | 38.9 % of the max force |
 
 The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude that grows with the loading speed. An oscillating measured curve therefore does not mean that the specimen is out of equilibrium. The origin of these oscillations is not identified yet: they appear between the specimen and the gauge and may come from the clamping head of the output bar or from its modelling (tetrahedral mesh tied to the bar). This must be checked before comparing with the experiments.
 
@@ -187,11 +192,11 @@ The force in the specimen is smooth, whereas the gauge signal oscillates around 
 
 **Table T6 – Numerical checks.**
 
-| Case | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal energy |
+| Specimen / target rate (s⁻¹) | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal energy |
 |---|---|---|---|---|
-| UT19, 100 s⁻¹ | 1.000 | 0.994 | 0.00 % | 0.4 % |
-| UT19, 500 s⁻¹ | 1.000 | 0.994 | 0.00 % | 0.5 % |
-| UT19, 1000 s⁻¹ | 1.000 | 0.994 | 0.00 % | 0.2 % |
+| UT19 / 100 | 1.000 | 0.994 | 0.00 % | 0.4 % |
+| UT19 / 500 | 1.000 | 0.994 | 0.00 % | 0.5 % |
+| UT19 / 1000 | 1.000 | 0.994 | 0.00 % | 0.2 % |
 
 Theory: incident strain $= K\,V_{striker}/c$; initial kinetic energy $\tfrac12 m V^2$ with the nominal striker mass (the small difference comes from the faceted mesh of the cylinder). The hourglass energy stays well below the usual 5 % limit.
 
@@ -210,12 +215,12 @@ One figure per simulation, unfiltered signals over the whole simulated time: bar
 
 ![UT19_R0100_00](../UT19_R0100_00/UT19_R0100_00_overview.png)
 
-*Control figure – UT19, 100 s⁻¹.*
+*Control figure – UT19 at 100 s⁻¹.*
 
 ![UT19_R0500_00](../UT19_R0500_00/UT19_R0500_00_overview.png)
 
-*Control figure – UT19, 500 s⁻¹.*
+*Control figure – UT19 at 500 s⁻¹.*
 
 ![UT19_R1000_00](../UT19_R1000_00/UT19_R1000_00_overview.png)
 
-*Control figure – UT19, 1000 s⁻¹.*
+*Control figure – UT19 at 1000 s⁻¹.*
