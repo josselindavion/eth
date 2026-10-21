@@ -30,6 +30,7 @@ Colonnes de `<case>_history.csv` (demi-modèle : forces et énergies déjà mult
 | Étape | Choix | Pourquoi |
 |---|---|---|
 | Filtre | passe-bas Butterworth d'ordre 4, coupure **100 kHz**, sans déphasage (`filtfilt`), appliqué aux forces et à la déformation **avant** de calculer $R$ | le labo filtre la jauge de sortie à 100 kHz (Roth et al. 2015). Abaqus écrit un point par µs avec des vibrations de quelques µs que l'essai ne peut pas voir |
+| Jauge virtuelle | **comme au labo : moyenne d'une jauge en haut et d'une jauge en bas de la barre** (éléments de surface de la tranche, près du plan de symétrie), ce qui annule la flexion. Depuis le 21/10/2026 ; avant : moyenne simple de toute la tranche | la barre de sortie fléchit (charge excentrée) : jusqu'à ±10 MPa entre le haut et le bas à 1 000 /s. Diagnostic : la moyenne simple, la moyenne pondérée et la paire donnent la même force (écart < 0,5 %) |
 | Force « mesurée » | $F_{jauge}(t) = A\,E\,\varepsilon_{jauge}(t + \Delta t)$, $\Delta t$ = 400 mm / 4871 m/s = 82 µs | comme Beerli et al. (2026, fig. 5c) : force de la jauge « ramenée » à l'éprouvette, sans correction de dispersion |
 | Déformation | extensomètre virtuel : 12 mm (UT19), 30 mm (UT40) | équivalent de la corrélation d'images |
 
@@ -125,3 +126,18 @@ soit 3,65 / 2,13 / 1,83 ms à 100 / 500 / 1 000 /s. Une colonne `t_step_ms` dans
 | `taskI_20261012-1811` | premier lancement, 4 ms simulées | le pusher bascule sous la charge excentrée → guidages (U3 = 0) |
 | `taskI_20261013-1127` | guidages ; striker $V = \dot\varepsilon \times$ 15 mm | 100 /s ne donne que 21 /s → formule avec la force de l'éprouvette |
 | `taskI_20261013-1554` | nouvelle formule, durée par cas | 105 / 546 / 1 073 /s ; résultats dans `results/taskI_20261013-1554/` |
+
+---
+
+## 6. Diagnostic des oscillations de la jauge de sortie
+
+| Outil | Ce qu'il fait |
+|---|---|
+| `scripts/post/diag_gauge.py <calcul>` (Python d'Abaqus, sur un `.odb`) | compare trois lectures de la jauge (moyenne simple, moyenne pondérée, paire haut + bas) et la flexion |
+| étude `studies/diag/` (`probes = 1`) | calcul avec des **sondes** : force à travers 5 tranches du chemin tête de sortie → collage → barre |
+| `scripts/post/plot_probes.py <calcul>` | trace la force à chaque sonde contre la vraie force de l'éprouvette, et l'écart à chaque endroit |
+
+Sondes (positions définies dans `make_run.py`, `PROBES`) : `HEAD_MID` (tête, 14 mm au-dessus du collage),
+`HEAD_TIE` (tête, 4 mm au-dessus), `BAR_TIE` (barre, première couche sous le collage), `BAR_100` et `BAR_250`
+(barre, à 100 et 250 mm du bout). Force d'une tranche = somme de S22 × volume des éléments / épaisseur
+(une couche d'hexaèdres dans la barre ; une tranche de 5 mm de tétraèdres dans la tête).

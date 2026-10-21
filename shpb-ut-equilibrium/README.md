@@ -61,6 +61,8 @@ shpb-ut-equilibrium/
 | `scripts/hpc/run_array.sh` | script Slurm : un calcul Abaqus par tâche | lancé par `submit_study.py` |
 | `scripts/hpc/fetch_study.py` | sur Euler : extraction (`extract_study.sh` → `extract_history.py`), puis copie sur le PC | après les calculs |
 | `scripts/post/report_taskI.py` | rapport, tableau, figures, et une figure de contrôle par calcul | après `fetch_study.py` |
+| `scripts/post/plot_probes.py` | diagnostic : force le long de la barre de sortie (calculs avec sondes) | étude `diag` |
+| `scripts/post/diag_gauge.py` | diagnostic : lecture de la jauge de sortie (moyenne, flexion) sur un `.odb` | ponctuel |
 
 ---
 
@@ -108,6 +110,7 @@ Détails : `docs/assembly.md` (placement), `docs/mesh.md` (maillage), `docs/mate
 | `specimen` | `UT19` | éprouvette (le dossier `model/geometry/<éprouvette>/` doit exister) |
 | `strain_rate` | `500` | vitesse de déformation visée (/s) : `make_run.py` en déduit la vitesse du striker et la durée simulée |
 | `t_step_ms` (optionnelle) | `2.5` | impose la durée simulée (ms) |
+| `probes` (optionnelle) | `1` | ajoute des sondes de force le long de la barre de sortie (diagnostic, étude `studies/diag/`) |
 
 Un calcul dont le maillage n'existe pas encore (UT40 aujourd'hui) est ignoré, avec un message.
 
@@ -144,7 +147,8 @@ py shpb-ut-equilibrium/scripts/hpc/fetch_study.py <étude> --clean
   `results/<étude>/` ;
 - `--clean` supprime sur Euler les fichiers de reprise d'Abaqus (les `.odb` restent) ;
 - `--odb <calcul>` (ou `--odb all`) copie aussi les `.odb` (≈ 0,7 Go chacun) pour Abaqus/Viewer ;
-- on peut relancer la commande autant de fois que voulu : les calculs déjà extraits ne sont pas refaits.
+- on peut relancer la commande autant de fois que voulu : les calculs déjà extraits ne sont pas refaits ;
+- `--force` ré-extrait quand même (après une modification de `extract_history.py`).
 
 **b) Rapport et figures** :
 ```

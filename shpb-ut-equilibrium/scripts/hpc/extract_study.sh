@@ -5,18 +5,25 @@
 # legers dans une archive a rapatrier.
 # ============================================================================
 # Normalement appele par scripts/hpc/fetch_study.py (depuis ton PC) :
-#     bash ~/eth/shpb-ut-equilibrium/scripts/hpc/extract_study.sh $SCRATCH/taskI_20261013-1127 [--clean]
+#     bash ~/eth/shpb-ut-equilibrium/scripts/hpc/extract_study.sh $SCRATCH/<etude> [--clean] [--force]
 #
 # Pour chaque calcul TERMINE (THE ANALYSIS HAS COMPLETED SUCCESSFULLY dans le .sta) :
 #   - abaqus python extract_history.py  ->  <case>_history.csv + <case>_inventory.txt
 #   - avec --clean : supprime les fichiers de reprise / temporaires d'Abaqus
 #     (.res .abq .pac .sel .stt .mdl .prt .com .par .pes .pmg .ipm .lck),
 #     qui ne servent qu'a relancer un calcul interrompu. Le .odb est GARDE.
-# Un calcul deja extrait (CSV plus recent que le .odb) n'est pas re-extrait.
+# Un calcul deja extrait (CSV plus recent que le .odb) n'est pas re-extrait, sauf avec --force
+# (apres une modification de extract_history.py).
 # Puis cree <etude>/<etude>_results.tgz : CSV, inventaires, parametres (_paras.inp), .sta, .msg.
 # ============================================================================
 STUDY_DIR=${1%/}
-CLEAN=$2
+shift
+CLEAN=""
+FORCE=""
+for a in "$@"; do
+    [ "$a" == "--clean" ] && CLEAN="--clean"
+    [ "$a" == "--force" ] && FORCE="--force"     # re-extraire meme si le CSV existe deja
+done
 HERE=$(cd "$(dirname "$0")" && pwd)
 EXTRACT="$HERE/../post/extract_history.py"
 
@@ -34,7 +41,7 @@ for d in */; do
         echo "$c : calcul pas termine (ou en echec), ignore"
         continue
     fi
-    if [ "$c/${c}_history.csv" -nt "$c/$c.odb" ]; then
+    if [ -z "$FORCE" ] && [ "$c/${c}_history.csv" -nt "$c/$c.odb" ]; then
         echo "$c : deja extrait"
     else
         (cd "$c" && abaqus python "$EXTRACT" "$PWD" 2>&1 | grep -v -i "^abaqus license\|^<\|checked out")

@@ -39,6 +39,8 @@ SHPB avec inverseur de charge (LID) -- eprouvette __SPEC__ -- calcul __CASE_ID__
 *INCLUDE, INPUT=__SPEC__.geo
 *INCLUDE, INPUT=OUTPUT_BAR.geo
 *INCLUDE, INPUT=OUTPUT_HEAD.geo
+** Groupes des sondes de force (seulement si probes = 1 dans cases.csv)
+__PROBE_SETS__
 **
 ** ==========================================================================
 ** 2. MATERIAUX  (generes par scripts/pre/make_materials.py)
@@ -234,6 +236,8 @@ S
 LE22, S22
 *ELEMENT OUTPUT, ELSET=OUTPUT_BAR_GAUGE_OUT
 LE22, S22
+** Sondes de force le long de la barre de sortie (seulement si probes = 1 dans cases.csv)
+__PROBE_OUT__
 ** Forces a travers les deux sections de l'eprouvette (equilibre)
 *INTEGRATED OUTPUT, SECTION=SECTION_IN
 SOF

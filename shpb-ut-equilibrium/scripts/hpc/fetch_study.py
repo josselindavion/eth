@@ -7,6 +7,7 @@ Depuis ton PC (Python 3, racine du repo) :
     python shpb-ut-equilibrium/scripts/hpc/fetch_study.py taskI_20261013-1554 --clean
     python shpb-ut-equilibrium/scripts/hpc/fetch_study.py taskI_20261013-1554 --odb UT19_R0500_00
     python shpb-ut-equilibrium/scripts/hpc/fetch_study.py taskI_20261013-1554 --odb all
+    python shpb-ut-equilibrium/scripts/hpc/fetch_study.py taskI_20261013-1554 --force   (re-extraire)
 
 Etapes :
   1. sur Euler (ssh, mot de passe) : git pull, puis scripts/hpc/extract_study.sh :
@@ -51,6 +52,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
     ap.add_argument('study', help='dossier de l etude sur Euler, ex. taskI_20261013-1127')
     ap.add_argument('--clean', action='store_true', help='supprime aussi les fichiers de reprise sur Euler')
+    ap.add_argument('--force', action='store_true',
+                    help='re-extrait les courbes meme si elles existent (apres une modif de extract_history.py)')
     ap.add_argument('--odb', metavar='CASE', help='copie aussi le .odb de ce calcul (all : tous)')
     args = ap.parse_args()
 
@@ -60,8 +63,9 @@ def main():
     os.makedirs(local, exist_ok=True)
 
     print('1. Extraction sur Euler (mot de passe ETH demande)')
-    remote = ("bash -lc 'module load eth_proxy >/dev/null 2>&1; git -C %s pull -q; bash %s %s %s'"
-              % (REMOTE_REPO, EXTRACT_SCRIPT, remote_dir, '--clean' if args.clean else ''))
+    remote = ("bash -lc 'module load eth_proxy >/dev/null 2>&1; git -C %s pull -q; bash %s %s %s %s'"
+              % (REMOTE_REPO, EXTRACT_SCRIPT, remote_dir, '--clean' if args.clean else '',
+                 '--force' if args.force else ''))
     run(['ssh', host, remote])
 
     print('2. Copie des resultats sur le PC (mot de passe ETH demande)')

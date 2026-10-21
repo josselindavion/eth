@@ -67,6 +67,20 @@ T_IMPULSION_MS = 2.0 * 5000.0 / 4720.0
 MARGE_MS = 0.3                        # ms : montee de l'impulsion + retard de la mise en charge
                                       # (0,2 ms etait trop juste : 30 % a 1,995 ms pour 2,034 ms simulees)
 
+# Sondes de force le long de la barre de sortie (colonne optionnelle 'probes' = 1 dans cases.csv) :
+# tranches de 5 mm d'elements dont on sort S22 ; extract_history.py en deduit la force qui traverse
+# chaque tranche (somme de S22 x volume / epaisseur). Sert a localiser l'origine des oscillations
+# de la jauge de sortie. Positions en mm, comptees depuis le bout de la barre de sortie (cote eprouvette)
+# ou depuis le plan de collage tete / barre (piece, reference, decalage) :
+PROBE_THICKNESS = 5.0
+PROBES = [
+    ('HEAD_MID', 'OUTPUT_HEAD', 'tie', +14.0),     # dans la tete, entre le collage et le logement
+    ('HEAD_TIE', 'OUTPUT_HEAD', 'tie', +4.0),      # dans la tete, juste au-dessus du collage
+    ('BAR_TIE', 'OUTPUT_BAR', 'tie', -2.5),        # dans la barre, juste sous le collage (1 couche)
+    ('BAR_100', 'OUTPUT_BAR', 'end', -100.0),      # dans la barre, a 100 mm du bout
+    ('BAR_250', 'OUTPUT_BAR', 'end', -250.0),      # dans la barre, a 250 mm du bout
+]
+
 # Pieces communes a toutes les eprouvettes (+ la piece de l'eprouvette elle-meme)
 BENCH_PIECES = ['STRIKER', 'INPUT_BAR', 'PUSHER_ROD', 'PUSHER_HEAD', 'OUTPUT_BAR', 'OUTPUT_HEAD']
 MATERIALS = ['MARAGING', 'STRIKER_STEEL', 'DP1000']
@@ -101,6 +115,59 @@ def fill(template_name, tokens):
         sys.exit('Chevrons < ou > dans un commentaire de %s, lignes %s : a retirer'
                  % (template_name, ', '.join(str(i) for i in bad)))
     return text
+
+
+def read_geo(path):
+    """Noeuds {label: (x, y, z)} et elements [(label, [noeuds])] d'un fichier .geo."""
+    nodes, elems, mode = {}, [], None
+    with open(path) as f:
+        for line in f:
+            if line.startswith('**'):
+                continue
+            if line.startswith('*'):
+                kw = line[1:].split(',')[0].strip().lower()
+                mode = kw if kw in ('node', 'element') else None
+                continue
+            v = [x for x in line.replace(' ', '').strip().split(',') if x]
+            if mode == 'node':
+                nodes[int(v[0])] = (float(v[1]), float(v[2]), float(v[3]))
+            elif mode == 'element':
+                elems.append((int(v[0]), [int(x) for x in v[1:]]))
+    return nodes, elems
+
+
+def write_probes(geo_dir, run_dir, case_id):
+    """Ecrit <case>_probe_sets.inp (groupes PROBE_*) et <case>_probe_out.inp (sorties S22)."""
+    head_nodes, _ = read_geo(os.path.join(geo_dir, 'OUTPUT_HEAD.geo'))
+    ys = [c[1] for c in head_nodes.values()]
+    ref = {'end': max(ys), 'tie': min(ys)}         # bout de la barre de sortie, plan de collage
+    meshes = {}
+    sets, outs, info = ['** Sondes de force -- genere par make_run.py'], ['** Sorties des sondes'], []
+    for name, piece, where, dy in PROBES:
+        if piece not in meshes:
+            meshes[piece] = read_geo(os.path.join(geo_dir, piece + '.geo'))
+        nodes, elems = meshes[piece]
+        yc = ref[where] + dy
+        cent = []
+        for lab, conn in elems:
+            corners = conn[:8] if len(conn) in (8, 20) else conn[:4]
+            cent.append((lab, len(corners), sum(nodes[n][1] for n in corners) / len(corners)))
+        if all(k == 8 for _, k, _ in cent):
+            # hexaedres balayes : exactement UNE couche d'elements, celle dont le centre est le plus proche
+            y_best = min((abs(y - yc), y) for _, _, y in cent)[1]
+            labels = [lab for lab, _, y in cent if abs(y - y_best) < 1.0e-3]
+        else:
+            # tetraedres : tous les elements dont le centre est dans une tranche de 5 mm
+            labels = [lab for lab, _, y in cent if abs(y - yc) <= 0.5 * PROBE_THICKNESS]
+        sets.append('*ELSET, ELSET=PROBE_%s' % name)
+        sets += [', '.join(str(l) for l in labels[i:i + 16]) for i in range(0, len(labels), 16)]
+        outs += ['*ELEMENT OUTPUT, ELSET=PROBE_%s' % name, 'S22']
+        info.append('%s Y=%.2f (%d el.)' % (name, yc, len(labels)))
+    with open(os.path.join(run_dir, case_id + '_probe_sets.inp'), 'w') as f:
+        f.write('\n'.join(sets) + '\n')
+    with open(os.path.join(run_dir, case_id + '_probe_out.inp'), 'w') as f:
+        f.write('\n'.join(outs) + '\n')
+    return ', '.join(info)
 
 
 def striker_velocity(spec, rate):
@@ -146,7 +213,13 @@ def make_run(case):
     os.makedirs(run_dir, exist_ok=True)
     t_ms, note = step_time_ms(rate, case)
     tokens = {'SPEC': spec, 'CASE_ID': case_id, 'V_STRIKER_MS': '%.4g' % v,
-              'T_STEP': '%.4e' % (t_ms * 1.0e-3)}
+              'T_STEP': '%.4e' % (t_ms * 1.0e-3),
+              'PROBE_SETS': '** (pas de sondes)', 'PROBE_OUT': '** (pas de sondes)'}
+    probes = (case.get('probes') or '').strip() not in ('', '0')
+    if probes:
+        tokens['PROBE_SETS'] = '*INCLUDE, INPUT=%s_probe_sets.inp' % case_id
+        tokens['PROBE_OUT'] = '*INCLUDE, INPUT=%s_probe_out.inp' % case_id
+        note = (note + ' ; ' if note else '') + 'sondes : ' + write_probes(geo_dir, run_dir, case_id)
     with open(os.path.join(run_dir, case_id + '.inp'), 'w') as f:
         f.write(fill('SHPB_UT_main.inp', tokens))
     with open(os.path.join(run_dir, case_id + '_paras.inp'), 'w') as f:
