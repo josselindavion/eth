@@ -13,6 +13,12 @@ Outcome expected by the end of the day, stated in one verifiable sentence.
 
 Steps carried out in chronological order, with the parameters, files and commands used, followed by observations, intermediate results and open questions.
 
+Every step and every problem is illustrated (screenshot, photo, curve), saved in `figures/${FOAM_DATE_YEAR}-${FOAM_DATE_MONTH}-${FOAM_DATE_DATE}/` and shown with a caption that says what is seen:
+
+![Short description](figures/${FOAM_DATE_YEAR}-${FOAM_DATE_MONTH}-${FOAM_DATE_DATE}/name.png)
+
+*What is shown, where it comes from, what to notice.*
+
 ## Next Steps
 
 - First action to take when work resumes.
