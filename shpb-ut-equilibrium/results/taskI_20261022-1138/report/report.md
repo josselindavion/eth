@@ -96,7 +96,7 @@ Example (UT19 at 500 s⁻¹): the strain reaches 5 % at $t_1$ = 1.424 ms and 24.
 
 ![Figure F1b (UT19) – Onset of equilibrium](F1b_equilibrium_onset_UT19.png)
 
-**Figure F1b (UT19) – Onset of equilibrium.** *Plotted:* the exact forces $F_{in}$ (coloured solid line) and $F_{out}$ (black dashed line) against the time from the loading start, one panel per target rate, until shortly after equilibrium is reached (and at least 5 % strain). Dotted vertical lines: instants at which the strain reaches 1, 2 and 5 %; coloured vertical line: instant from which $\lvert R\rvert$ < 5 % (for a partial equilibrium: start of the longest interval). *Source:* same filtered forces as F1. *How to read it:* from the coloured line onwards the two forces overlap; the force rises smoothly from zero.
+**Figure F1b (UT19) – Onset of equilibrium.** *Plotted:* the exact forces $F_{in}$ (coloured solid line) and $F_{out}$ (black dashed line) against the time from the loading start, one panel per target rate, until shortly after equilibrium is reached (and at least 5 % strain). Dotted vertical lines: instants at which the strain reaches 1, 2 and 5 %; coloured vertical line: instant from which $\lvert R\rvert$ < 5 % (for a partial equilibrium: start of the longest interval); no line when equilibrium holds from the first point checked. Grey band: start of loading where $R$ is not evaluated (strain below 0.2 % or mean force below 10 % of its maximum: the ratio of two near-zero forces is meaningless). *Source:* same filtered forces as F1. *How to read it:* from the coloured line onwards the two forces overlap; the force rises smoothly from zero.
 
 **Table T2 – Equilibrium indicators.**
 

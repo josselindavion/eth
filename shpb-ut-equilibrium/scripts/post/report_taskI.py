@@ -251,9 +251,22 @@ def fig_equilibrium_onset(spec, items, out):
             if t[j] <= t_end:
                 ax.axvline(t[j], color=INK2, lw=0.6, ls=':')
                 ax.text(t[j], ymax * 0.99, ' %d %%' % round(100 * e), color=INK2, fontsize=7, va='top')
-        if i_mark is not None:
+        # premier point ou le critere est evalue (deformation >= EPS_START et force > 10 % du max)
+        checked = np.where(c['valid'] & (eps >= EPS_START) & (t >= 0))[0]
+        from_start = c['i_eq'] is not None and len(checked) and c['i_eq'] == checked[0]
+        if len(checked):
+            # partie non evaluee (forces quasi nulles) : grisee, pour ne pas la confondre avec un desequilibre
+            ax.axvspan(t[m][0], t[checked[0]], color=BAND, zorder=0)
+            if t[checked[0]] - t[m][0] > 0.08 * (t_end - t[m][0]):
+                ax.text(0.5 * (t[m][0] + t[checked[0]]), ymax * 0.55, 'not\nchecked', color=INK2, fontsize=6.5,
+                        ha='center', va='center', rotation=90)
+        if from_start:
+            # equilibre des le premier point verifie : pas de trait, qui ressemblerait a un instant physique
+            ax.text(t[c['i_eq']], ymax * 0.12, ' |R| < %d %% from the\n first point checked\n to the end'
+                    % round(100 * EQ_TOL), color=col, fontsize=7, va='bottom')
+        elif i_mark is not None:
             ax.axvline(t[i_mark], color=col, lw=1.0)
-            txt = '|R| < %d %%\nfrom here' % round(100 * EQ_TOL)
+            txt = '|R| < %d %%\nfrom here (%s)' % (round(100 * EQ_TOL), pct(eps[i_mark], 2))
             if c['i_eq'] is None:
                 txt += '\n(until %s)' % pct(r['eq_to'], 0)
             ax.text(t[i_mark], ymax * 0.12, ' ' + txt, color=col, fontsize=7, va='bottom')
@@ -653,7 +666,9 @@ def write_report(study, rows, out):
                'from the loading start, one panel per target rate, until shortly after equilibrium is reached '
                '(and at least 5 % strain). Dotted vertical lines: instants at which the strain reaches 1, 2 and 5 %; '
                'coloured vertical line: instant from which $\\lvert R\\rvert$ < 5 % (for a partial equilibrium: '
-               'start of the longest interval).',
+               'start of the longest interval); no line when equilibrium holds from the first point checked. '
+               'Grey band: start of loading where $R$ is not evaluated (strain below ' + pct(EPS_START, 1) +
+               ' or mean force below 10 % of its maximum: the ratio of two near-zero forces is meaningless).',
                'same filtered forces as F1.',
                ('before equilibrium the two forces differ (the first pulse is the specimen shoulders settling in the '
                 'pockets); from the coloured line onwards they overlap.' if gaps else
