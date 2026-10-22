@@ -126,6 +126,8 @@ soit 3,65 / 2,13 / 1,83 ms à 100 / 500 / 1 000 /s. Une colonne `t_step_ms` dans
 | `taskI_20261012-1811` | premier lancement, 4 ms simulées | le pusher bascule sous la charge excentrée → guidages (U3 = 0) |
 | `taskI_20261013-1127` | guidages ; striker $V = \dot\varepsilon \times$ 15 mm | 100 /s ne donne que 21 /s → formule avec la force de l'éprouvette |
 | `taskI_20261013-1554` | nouvelle formule, durée par cas | 105 / 546 / 1 073 /s ; résultats dans `results/taskI_20261013-1554/` |
+| `diag_20261021-1626` | sondes de force le long de la sortie (1 000 /s) | les oscillations naissent avant la tête : l'éprouvette traverse le jeu et frappe la tête de sortie |
+| `taskI_20261022-1138` | **mise en contact initiale** (jeux fermés, `CLOSE_GAPS`) ; sondes à 1 000 /s | équilibre dès le début aux 3 vitesses ; erreur de la jauge 1,5 / 3,9 / 4,8 % (au lieu de 3 / 15 / 39 %) ; **étude de référence** |
 
 ---
 

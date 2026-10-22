@@ -55,6 +55,9 @@ A0_MM2 = {                   # section initiale de la partie droite de l'eprouve
 }
 # Couleurs : une par vitesse visee, dans l'ordre (palette categorielle validee, 3 premieres places)
 RATE_COLORS = ['#2a78d6', '#eb6834', '#1baf7a']
+# Etudes lancees AVANT la mise en contact initiale (22/10/2026, CLOSE_GAPS de build_bench.py) : eprouvette
+# centree dans les logements, avec un jeu de 0,36 mm de chaque cote. Le texte du rapport en depend.
+CENTRED_STUDIES = ('taskI_20261012-1811', 'taskI_20261013-1127', 'taskI_20261013-1554', 'diag_20261021-1626')
 INK, INK2, GRID, BAND = '#1f1f1d', '#52514e', '#e3e2de', '#efeeea'
 
 plt.rcParams.update({'font.size': 9, 'axes.edgecolor': INK2, 'axes.labelcolor': INK,
@@ -504,6 +507,9 @@ def write_report(study, rows, out):
         ext.setdefault(r['specimen'], r['ext_L0'])
     ext_txt = ', '.join('%g mm for the %s' % (ext[s_], s_) for s_ in specs)
     a0_txt = ', '.join('%.1f mm² for the %s' % (A0_MM2[s_], s_) for s_ in specs if A0_MM2.get(s_))
+    gaps = study in CENTRED_STUDIES      # ancien placement : eprouvette centree, jeux dans les logements
+    all_eq = all(eq_ok(r) for r in rows)
+    err_max = max(r['gauge_err_after5'] for r in rows)
     L = []
 
     def P(*parts):                       # un paragraphe = une ligne + une ligne vide
@@ -529,12 +535,16 @@ def write_report(study, rows, out):
                [[label(r), eq_short(r), '%.2f m/s' % r['v_striker'],
                  ('in %.2f ms' % r['time_to_30_ms']) if r['reached_30'] else 'no (%s max)' % pct(r['eps_max'], 1),
                  pct(r['gauge_err_after5'], 0)] for r in rows]))
-    P('- Equilibrium is reached early and maintained at the lower rates. At the highest rate it is only partly '
-      'reached; the largest differences occur late in the test, when the force decreases (necking).\n'
+    P(('- Equilibrium is reached at the very start of loading and maintained until the end at all rates.\n'
+       if all_eq else
+       '- Equilibrium is reached early and maintained at the lower rates. At the highest rate it is only partly '
+       'reached; the largest differences occur late in the test, when the force decreases (necking).\n') +
       '- The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, '
-      '30 %% strain cannot be reached below about %.0f s⁻¹.\n'
-      '- Even when the specimen is in equilibrium, the force read on the output bar gauge oscillates around the '
-      'true specimen force: this must be considered when assessing the measured curves.' % rate_min)
+      '30 %% strain cannot be reached below about %.0f s⁻¹.\n' % rate_min +
+      ('- The force read on the output bar gauge follows the true specimen force within %s of the maximum force '
+       'after 5 %% strain.' % pct(err_max, 0) if err_max < 0.10 else
+       '- Even when the specimen is in equilibrium, the force read on the output bar gauge oscillates around the '
+       'true specimen force: this must be considered when assessing the measured curves.'))
     P('*Gauge error*: largest difference between the force read on the output bar gauge and the exact specimen '
       'force after 5 % strain, relative to the maximum force.')
 
@@ -550,8 +560,12 @@ def write_report(study, rows, out):
         ('Bars', 'linear elastic, $E = \\rho c^2$ with the measured wave speeds (4871 m/s bars, 4720 m/s striker) '
                  'and assumed densities (8000 and 7850 kg/m³).'),
         ('Specimen', 'DP1000, von Mises, isotropic Swift–Voce hardening (below), **rate independent**.'),
-        ('Contacts', 'bar ends: hard, frictionless; specimen shoulders in the pockets: hard, friction 0.2; the '
-                     'specimen lies in the pockets without pre-load.'),
+        ('Contacts', 'bar ends: hard, frictionless; specimen teeth in the pockets: hard, friction 0.2. ' +
+                     ('The specimen is centred in the pockets, with a clearance of 0.36 mm on each side '
+                      '(placement used until 21 Oct 2026).' if gaps else
+                      'At the start the specimen teeth touch both pockets, without pre-load, as in the lab where the '
+                      'inverter is pulled slightly before the test (clearances of 0.36 mm closed by translating the '
+                      'specimen and the output bar; `docs/assembly.md`).')),
         ('Guides', 'vertical displacement blocked on the sliding face of the inverter and on the bar axes (without '
                    'them the inverter pitches under the eccentric load).'),
         ('Loading', 'initial velocity of the striker (Table T1).'),
@@ -599,8 +613,9 @@ def write_report(study, rows, out):
     P('where $t_1$ and $t_2$ are the instants at which the extensometer reaches $\\varepsilon_1$ and '
       '$\\varepsilon_2$, and $\\varepsilon_{max}$ is the maximum strain of the test (30 %, or less if the loading '
       'pulse ends before).')
-    P('- $\\varepsilon_1$ = 5 %: before, the loading is not established (rise of the incident pulse, specimen '
-      'shoulders settling in the pockets, force rising to its maximum, reached at about 5 % strain).\n'
+    P('- $\\varepsilon_1$ = 5 %: before, the loading is not established (rise of the incident pulse, ' +
+      ('specimen shoulders settling in the pockets, ' if gaps else '') +
+      'force rising to its maximum, reached at about 5 % strain).\n'
       '- $\\varepsilon_2$ = 80 % of the maximum strain: the end of the test is excluded, where the strain rate '
       'drops when the pulse ends. This gives 24 % when 30 % is reached, and less otherwise (Table T4).')
     P('Example (%s): the strain reaches 5 %% at $t_1$ = %.3f ms and %s at $t_2$ = %.3f ms, so '
@@ -627,8 +642,11 @@ def write_report(study, rows, out):
            'exact forces $F_{in}$ and $F_{out}$ in the two cross-sections of the simulated specimen, filtered at '
            '%d kHz (not a strain gauge); strain of the virtual extensometer.' % fc,
            'inside the shaded band ($\\lvert R\\rvert$ < %d %%) both ends of the specimen carry the same force: '
-           'the specimen is in equilibrium. The large values below about 2 %% strain come from the start of '
-           'loading (specimen shoulders settling in the pockets) and are cut at ±20 %%.' % tol)
+           'the specimen is in equilibrium. ' % tol +
+           ('The large values below about 2 % strain come from the start of loading (specimen shoulders settling '
+            'in the pockets) and are cut at ±20 %.' if gaps else
+            'At the very start both forces are close to zero, so $R$ is large for a few microseconds; values are '
+            'cut at ±20 %.'))
     for s_ in specs:
         figure('F1b_equilibrium_onset_%s.png' % s_, 'Figure F1b (%s) – Onset of equilibrium' % s_,
                'the exact forces $F_{in}$ (coloured solid line) and $F_{out}$ (black dashed line) against the time '
@@ -637,8 +655,9 @@ def write_report(study, rows, out):
                'coloured vertical line: instant from which $\\lvert R\\rvert$ < 5 % (for a partial equilibrium: '
                'start of the longest interval).',
                'same filtered forces as F1.',
-               'before equilibrium the two forces differ (the first pulse is the specimen shoulders settling in the '
-               'pockets); from the coloured line onwards they overlap.')
+               ('before equilibrium the two forces differ (the first pulse is the specimen shoulders settling in the '
+                'pockets); from the coloured line onwards they overlap.' if gaps else
+                'from the coloured line onwards the two forces overlap; the force rises smoothly from zero.'))
     P('**Table T2 – Equilibrium indicators.**')
     P(md_table(['Specimen / target rate (s⁻¹)', 'Equilibrium from', 'Max $\\lvert R\\rvert$ after 5 %', 'Max $\\lvert\\Delta F\\rvert$ after 5 %',
                 'Max force'],
@@ -648,13 +667,19 @@ def write_report(study, rows, out):
                  pct(r['R_max_after5'], 1), '%.2f kN' % r['dF_max_after5_kN'],
                  '%.2f kN at %s' % (r['F_max_kN'], pct(r['eps_at_Fmax'], 1))] for r in rows]))
     P('*Equilibrium from*: strain (and time after the loading start) from which $\\lvert R\\rvert$ < %d %% holds '
-      'until the end of loading. $\\Delta F = F_{in} - F_{out}$.' % tol)
+      'until the end of loading; %s is the lowest strain considered, so this value means "from the start". '
+      '$\\Delta F = F_{in} - F_{out}$.' % (tol, pct(EPS_START, 1)))
     for r in rows:
         L.append(case_sentence(r))
     L.append('')
-    P('In all cases the first few tens of microseconds show a short force pulse followed by a drop to zero before '
-      'continuous loading starts (F1b). This is most likely the impact of the specimen shoulders in the pockets, '
-      'the specimen being inserted without pre-load.')
+    if gaps:
+        P('In all cases the first few tens of microseconds show a short force pulse followed by a drop to zero before '
+          'continuous loading starts (F1b): the inverter and the specimen cross the clearances of the pockets, then '
+          'the specimen hits the output pocket.')
+    else:
+        P('The specimen teeth touch both pockets at the start: the force rises smoothly from zero, without the '
+          'impact pulse and the rebound obtained when the specimen was centred with clearances (study '
+          '`taskI_20261013-1554`).')
     P('The force is maximum at about 5 to 8 % strain and then decreases (necking). The same force difference '
       'therefore gives a larger ratio $R$ late in the test, which is why the absolute difference $\\Delta F$ is '
       'given as well.')
@@ -673,8 +698,9 @@ def write_report(study, rows, out):
            'quantity, equivalent to DIC; not a force, not the output bar gauge.' % fc,
            'the curve should stay close to its target. Being a derivative, it amplifies small vibrations of the '
            'specimen (±10 to 30 % around the mean, period 10 to 20 µs at 1000 s⁻¹); on the logarithmic scale the '
-           '100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain (100 s⁻¹, at about 18 %) '
-           'shows the end of the loading pulse.')
+           '100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain shows the end of the '
+           'loading pulse' + ''.join(' (%s: %s)' % (label(r), pct(r['eps_max'], 1)) for r in rows if not r['reached_30']) +
+           '.')
     P('**Table T4 – Strain rate with different definitions** (s⁻¹).')
     P(md_table(['Specimen / target rate (s⁻¹)', 'Achieved ($\\varepsilon_1 \\to \\varepsilon_2$)', 'At max force', 'Nominal', 'Before max force', 'After max force'],
                [[label(r), '%.0f (5 → %.1f %%)' % (r['achieved_rate'], 100 * r['eps2']), '%.0f' % r['rate_at_Fmax'],
@@ -686,8 +712,8 @@ def write_report(study, rows, out):
       'curve before and after the dot (10th to 90th percentile).')
     P('After the force maximum the strain rate is established close to the target and increases slowly, because '
       'the force decreases (necking) and brakes the bench less. Before the force maximum, during the uniform '
-      'hardening phase, the strain rate is not yet stable at the higher rates (negative values: rebound of the '
-      'specimen in the pockets).')
+      'hardening phase, the strain rate is not yet stable at the higher rates' +
+      (' (negative values: rebound of the specimen in the pockets).' if gaps else '.'))
     P('**Striker velocity.** The elongation rate of the inverter is approximately')
     P('$$\nv \\approx 2\\,v_i - \\frac{2F}{\\rho c A}, \\qquad v_i = K\\,V_{striker}, \\qquad '
       'K = \\frac{Z_{striker}}{Z_{striker} + Z_{bar}} = %.3f\n$$' % make_run.K_IMP)
@@ -745,17 +771,23 @@ def write_report(study, rows, out):
            'title is the largest gap after 5 % strain, relative to the maximum force.',
            'where the coloured line follows the grey one, the gauge measures the specimen correctly; where it '
            'oscillates around it, the measurement distorts the true response. The grey curves are identical at '
-           'the three rates because the simulated material is rate independent. Axis cut at 1600 MPa (spike of '
-           'the gauge signal below 2 % strain).')
+           'the three rates because the simulated material is rate independent.' +
+           (' Axis cut at 1600 MPa (spike of the gauge signal below 2 % strain).' if gaps else ''))
     P('**Table T5 – Error of the output bar gauge.**')
     P(md_table(['Specimen / target rate (s⁻¹)', 'Max force', 'Max gauge error after 5 %'],
                [[label(r), '%.2f kN' % r['F_max_kN'], '%s of the max force' % pct(r['gauge_err_after5'], 1)]
                 for r in rows]))
-    P('The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude that '
-      'grows with the loading speed. An oscillating measured curve therefore does not mean that the specimen is '
-      'out of equilibrium. The origin of these oscillations is not identified yet: they appear between the '
-      'specimen and the gauge and may come from the clamping head of the output bar or from its modelling '
-      '(tetrahedral mesh tied to the bar). This must be checked before comparing with the experiments.')
+    if gaps:
+        P('The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude '
+          'that grows with the loading speed. An oscillating measured curve therefore does not mean that the '
+          'specimen is out of equilibrium. Origin (identified on 22 Oct 2026 with force probes along the output '
+          'side): the specimen crosses the clearance of the output pocket and hits the output head (force spike '
+          'of about twice the specimen force), which then rings at about 40 kHz.')
+    else:
+        P('The gauge signal follows the specimen force closely. With the specimen centred in the pockets '
+          '(clearances of 0.36 mm, study `taskI_20261013-1554`), the specimen hit the output head at the start '
+          'and the gauge error reached 3 / 15 / 39 % at 100 / 500 / 1000 s⁻¹: closing the clearances, as done in '
+          'the lab before a test, is essential for the measurement.')
 
     # ------------------------------------------------------------ qualite
     P('## Numerical quality')
@@ -776,7 +808,10 @@ def write_report(study, rows, out):
         'The striker velocity formula relies on $L_{eff}$ calibrated on one simulation and on a constant force $F$.',
         'The gauge signal is shifted, not corrected for dispersion; the reference of the 400 mm gauge distance is '
         'to be confirmed (about 6 µs uncertainty).',
-        'The origin of the oscillations of the output bar gauge is not identified yet.',
+        ('Specimen centred in the pockets with clearances: the impact in the output pocket makes the gauge '
+         'oscillate; the lab closes these clearances before a test (later studies).' if gaps else
+         'Initial contact without pre-load in both pockets, as described by the lab; a residual clearance or a '
+         'pre-load in a real test would change the start of the signals.'),
         'Assumed values: densities of the bars and of the striker, material of the inverter (maraging).',
     ]
     if 'UT40' not in specs:

@@ -29,7 +29,7 @@
 - **Solver**: Abaqus/Explicit, double precision, **no mass scaling** (inertia is the studied effect).
 - **Bars**: linear elastic, $E = \rho c^2$ with the measured wave speeds (4871 m/s bars, 4720 m/s striker) and assumed densities (8000 and 7850 kg/m³).
 - **Specimen**: DP1000, von Mises, isotropic Swift–Voce hardening (below), **rate independent**.
-- **Contacts**: bar ends: hard, frictionless; specimen shoulders in the pockets: hard, friction 0.2; the specimen lies in the pockets without pre-load.
+- **Contacts**: bar ends: hard, frictionless; specimen teeth in the pockets: hard, friction 0.2. The specimen is centred in the pockets, with a clearance of 0.36 mm on each side (placement used until 21 Oct 2026).
 - **Guides**: vertical displacement blocked on the sliding face of the inverter and on the bar axes (without them the inverter pitches under the eccentric load).
 - **Loading**: initial velocity of the striker (Table T1).
 
@@ -106,13 +106,13 @@ Example (UT19 at 500 s⁻¹): the strain reaches 5 % at $t_1$ = 1.523 ms and 24.
 | UT19 / 500 | 2.5 % (0.12 ms) | 3.8 % | 0.28 kN | 7.56 kN at 5.0 % |
 | UT19 / 1000 | 2.7 % to 13.7 % only | 13.2 % | 0.60 kN | 7.58 kN at 7.6 % |
 
-*Equilibrium from*: strain (and time after the loading start) from which $\lvert R\rvert$ < 5 % holds until the end of loading. $\Delta F = F_{in} - F_{out}$.
+*Equilibrium from*: strain (and time after the loading start) from which $\lvert R\rvert$ < 5 % holds until the end of loading; 0.2 % is the lowest strain considered, so this value means "from the start". $\Delta F = F_{in} - F_{out}$.
 
 - **UT19 at 100 s⁻¹** (striker 2.48 m/s): equilibrium is established at 0.9 % strain, 0.29 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 0.9 %).
 - **UT19 at 500 s⁻¹** (striker 7.69 m/s): equilibrium is established at 2.5 % strain, 0.12 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 3.8 %).
 - **UT19 at 1000 s⁻¹** (striker 14.20 m/s): equilibrium is **only partly reached**: $\lvert R\rvert$ < 5 % from 2.7 % to 13.7 % strain, but it reaches 13.2 % at other instants after 5 % strain ($\lvert F_{in} - F_{out}\rvert$ up to 0.60 kN, i.e. 8.0 % of the maximum force).
 
-In all cases the first few tens of microseconds show a short force pulse followed by a drop to zero before continuous loading starts (F1b). This is most likely the impact of the specimen shoulders in the pockets, the specimen being inserted without pre-load.
+In all cases the first few tens of microseconds show a short force pulse followed by a drop to zero before continuous loading starts (F1b): the inverter and the specimen cross the clearances of the pockets, then the specimen hits the output pocket.
 
 The force is maximum at about 5 to 8 % strain and then decreases (necking). The same force difference therefore gives a larger ratio $R$ late in the test, which is why the absolute difference $\Delta F$ is given as well.
 
@@ -130,7 +130,7 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 ![Figure F4 – Strain rate in the specimen](F4_strain_rate.png)
 
-**Figure F4 – Strain rate in the specimen.** *Plotted:* the strain rate (vertical axis, logarithmic scale) against the engineering strain, one curve per target rate; dotted lines: target rates; dots: force maximum (onset of necking). *Source:* time derivative of the extensometer strain (filtered at 100 kHz before derivation): a kinematic quantity, equivalent to DIC; not a force, not the output bar gauge. *How to read it:* the curve should stay close to its target. Being a derivative, it amplifies small vibrations of the specimen (±10 to 30 % around the mean, period 10 to 20 µs at 1000 s⁻¹); on the logarithmic scale the 100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain (100 s⁻¹, at about 18 %) shows the end of the loading pulse.
+**Figure F4 – Strain rate in the specimen.** *Plotted:* the strain rate (vertical axis, logarithmic scale) against the engineering strain, one curve per target rate; dotted lines: target rates; dots: force maximum (onset of necking). *Source:* time derivative of the extensometer strain (filtered at 100 kHz before derivation): a kinematic quantity, equivalent to DIC; not a force, not the output bar gauge. *How to read it:* the curve should stay close to its target. Being a derivative, it amplifies small vibrations of the specimen (±10 to 30 % around the mean, period 10 to 20 µs at 1000 s⁻¹); on the logarithmic scale the 100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain shows the end of the loading pulse (UT19 / 100: 18.5 %).
 
 **Table T4 – Strain rate with different definitions** (s⁻¹).
 
@@ -186,7 +186,7 @@ In the experiment the force is only known from the output bar gauge. F2 and F3 c
 | UT19 / 500 | 7.56 kN | 15.0 % of the max force |
 | UT19 / 1000 | 7.58 kN | 38.9 % of the max force |
 
-The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude that grows with the loading speed. An oscillating measured curve therefore does not mean that the specimen is out of equilibrium. The origin of these oscillations is not identified yet: they appear between the specimen and the gauge and may come from the clamping head of the output bar or from its modelling (tetrahedral mesh tied to the bar). This must be checked before comparing with the experiments.
+The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude that grows with the loading speed. An oscillating measured curve therefore does not mean that the specimen is out of equilibrium. Origin (identified on 22 Oct 2026 with force probes along the output side): the specimen crosses the clearance of the output pocket and hits the output head (force spike of about twice the specimen force), which then rings at about 40 kHz.
 
 ## Numerical quality
 
@@ -205,7 +205,7 @@ Theory: incident strain $= K\,V_{striker}/c$; initial kinetic energy $\tfrac12 m
 - Rate-independent specimen material: in the experiments the force, and hence the required striker velocity (term $2F/\rho c A$), will increase with the strain rate.
 - The striker velocity formula relies on $L_{eff}$ calibrated on one simulation and on a constant force $F$.
 - The gauge signal is shifted, not corrected for dispersion; the reference of the 400 mm gauge distance is to be confirmed (about 6 µs uncertainty).
-- The origin of the oscillations of the output bar gauge is not identified yet.
+- Specimen centred in the pockets with clearances: the impact in the output pocket makes the gauge oscillate; the lab closes these clearances before a test (later studies).
 - Assumed values: densities of the bars and of the striker, material of the inverter (maraging).
 - The long-gauge specimen (UT40) is not simulated yet (geometry not available).
 

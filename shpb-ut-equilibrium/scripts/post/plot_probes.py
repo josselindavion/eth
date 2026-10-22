@@ -4,8 +4,11 @@ plot_probes.py -- Ou naissent les oscillations de la jauge de sortie ?
 
 Pour un calcul avec sondes (probes = 1 dans cases.csv), trace la force a chaque endroit du chemin
 eprouvette -> tete de la barre de sortie -> collage -> barre -> jauge, chaque courbe comparee a la
-vraie force dans l'eprouvette (section SEC_OUT). Les signaux sont filtres a 100 kHz et decales du temps
-de trajet de l'onde jusqu'a la sonde la plus proche de l'eprouvette (HEAD_MID).
+vraie force dans l'eprouvette (section SEC_OUT). Les signaux sont filtres a 100 kHz et ramenes au bout de la
+barre de sortie (cote eprouvette) : decalage = distance au bout de la barre / 4871 m/s, soit 82 us pour la
+jauge (400 mm), exactement comme dans report_taskI.py. L'erreur affichee est donc la meme que celle du rapport.
+(Avant le 22/10, les signaux etaient ramenes a la sonde HEAD_MID, 42 mm plus bas : le trajet eprouvette ->
+HEAD_MID, ~8 us, n'etait pas compense, et l'erreur etait un peu plus grande que dans le rapport.)
 
 Lancement (PC, Python 3), racine du repo :
     python shpb-ut-equilibrium/scripts/post/plot_probes.py shpb-ut-equilibrium/results/<etude>/<calcul>
@@ -49,7 +52,7 @@ def main():
     ref = lp(d.F_sec_out_N.values)
     sig = {k: lp(d['F_probe_%s_N' % k].values) for k in ORDER if 'F_probe_%s_N' % k in d}
     sig['GAUGE_OUT'] = lp(d.sig_gauge_out.values * A_BAR)
-    y0 = ys['HEAD_MID']
+    y0 = ys['GAUGE_OUT'] + 400.0     # bout de la barre de sortie (la jauge est a 400 mm du bout)
     k0 = int(np.argmax(ref > 0.02 * ref.max()))
     ex = lp(d.eps_ext.values)
     i_end = int(np.argmax(ex >= 0.30)) if (ex >= 0.30).any() else int(np.argmax(ex))
