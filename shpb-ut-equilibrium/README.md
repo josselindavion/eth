@@ -63,6 +63,7 @@ shpb-ut-equilibrium/
 | `scripts/hpc/fetch_study.py` | sur Euler : extraction (`extract_study.sh` → `extract_history.py`), puis copie sur le PC | après les calculs |
 | `scripts/post/report_taskI.py` | rapport, tableau, figures, et une figure de contrôle par calcul | après `fetch_study.py` |
 | `scripts/post/plot_probes.py` | diagnostic : force le long de la barre de sortie (calculs avec sondes) | étude `diag` |
+| `scripts/post/compare_studies.py` | compare deux études calcul par calcul (même éprouvette, même vitesse) : jauge contre vraie force, équilibre, début du chargement ; sortie dans `results/<étude après>/compare_<étude avant>/` | après une modification du modèle |
 | `scripts/post/diag_gauge.py` | diagnostic : lecture de la jauge de sortie (moyenne, flexion) sur un `.odb` | ponctuel |
 
 ---

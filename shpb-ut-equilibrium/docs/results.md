@@ -149,3 +149,6 @@ deux fois la force de l'éprouvette) et la tête vibre ensuite à ≈ 40 kHz pen
 
 Décision (encadrants, 22/10) : au labo, tout est au contact avant l'essai. Les jeux sont fermés dans le modèle
 (`CLOSE_GAPS`, voir `docs/assembly.md`, « Mise en contact initiale ») ; les calculs sont à relancer.
+Comparaison avant / après : `py shpb-ut-equilibrium/scripts/post/compare_studies.py <étude avant> <étude après>
+"<nom avant>" "<nom après>"` (même traitement que le rapport ; figures C1–C3 et tableau dans
+`results/<étude après>/compare_<étude avant>/compare.md`).
