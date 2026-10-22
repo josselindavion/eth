@@ -141,3 +141,8 @@ Sondes (positions définies dans `make_run.py`, `PROBES`) : `HEAD_MID` (tête, 1
 `HEAD_TIE` (tête, 4 mm au-dessus), `BAR_TIE` (barre, première couche sous le collage), `BAR_100` et `BAR_250`
 (barre, à 100 et 250 mm du bout). Force d'une tranche = somme de S22 × volume des éléments / épaisseur
 (une couche d'hexaèdres dans la barre ; une tranche de 5 mm de tétraèdres dans la tête).
+
+Résultat (étude `diag_20261021-1626`, UT19 à 1 000 /s, détails dans `journal/2026-10-22.md`) : toutes les sondes
+montrent la même oscillation que la jauge (écart 45–46 %, jauge 42 %). Elle naît avant le collage : l'éprouvette,
+centrée dans les logements, parcourt ≈ 0,3 mm avant de tirer sur la tête de sortie, la **frappe** (pic de 15 kN,
+deux fois la force de l'éprouvette) et la tête vibre ensuite à ≈ 40 kHz pendant ≈ 0,25 ms.
