@@ -56,6 +56,7 @@ shpb-ut-equilibrium/
 | `scripts/pre/defeature_step.py` | enlève les trous M4 des STEP du pusher et de la barre de sortie | déjà fait, seulement si la CAO change |
 | `scripts/cae/build_bench.py` | Abaqus/CAE : importe, place, découpe et maille le banc ; écrit `model/geometry/_raw/SHPB_<éprouvette>_mesh.inp` | si la géométrie ou le maillage change |
 | `scripts/pre/inp_to_geo.py` | convertit ce fichier en 7 `.geo` (convention du labo) | après `build_bench.py` |
+| `scripts/pre/pocket_gaps.py` | mesure sur les STEP les jeux entre les dents de l'éprouvette et les logements (valeurs `gap_pusher`, `gap_output` de `build_bench.py`) ; demande `py -m pip install cadquery-ocp` | nouvelle éprouvette (UT40) ou nouveau logement |
 | `scripts/pre/make_run.py` | remplit les gabarits pour chaque calcul (vitesse du striker, durée) → `runs/<calcul>/` | appelé par `submit_study.py` |
 | `scripts/hpc/submit_study.py` | prépare les calculs, les copie sur Euler, lance un job array | à chaque étude |
 | `scripts/hpc/run_array.sh` | script Slurm : un calcul Abaqus par tâche | lancé par `submit_study.py` |
@@ -93,7 +94,7 @@ ils restent sur le PC qui les a construits (PC du labo).
 |---|---|---|
 | 1 | Git Bash | si un matériau change : `py shpb-ut-equilibrium/scripts/pre/make_materials.py` |
 | 2 | Abaqus/CAE | ouvrir `scripts/cae/build_bench.py`, régler `SPEC = 'UT19'` (ou `'UT40'`) en haut, puis **File → Run Script** → ce fichier. Quelques minutes |
-| 3 | Abaqus/CAE | vérifier la sortie : placement de l'éprouvette (UT19 : « controle : placement identique… »), nombre d'éléments (UT19 : 214 214), qualité des tétraèdres (hauteur min > 0,3 mm) |
+| 3 | Abaqus/CAE | vérifier la sortie : placement de l'éprouvette (UT19 : « controle : placement centre identique… », puis « mise en contact (CLOSE_GAPS) : eprouvette reculee de 0.3567 mm, barre de sortie de 0.7130 mm »), nombre d'éléments (UT19 : ≈ 214 214 ; 214 214 avec l'ancien placement, la tête de sortie peut changer de quelques éléments), qualité des tétraèdres (hauteur min > 0,3 mm) |
 | 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT19` (ou `UT40`) → `model/geometry/UT19/` |
 
 Détails : `docs/assembly.md` (placement), `docs/mesh.md` (maillage), `docs/materials.md` (matériaux).
@@ -209,7 +210,7 @@ labo, `abaqus.bat` se place d'office dans `C:\APPS\Abaqus2023_Work` et ne trouve
 | Étape | Où | Action |
 |---|---|---|
 | 1 | SolidWorks | tôle de 1,5 mm extrudée selon +Z depuis z = 0, exportée en STEP AP214 : `cad/step/XMas_UT40_t1p5.step`. Pousser le fichier |
-| 2 | `build_bench.py` | ligne `UT40` de `SPECIMENS` : demi-largeur de la partie droite (5,0 mm si elle fait 10 mm), longueur de l'extensomètre (30 mm) |
+| 2 | `build_bench.py` | ligne `UT40` de `SPECIMENS` : demi-largeur de la partie droite (5,0 mm si elle fait 10 mm), longueur de l'extensomètre (30 mm), jeux `gap_pusher` / `gap_output` donnés par `py shpb-ut-equilibrium/scripts/pre/pocket_gaps.py UT40` |
 | 3 | Abaqus/CAE | `SPEC = 'UT40'`, Run Script. Lire la longueur de l'éprouvette et la position de la barre de sortie (recalculées automatiquement) |
 | 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40` |
 | 5 | `make_run.py` | `SPECIMENS['UT40']` : L_eff et F sont des estimations (34 mm, 15 kN), à recaler après le premier calcul |
@@ -243,6 +244,6 @@ labo, `abaqus.bat` se place d'office dans `C:\APPS\Abaqus2023_Work` et ne trouve
 | `docs/mesh.md` | maillage, pas de temps, trous M4, virtual topology, guidages, performances |
 | `docs/results.md` | dépouillement : filtre, indicateurs, formule de la vitesse du striker, historique des études |
 
-**Reste à faire** : fichier STEP de l'UT40 ; origine des oscillations de la jauge de sortie ; référence exacte des
+**Reste à faire** : fichier STEP de l'UT40 ; vérifier que la mise en contact initiale (22/10) supprime les oscillations de la jauge de sortie ; référence exacte des
 400 mm de la jauge ; vitesse maximale du lanceur (37 m/s nécessaires pour l'UT40 à 1 000 /s ?) ; densités et
 matériau du pusher à confirmer.

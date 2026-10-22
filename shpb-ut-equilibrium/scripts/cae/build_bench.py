@@ -46,12 +46,18 @@ SPEC = 'UT19'              # eprouvette a construire (cle de SPECIMENS)
 #   gauge_half_width : demi-largeur de la partie droite de la zone utile, lue sur la geometrie
 #                      pour reperer le debut et la fin de la partie droite (sections SEC_OUT / SEC_IN)
 #   ext_length       : longueur de l'extensometre virtuel (longueur de la zone DIC)
+#   gap_pusher       : jeu (mm) entre les dents de l'eprouvette centree et le logement du pusher,
+#                      dans le sens de la traction (voir CLOSE_GAPS) ; mesure par scripts/pre/pocket_gaps.py
+#   gap_output       : idem, logement de la barre de sortie
 SPECIMENS = {
     # sUT de Beerli 2026 (fig. 2a) : partie droite 15 mm x 5 mm ; zone DIC 12 mm
-    'UT19': {'step': 'XMas_UT_t1p5.step', 'gauge_half_width': 2.5, 'ext_length': 12.0},
+    'UT19': {'step': 'XMas_UT_t1p5.step', 'gauge_half_width': 2.5, 'ext_length': 12.0,
+             'gap_pusher': 0.3567, 'gap_output': 0.3563},
     # UT de Beerli 2026 (section 2.2) : partie utile 40 mm x 10 mm ; zone DIC 30 mm x 9 mm.
-    # A VERIFIER des que le fichier STEP est disponible (largeur de la partie droite, zone DIC).
-    'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0},
+    # A VERIFIER des que le fichier STEP est disponible (largeur de la partie droite, zone DIC,
+    # jeux : relancer scripts/pre/pocket_gaps.py UT40 ; valeurs de l'UT19 = memes tetes supposees).
+    'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
+             'gap_pusher': 0.3567, 'gap_output': 0.3563},
 }
 # Eprouvette donnee en ligne de commande (abaqus cae noGUI=build_bench.py -- UT40)
 for _arg in sys.argv[1:]:
@@ -87,7 +93,20 @@ Y_SPEC_TIP_PUSHER = 201.7005             # Y du bout de l'eprouvette cote pusher
 OUTPUT_BAR_TO_TIP = 31.7000              # Y_OUTPUT_BAR - Y du bout de l'eprouvette cote barre de sortie
 Z_SPEC_BOTTOM     = 28.6                 # fond des logements : l'eprouvette y est posee
 OUTPUT_HEAD_LENGTH = 55.713              # longueur de la tete de la barre de sortie gardee en tetraedres
-UT19_TRANSLATION  = (356.2728, -1357.7622, 28.6)   # placement verifie de l'UT19 (controle)
+UT19_TRANSLATION  = (356.2728, -1357.7622, 28.6)   # placement centre verifie de l'UT19 (controle)
+
+# Mise en contact initiale (docs/assembly.md, depuis le 22/10/2026). Au labo, on tire tres legerement
+# sur le pusher avant l'essai : les dents de l'eprouvette touchent le logement du pusher ET celui de la
+# barre de sortie, du cote qui transmet la traction. Centree, l'eprouvette a un jeu de chaque cote :
+# elle traversait ce jeu puis frappait la tete de sortie (pic de 15 kN, oscillations ; journal 22/10).
+#   CLOSE_GAPS = True  : l'eprouvette recule de gap_pusher (-Y) jusqu'a toucher le logement du pusher,
+#                        la barre de sortie recule de gap_pusher + gap_output jusqu'a toucher l'eprouvette.
+#                        Le pusher ne bouge pas (il reste au contact de la barre d'entree).
+#   CLOSE_GAPS = False : ancien placement, eprouvette centree dans les deux logements.
+# Jeux mesures sur les fichiers STEP par scripts/pre/pocket_gaps.py (OpenCascade) : plus petite
+# translation selon Y qui met les deux pieces en contact (le contact sur le fond du logement, en Z,
+# n'est pas compte). Valeurs dans SPECIMENS (gap_pusher, gap_output).
+CLOSE_GAPS = True
 
 # Demi-modele : True = on coupe tout au plan X = 0 et on garde X >= 0
 # (comme le labo : Beerli et al. 2026, Roth et al. 2015)
@@ -655,7 +674,21 @@ if SPEC == 'UT19':
     _d = max([abs(a_ - b_) for a_, b_ in zip(SPECIMEN_TRANSLATION, UT19_TRANSLATION)])
     if _d > 1.0e-3 or abs(Y_OUTPUT_BAR - 155.713) > 1.0e-3:
         raise ValueError('Placement automatique de l UT19 different du placement verifie (ecart %.4f mm)' % _d)
-    print('  controle : placement identique a celui verifie le 08/10/2026')
+    print('  controle : placement centre identique a celui verifie le 08/10/2026')
+if CLOSE_GAPS:
+    GAP_PUSHER = SPECIMENS[SPEC]['gap_pusher']
+    GAP_OUTPUT = SPECIMENS[SPEC]['gap_output']
+    SPECIMEN_TRANSLATION = (SPECIMEN_TRANSLATION[0], round(SPECIMEN_TRANSLATION[1] - GAP_PUSHER, 4),
+                            SPECIMEN_TRANSLATION[2])
+    Y_OUTPUT_BAR = round(Y_OUTPUT_BAR - GAP_PUSHER - GAP_OUTPUT, 4)
+    Y_SPLIT_OUTPUT = round(Y_OUTPUT_BAR - OUTPUT_HEAD_LENGTH, 4)
+    print('  mise en contact (CLOSE_GAPS) : eprouvette reculee de %.4f mm, barre de sortie de %.4f mm'
+          % (GAP_PUSHER, GAP_PUSHER + GAP_OUTPUT))
+    print('  -> translation (%.4f, %.4f, %.4f) ; bouts en Y = %.4f et %.4f ; barre de sortie en Y = %.4f, '
+          'decoupe en Y = %.4f' % (SPECIMEN_TRANSLATION + (Y_SPEC_TIP_PUSHER - GAP_PUSHER - SPEC_LENGTH,
+                                   Y_SPEC_TIP_PUSHER - GAP_PUSHER, Y_OUTPUT_BAR, Y_SPLIT_OUTPUT)))
+else:
+    print('  eprouvette centree dans les logements (CLOSE_GAPS = False) : jeux non fermes')
 placement = {
     'STRIKER':    (X_AXIS, 90.0, (0.0, -INPUT_BAR_LENGTH, Z_INPUT_AXIS)),
     'INPUT_BAR':  (X_AXIS, 90.0, (0.0, 0.0, Z_INPUT_AXIS)),

@@ -146,3 +146,6 @@ Résultat (étude `diag_20261021-1626`, UT19 à 1 000 /s, détails dans `journal
 montrent la même oscillation que la jauge (écart 45–46 %, jauge 42 %). Elle naît avant le collage : l'éprouvette,
 centrée dans les logements, parcourt ≈ 0,3 mm avant de tirer sur la tête de sortie, la **frappe** (pic de 15 kN,
 deux fois la force de l'éprouvette) et la tête vibre ensuite à ≈ 40 kHz pendant ≈ 0,25 ms.
+
+Décision (encadrants, 22/10) : au labo, tout est au contact avant l'essai. Les jeux sont fermés dans le modèle
+(`CLOSE_GAPS`, voir `docs/assembly.md`, « Mise en contact initiale ») ; les calculs sont à relancer.

@@ -6,15 +6,15 @@ Unités : mm.
 |------------|-----------------------|--------------------------|
 | PUSHER     | +90° autour de X      | aucune                   |
 | INPUT_BAR  | +90° autour de X      | (0, 0, 7.85)             |
-| OUTPUT_BAR | +90° autour de X      | (0, 155.713, 29.35)      |
-| UT19       | +90° autour de Z      | (356.2728, -1357.7622, 28.6) |
+| OUTPUT_BAR | +90° autour de X      | (0, 155.000, 29.35) ; 155.713 avant le 22/10 (éprouvette centrée) |
+| UT19       | +90° autour de Z      | (356.2728, -1358.1189, 28.6) ; Y = −1357.7622 avant le 22/10 |
 | STRIKER    | +90° autour de X      | (0, -6010, 7.85)         |
 
 Repères :
 - INPUT_BAR : Y de -6010 à 0, axe en Z = 7.85 (centre de la face du pusher, 20 x 15.7 mm)
 - OUTPUT_BAR : axe en Z = 29.35 (soit 21.5 mm au-dessus de l'axe de la barre d'entrée, d'après Beerli et al. 2026, fig. 5a)
 - Fond des logements du pusher et de la barre de sortie : Z = 28.6
-- UT19 : Y de 124.013 à 201.700, centrée dans les deux logements
+- UT19 : Y de 123.656 à 201.344, dents au contact des deux logements (avant le 22/10 : 124.013 à 201.700, centrée)
 - STRIKER : Y de -11010 à -6010, en contact avec la barre d'entrée
 
 ## Placement automatique de l'éprouvette (UT19, UT40)
@@ -41,6 +41,39 @@ barre de sortie en 155,713, découpe en 100,000.
 
 **À vérifier sur le vrai fichier de l'UT40** : mêmes têtes que l'UT19 (sinon les deux constantes 201,7005 et
 31,700 ne s'appliquent pas), et absence de collision entre la tête de la barre de sortie reculée et le pusher.
+
+## Mise en contact initiale (depuis le 22/10/2026)
+
+**Pourquoi.** Avec l'éprouvette centrée dans les deux logements, il restait un jeu de 0,36 mm de chaque côté.
+Au début du calcul, le pusher parcourait ce jeu avant de tirer sur l'éprouvette, puis l'éprouvette parcourait
+l'autre jeu et **frappait** la tête de la barre de sortie : pic de 15 kN (deux fois la force de l'éprouvette),
+puis vibrations à ≈ 40 kHz que la jauge de sortie mesurait (journal du 22/10). Au labo, on tire très légèrement
+sur le pusher avant l'essai : tout est au contact, sans effort (confirmé par les encadrants le 22/10).
+
+**Ce que fait `build_bench.py`** (paramètre `CLOSE_GAPS = True`) :
+
+| Pièce | Déplacement selon Y | Résultat |
+|---|---|---|
+| pusher | aucun | reste au contact de la barre d'entrée (Y = 0) |
+| éprouvette | − `gap_pusher` = − 0,3567 mm | ses dents touchent les dents du logement du pusher |
+| barre de sortie | − (`gap_pusher` + `gap_output`) = − 0,7130 mm | les dents de son logement touchent celles de l'éprouvette |
+
+Le reste suit la barre de sortie (découpe tête / barre en Y = 99,287, jauge de sortie en Y = −245,000), car tout
+est calculé à partir de `Y_OUTPUT_BAR`. `CLOSE_GAPS = False` redonne l'ancien placement centré.
+
+**Mesure des jeux** (`scripts/pre/pocket_gaps.py`, OpenCascade, sur les fichiers STEP) : plus petite translation
+selon Y qui met les deux solides en contact, l'éprouvette étant levée de 0,5 mm pendant la mesure pour ne pas
+compter le contact sur le fond du logement.
+
+| Logement | Jeu dans le sens de la traction | Jeu dans l'autre sens | Faces au contact une fois le jeu fermé |
+|---|---|---|---|
+| pusher | 0,3567 mm | 0,2818 mm | les flancs inclinés des **trois** dents (et les congés voisins) |
+| barre de sortie | 0,3563 mm | 0,1659 mm | les flancs inclinés des **trois** dents (et les congés voisins) |
+
+Les trois dents touchent en même temps : le pas des dents est le même sur l'éprouvette et dans les logements.
+Le contact est exact sur la géométrie ; après maillage, les facettes des tétraèdres peuvent laisser des écarts
+ou des interpénétrations de l'ordre du micromètre, qu'Abaqus/Explicit corrige au début du calcul (ajustement sans
+déformation du contact général) : à vérifier dans le `.msg`.
 
 ## Demi-modèle (symétrie au plan X = 0)
 
