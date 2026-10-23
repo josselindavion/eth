@@ -1,0 +1,90 @@
+A new model database has been created.
+The model "Model-1" has been created.
+A new model database has been created.
+The model "Model-1" has been created.
+The model "SHPB_UT40S" has been created.
+Eprouvette UT40S (XMas_UT40S_t1p5.step) : longueur 103.181 mm, largeur 30.000 mm, epaisseur 1.500 mm
+  translation (0.0000, 98.5197, 28.6000) ; bouts en Y = 98.520 et 201.701
+  barre de sortie : bout en Y = 130.220, decoupe tete / barre en Y = 74.507
+  mise en contact (CLOSE_GAPS) : eprouvette reculee de -0.0365 mm, barre de sortie de 0.2197 mm
+  -> translation (0.0000, 98.5562, 28.6000) ; bouts en Y = 98.5562 et 201.7370 ; barre de sortie en Y = 130.0000, decoupe en Y = 74.2870
+Etendue des pieces (demi-modele : X min doit valoir 0) :
+  STRIKER      X =    0.000 ..   10.000    Y = -11010.000 .. -6010.000
+  INPUT_BAR    X =    0.000 ..   10.000    Y =  -6010.000 ..     0.000
+  PUSHER_ROD   X =    0.000 ..   10.000    Y =      0.000 ..   125.000
+  PUSHER_HEAD  X =    0.000 ..   15.000    Y =    125.000 ..   206.000
+  UT40S        X =    0.000 ..   15.000    Y =     98.556 ..   201.737
+  OUTPUT_BAR   X =    0.000 ..   10.000    Y =  -5870.000 ..    74.287
+  OUTPUT_HEAD  X =    0.000 ..   14.981    Y =     74.287 ..   130.000
+Global seeds have been assigned.
+47000 elements have been generated on part: STRIKER
+Global seeds have been assigned.
+58898 elements have been generated on part: INPUT_BAR
+Global seeds have been assigned.
+1000 elements have been generated on part: PUSHER_ROD
+Global seeds have been assigned.
+61828 elements have been generated on part: OUTPUT_BAR
+Partie droite : de Y = 129.961 a 170.039 (4 sommets a |X| = 5 +- 0.05 mm)
+Global seeds have been assigned.
+15576 elements have been generated on part: UT40S
+Global seeds have been assigned.
+24307 elements have been generated on part: PUSHER_HEAD
+Global seeds have been assigned.
+8594 elements have been generated on part: OUTPUT_HEAD
+Maillage :
+  STRIKER         47000 elements     61061 noeuds   type : C3D8R
+  INPUT_BAR       58898 elements     75789 noeuds   type : C3D8R
+  PUSHER_ROD       1000 elements      1404 noeuds   type : C3D8R
+  PUSHER_HEAD     24307 elements     36178 noeuds   type : C3D10M
+  UT40S           15576 elements     20925 noeuds   type : C3D8R
+  OUTPUT_BAR      61828 elements     78540 noeuds   type : C3D8R
+  OUTPUT_HEAD      8594 elements     13356 noeuds   type : C3D10M
+  TOTAL          217203 elements
+Qualite des tetraedres (hauteur = 3 x volume / plus grande face) :
+  PUSHER_HEAD  hauteur min 0.431 mm   mediane 1.328 mm   < 0.3 mm : 0   < 0.5 mm : 2
+      pire : element 9389  h = 0.431 mm  au point (10.27, 197.19, 16.12)
+      pire : element 2215  h = 0.454 mm  au point (10.34, 184.17, 11.52)
+      pire : element 7813  h = 0.519 mm  au point (10.32, 189.10, 7.71)
+  OUTPUT_HEAD  hauteur min 0.388 mm   mediane 1.236 mm   < 0.3 mm : 0   < 0.5 mm : 2
+      pire : element 5075  h = 0.388 mm  au point (14.50, 126.08, 31.88)
+      pire : element 3538  h = 0.455 mm  au point (11.53, 98.36, 31.37)
+      pire : element 5695  h = 0.502 mm  au point (11.60, 98.98, 31.34)
+Groupes :
+  STRIKER      STRIKER_ALL :  47000 elements   XSYMM : 11011 noeuds
+  INPUT_BAR    INPUT_BAR_ALL :  58898 elements   XSYMM : 13233 noeuds
+  PUSHER_ROD   PUSHER_ROD_ALL :   1000 elements   XSYMM :   234 noeuds
+  PUSHER_HEAD  PUSHER_HEAD_ALL :  24307 elements   XSYMM :  2183 noeuds
+  UT40S        UT40S_ALL :  15576 elements   XSYMM :  1035 noeuds
+  OUTPUT_BAR   OUTPUT_BAR_ALL :  61828 elements   XSYMM : 13090 noeuds
+  OUTPUT_HEAD  OUTPUT_HEAD_ALL :   8594 elements   XSYMM :   748 noeuds
+Guidages (U3 = 0) :
+  STRIKER        1001 noeuds   Y = -11010.000 .. -6010.000   Z =   7.850 ..   7.850
+  INPUT_BAR      1203 noeuds   Y =  -6010.000 ..     0.000   Z =   7.850 ..   7.850
+  PUSHER_ROD      156 noeuds   Y =      0.000 ..   125.000   Z =  -0.000 ..   0.000
+  PUSHER_HEAD    1066 noeuds   Y =    125.856 ..   206.000   Z =  -0.000 ..  -0.000
+  OUTPUT_BAR     1190 noeuds   Y =  -5870.000 ..    74.287   Z =  29.350 ..  29.350
+Surfaces :
+  STRIKER      S_IMPACT     1 faces      47 facettes d'elements
+  INPUT_BAR    S_IMPACT     1 faces      49 facettes d'elements
+  INPUT_BAR    S_PUSH       1 faces      49 facettes d'elements
+  PUSHER_ROD   S_PUSH       1 faces      40 facettes d'elements
+  PUSHER_ROD   S_TIE        1 faces      40 facettes d'elements
+  PUSHER_HEAD  S_SKIN      24 faces    2662 facettes d'elements
+  PUSHER_HEAD  S_TIE        1 faces      96 facettes d'elements
+  UT40S        SEC_IN       1 faces      40 facettes d'elements
+  UT40S        SEC_OUT      1 faces      40 facettes d'elements
+  UT40S        S_SKIN      53 faces    9284 facettes d'elements
+  OUTPUT_BAR   S_TIE        1 faces      52 facettes d'elements
+  OUTPUT_HEAD  S_SKIN      25 faces    1413 facettes d'elements
+  OUTPUT_HEAD  S_TIE        1 faces      92 facettes d'elements
+Mesures virtuelles :
+  GAUGE_IN   INPUT_BAR   Y = -5610.000     98 elements
+  GAUGE_OUT  OUTPUT_BAR  Y =  -270.000    104 elements
+  EXT_OUT    UT40S       Y =   134.971   noeud 277 (vise 135.000)
+  EXT_IN     UT40S       Y =   165.029   noeud 337 (vise 165.000)
+  extensometre : L0 = 30.058 mm (vise 30.000 mm)
+Eprouvette : partie droite de Y = 129.961 (SEC_OUT) a Y = 170.039 (SEC_IN), longueur 40.077 mm, 3200 elements dans GAUGE_ZONE
+The model database has been saved to "C:\APPS\Abaqus2023_Work\SHPB_UT40S.cae".
+Banc construit et sauvegarde dans : C:\APPS\Abaqus2023_Work\SHPB_UT40S.cae
+.inp brut ecrit : C:\Users\jdavion\Documents\eth\shpb-ut-equilibrium\model\geometry\_raw\SHPB_UT40S_mesh.inp
+Etape suivante (Python 3, racine du repo) : python shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40S
