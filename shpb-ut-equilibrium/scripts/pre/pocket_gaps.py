@@ -45,7 +45,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 STEP_DIR = os.path.join(ROOT, 'cad', 'step')
 
 # Memes constantes que build_bench.py (placement centre)
-SPECIMENS = {'UT19': 'XMas_UT_t1p5.step', 'UT40': 'XMas_UT40_t1p5.step'}
+SPECIMENS = {'UT19': 'XMas_UT_t1p5.step', 'UT40': 'XMas_UT40_t1p5.step', 'UT40S': 'XMas_UT40S_t1p5.step'}
 STEP_PUSHER = 'Inverter_new_noM4.step'
 STEP_OUTPUT_BAR = 'Stange30mm_Step2_noM4.step'
 Y_SPEC_TIP_PUSHER = 201.7005

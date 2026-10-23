@@ -51,7 +51,8 @@ LAUNCH_TUBE_M = 7.5          # longueur du tube de lancement (Beerli 2026, secti
 OUTPUT_WINDOW_MS = 2.33      # duree de mesure max permise par la barre de sortie de 5,99 m (Beerli 2026)
 A0_MM2 = {                   # section initiale de la partie droite de l'eprouvette
     'UT19': 5.0 * 1.5,       # 5 mm x 1,5 mm
-    'UT40': 10.0 * 1.5,      # 10 mm x 1,5 mm (Beerli 2026) : A VERIFIER sur la geometrie
+    'UT40': 10.0 * 1.5,      # 10 mm x 1,5 mm (DXF : 10,02 -> 10,00 mm)
+    'UT40S': 10.0 * 1.5,     # UT40 a partie droite parfaitement droite, 10,00 mm
 }
 # Couleurs : une par vitesse visee, dans l'ordre (palette categorielle validee, 3 premieres places)
 RATE_COLORS = ['#2a78d6', '#eb6834', '#1baf7a']
@@ -862,7 +863,7 @@ def write_report(study, rows, out):
          'pre-load in a real test would change the start of the signals.'),
         'Assumed values: densities of the bars and of the striker, material of the inverter (maraging).',
     ]
-    if 'UT40' not in specs:
+    if not any(s_.startswith('UT40') for s_ in specs):
         lim.append('The long-gauge specimen (UT40) is not simulated yet (geometry not available).')
     L.extend('- ' + x for x in lim)
     L.append('')

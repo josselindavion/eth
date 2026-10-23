@@ -45,13 +45,16 @@ SPECIMENS = {
     # Calees sur l'etude taskI_20261013-1127 (UT19 a 500 /s : 485 /s obtenus, F moyenne 6,4 a 6,8 kN)
     'UT19': {'L_eff_mm': 12.7, 'F_N': 7000.0,
              'source': 'calibrated on a first simulation at 500 s-1'},
-    # ESTIMATIONS en attendant la geometrie (partie utile 40 x 10 mm, Beerli 2026), a caler sur le
-    # premier calcul UT40 comme pour l'UT19 :
-    #   L_eff = 40 mm x (12,7 / 15) = 34 mm (meme rapport longueur efficace / partie droite que l'UT19)
-    #   F = 15 kN (section 10 x 1,5 = 15 mm2, deux fois l'UT19 -> deux fois sa force)
-    'UT40': {'L_eff_mm': 34.0, 'F_N': 15000.0,
-             'source': 'estimated from the UT19 values (same ratio L_eff / parallel length, force '
-                       'scaled with the cross-section), to be calibrated'},
+    # Calees le 23/10/2026 sur l'etude taskI_20261023-1140 (premier calcul UT40, valeurs estimees 34 mm et
+    # 15 kN) : 138 /s obtenus a 6,00 m/s et 590 /s a 19,95 m/s. Deux equations 2 K V = vit. L_eff + 2F/(rho c A)
+    # -> L_eff = 30,1 mm, F = 10,4 kN (force efficace basse : la force chute fortement pendant la striction).
+    # Le cas a 1000 /s n'est pas utilisable (striction hors de l'extensometre).
+    'UT40': {'L_eff_mm': 30.1, 'F_N': 10400.0,
+             'source': 'calibrated on the first UT40 simulations at 100 and 500 s-1 (study taskI_20261023-1140)'},
+    # UT40 a partie droite parfaitement droite (cad/dxf/Xmas_UT40S.dxf, scripts/pre/straighten_gauge.py) :
+    # memes valeurs que l'UT40 (meme section a 0,1 % pres)
+    'UT40S': {'L_eff_mm': 30.1, 'F_N': 10400.0,
+              'source': 'same as UT40 (UT40 with a perfectly straight parallel section)'},
 }
 
 # Duree simulee T_STEP, calculee pour chaque cas (on s'arrete juste apres les 30 %) :

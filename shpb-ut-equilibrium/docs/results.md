@@ -95,14 +95,14 @@ $$
 | Éprouvette | $L_{eff}$ | $F$ | Origine | Vitesses du striker à 100 / 500 / 1 000 /s |
 |---|---|---|---|---|
 | UT19 | 12,7 mm | 7 kN | calées sur un premier calcul à 500 /s (485 /s obtenus ; force moyenne 6,4–6,8 kN) | 2,48 / 7,69 / 14,20 m/s |
-| UT40 | 34 mm | 15 kN | **estimées** : même rapport $L_{eff}$ / partie droite que l'UT19 (40 × 12,7 / 15), force × 2 (section 15 mm² au lieu de 7,5) ; à recaler sur le premier calcul | 6,0 / 19,9 / 37,4 m/s |
+| UT40, UT40S | 30,1 mm | 10,4 kN | calées le 23/10 sur les calculs UT40 à 100 et 500 /s de `taskI_20261023-1140` (138 /s à 6,00 m/s, 590 /s à 19,95 m/s : deux équations, deux inconnues). Valeurs de départ estimées : 34 mm et 15 kN. La force efficace est basse car la force chute fortement pendant la striction | 4,83 / 17,2 / 32,6 m/s |
 
 - $L_{eff}$ est plus court que la partie droite (12,7 contre 15 mm pour l'UT19) car l'extensomètre voit la zone la
   plus déformée.
 - À 100 /s, le terme $2F/\rho c A$ (1,14 m/s) pèse autant que le terme utile (1,27 m/s) : 10 % d'erreur sur $F$
   donne environ 10 % d'erreur sur la vitesse de déformation.
 - Première estimation sans le terme de force ($V = \dot\varepsilon \times$ 15 mm) : 21 /s au lieu de 100 /s.
-- UT40 à 1 000 /s : 37,4 m/s donnent environ 710 MPa dans les barres (élastique pour du maraging) ; **la vitesse
+- UT40 à 1 000 /s : 32,6 m/s donnent environ 620 MPa dans les barres (élastique pour du maraging) ; **la vitesse
   maximale du lanceur est à confirmer**.
 
 **Durée simulée** :
@@ -128,6 +128,7 @@ soit 3,65 / 2,13 / 1,83 ms à 100 / 500 / 1 000 /s. Une colonne `t_step_ms` dans
 | `taskI_20261013-1554` | nouvelle formule, durée par cas | 105 / 546 / 1 073 /s ; résultats dans `results/taskI_20261013-1554/` |
 | `diag_20261021-1626` | sondes de force le long de la sortie (1 000 /s) | les oscillations naissent avant la tête : l'éprouvette traverse le jeu et frappe la tête de sortie |
 | `taskI_20261022-1138` | **mise en contact initiale** (jeux fermés, `CLOSE_GAPS`) ; sondes à 1 000 /s | équilibre dès le début aux 3 vitesses ; erreur de la jauge 1,5 / 3,9 / 4,8 % (au lieu de 3 / 15 / 39 %) ; **étude de référence** |
+| `taskI_20261023-1140` | UT40 (géométrie du DXF), vitesses du striker estimées | 138 / 590 / 770 /s ; équilibre complet seulement à 100 /s ; à 1 000 /s striction au bout côté pusher, **hors de l'extensomètre** (bloqué à 12,6 %) ; formule recalée |
 
 ---
 

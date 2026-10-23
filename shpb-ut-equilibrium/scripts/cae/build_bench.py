@@ -62,6 +62,10 @@ SPECIMENS = {
     # centree recouvre deja de 0,04 mm le logement du pusher ; CLOSE_GAPS la recule donc de 0,04 mm.
     'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
              'gap_pusher': -0.0365, 'gap_output': 0.2562},
+    # UT40 avec la partie droite rendue parfaitement droite (10,00 mm ; scripts/pre/straighten_gauge.py) :
+    # memes tetes, donc memes jeux (verifie par pocket_gaps.py UT40S)
+    'UT40S': {'step': 'XMas_UT40S_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
+              'gap_pusher': -0.0365, 'gap_output': 0.2562},
 }
 # Eprouvette donnee en ligne de commande (abaqus cae noGUI=build_bench.py -- UT40)
 for _arg in sys.argv[1:]:
