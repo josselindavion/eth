@@ -56,7 +56,8 @@ SPECIMENS = {
              'gap_pusher': 0.3567, 'gap_output': 0.3563},
     # UT de Beerli 2026 (section 2.2) : zone DIC 30 mm x 9 mm. Geometrie : cad/dxf/Xmas_UT40.dxf (contour de
     # decoupe, 23/10/2026) -> cad/step/XMas_UT40_t1p5.step (scripts/pre/dxf_to_step.py) : 103,181 x 30 mm,
-    # partie droite 40,08 x 10,00 mm, raccords R2,25. Jeux mesures par pocket_gaps.py UT40 : gap_pusher
+    # partie droite 40,08 mm, largeur 10,02 mm cote barre de sortie -> 10,00 mm cote pusher (pas tout a fait
+    # droite), raccords R2,25. Jeux mesures par pocket_gaps.py UT40 : gap_pusher
     # negatif car, calee sur son bout cote pusher (0,29 mm plus court que celui de l'UT19), l'eprouvette
     # centree recouvre deja de 0,04 mm le logement du pusher ; CLOSE_GAPS la recule donc de 0,04 mm.
     'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
@@ -342,11 +343,13 @@ def thickness_edges(part, tol=1.0e-6):
     return part.edges.findAt(*pts)
 
 
-def partition_specimen_gauge(part, half_width, tol=1.0e-3):
+def partition_specimen_gauge(part, half_width, tol=0.05):
     """Decoupe l'eprouvette par deux plans Y = cte au debut et a la fin de la partie droite.
 
     Les positions sont lues sur la geometrie : ce sont les Y extremes des sommets
-    situes sur le bord droit de la zone utile (|X| = half_width).
+    situes sur le bord droit de la zone utile (|X| = half_width, a tol pres).
+    tol = 0.05 mm : la partie droite de l'UT40 (DXF) n'est pas parfaitement droite, sa demi-largeur passe
+    de 5,010 a 5,000 mm d'un bout a l'autre ; avec 1e-3 un seul bout etait trouve (23/10/2026).
     Renvoie (y_out, y_in) : Y bas (cote barre de sortie) et Y haut (cote pusher).
     """
     ys = [v.pointOn[0][1] for v in part.vertices
@@ -357,6 +360,10 @@ def partition_specimen_gauge(part, half_width, tol=1.0e-3):
                          'sur les sommets : %s -> corriger gauge_half_width dans SPECIMENS'
                          % (half_width, ', '.join('%g' % x for x in xs)))
     y_out, y_in = min(ys), max(ys)
+    if y_in - y_out < 1.0:
+        raise ValueError('Debut et fin de la partie droite confondus (Y = %.3f et %.3f) : sommets trouves a '
+                         '|X| = %g +- %g mm : %s' % (y_out, y_in, half_width, tol, ', '.join('%.3f' % y for y in ys)))
+    print('Partie droite : de Y = %.3f a %.3f (%d sommets a |X| = %g +- %g mm)' % (y_out, y_in, len(ys), half_width, tol))
     for y in (y_out, y_in):
         dp = part.DatumPlaneByPrincipalPlane(principalPlane=XZPLANE, offset=y)
         part.PartitionCellByDatumPlane(datumPlane=part.datums[dp.id], cells=part.cells)
@@ -530,9 +537,19 @@ def make_measurement_sets(model, y_gauge_in, y_gauge_out, y_sec_out, y_sec_in):
     spec = model.parts[SPEC]
     z_top = max(v.pointOn[0][2] for v in spec.vertices)
     y_mid = 0.5 * (y_sec_out + y_sec_in)
+    # Noeud le plus proche de la position visee (sur X = 0, face du dessus) : la partie droite de l'UT40 fait
+    # 40,077 mm, maillee en 80 elements de 0,501 mm, donc aucun noeud n'est exactement a +-15 mm du milieu.
+    # La longueur reelle L0 est relue sur les coordonnees des noeuds par extract_history.py.
+    ys_ext = []
     for name, y in (('EXT_OUT', y_mid - 0.5 * EXT_LENGTH), ('EXT_IN', y_mid + 0.5 * EXT_LENGTH)):
-        label = node_set_at(spec, name, (0.0, y, z_top))
-        print('  %-9s  %-10s  Y = %9.3f   noeud %d' % (name, SPEC, y, label))
+        cand = spec.nodes.getByBoundingBox(-1.0e-3, y - 1.0, z_top - 1.0e-3, 1.0e-3, y + 1.0, z_top + 1.0e-3)
+        if len(cand) == 0:
+            raise ValueError('Aucun noeud de surface sur X = 0 pres de Y = %.3f pour %s' % (y, name))
+        node = min(cand, key=lambda n_: abs(n_.coordinates[1] - y))
+        spec.SetFromNodeLabels(name=name, nodeLabels=(node.label,))
+        ys_ext.append(node.coordinates[1])
+        print('  %-9s  %-10s  Y = %9.3f   noeud %d (vise %.3f)' % (name, SPEC, node.coordinates[1], node.label, y))
+    print('  extensometre : L0 = %.3f mm (vise %.3f mm)' % (ys_ext[1] - ys_ext[0], EXT_LENGTH))
 
 
 def report_sets(model, part_names):
