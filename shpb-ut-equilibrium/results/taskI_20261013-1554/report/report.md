@@ -15,7 +15,7 @@
 | UT19 / 500 | yes, from 2.5 % | 7.69 m/s | in 0.63 ms | 15 % |
 | UT19 / 1000 | partial, 2.7 % to 13.7 % | 14.20 m/s | in 0.33 ms | 39 % |
 
-- Equilibrium is reached early and maintained at the lower rates. At the highest rate it is only partly reached; the largest differences occur late in the test, when the force decreases (necking).
+- Equilibrium maintained until the end: UT19 / 100, UT19 / 500. Only partly reached: UT19 / 1000 (2.7 % to 13.7 %); the largest ratios occur late in the test, when the force decreases (necking).
 - The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, 30 % strain cannot be reached below about 142 s⁻¹.
 - Even when the specimen is in equilibrium, the force read on the output bar gauge oscillates around the true specimen force: this must be considered when assessing the measured curves.
 

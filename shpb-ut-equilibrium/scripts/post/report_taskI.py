@@ -548,10 +548,16 @@ def write_report(study, rows, out):
                [[label(r), eq_short(r), '%.2f m/s' % r['v_striker'],
                  ('in %.2f ms' % r['time_to_30_ms']) if r['reached_30'] else 'no (%s max)' % pct(r['eps_max'], 1),
                  pct(r['gauge_err_after5'], 0)] for r in rows]))
-    P(('- Equilibrium is reached at the very start of loading and maintained until the end at all rates.\n'
-       if all_eq else
-       '- Equilibrium is reached early and maintained at the lower rates. At the highest rate it is only partly '
-       'reached; the largest differences occur late in the test, when the force decreases (necking).\n') +
+    ok_ = [label(r) for r in rows if eq_ok(r)]
+    part_ = ['%s (%s to %s)' % (label(r), pct(r['eq_from'], 1), pct(r['eq_to'], 1)) for r in rows
+             if not eq_ok(r) and not np.isnan(r['eq_from'])]
+    if all_eq:
+        eq_txt = '- Equilibrium is reached at the very start of loading and maintained until the end at all rates.\n'
+    else:
+        eq_txt = ('- Equilibrium maintained until the end: %s. ' % (', '.join(ok_) if ok_ else 'none') +
+                  ('Only partly reached: %s; the largest ratios occur late in the test, when the force decreases '
+                   '(necking).\n' % ', '.join(part_) if part_ else '\n'))
+    P(eq_txt +
       '- The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, '
       '30 %% strain cannot be reached below about %.0f s⁻¹.\n' % rate_min +
       ('- The force read on the output bar gauge follows the true specimen force within %s of the maximum force '
