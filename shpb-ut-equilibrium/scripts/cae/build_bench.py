@@ -22,7 +22,8 @@ Repere global : Y = axe des barres / traction, Z = vers le haut,
                 X = largeur de l'eprouvette. Unites : mm.
 
 Lancement (depuis le dossier de travail Abaqus) :
-  - dans CAE   : regler SPEC ci-dessous (UT19 ou UT40), puis File > Run Script... > ce fichier
+  - dans CAE   : File > Run Script... > scripts/cae/build_UT19.py ou build_UT40.py (ou regler SPEC
+                 ci-dessous, puis Run Script sur ce fichier)
   - sans GUI   : abaqus cae noGUI=<chemin>/scripts/cae/build_bench.py -- UT40
                  (l'eprouvette donnee apres "--" remplace SPEC)
 Une eprouvette = un modele SHPB_<SPEC> : le banc est le meme, mais l'eprouvette, sa position

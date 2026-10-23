@@ -95,7 +95,7 @@ ils restent sur le PC qui les a construits (PC du labo).
 | Étape | Où | Action |
 |---|---|---|
 | 1 | Git Bash | si un matériau change : `py shpb-ut-equilibrium/scripts/pre/make_materials.py` |
-| 2 | Abaqus/CAE | ouvrir `scripts/cae/build_bench.py`, régler `SPEC = 'UT19'` (ou `'UT40'`) en haut, puis **File → Run Script** → ce fichier. Quelques minutes |
+| 2 | Abaqus/CAE | **File → Run Script** → `scripts/cae/build_UT19.py` (ou `build_UT40.py`). Quelques minutes. (`build_bench.py` lancé directement construit l'UT19, valeur de `SPEC` en haut du fichier) |
 | 3 | Abaqus/CAE | vérifier la sortie : placement de l'éprouvette (UT19 : « controle : placement centre identique… », puis « mise en contact (CLOSE_GAPS) : eprouvette reculee de 0.3567 mm, barre de sortie de 0.7130 mm »), nombre d'éléments (UT19 : ≈ 214 214 ; 214 214 avec l'ancien placement, la tête de sortie peut changer de quelques éléments), qualité des tétraèdres (hauteur min > 0,3 mm) |
 | 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT19` (ou `UT40`) → `model/geometry/UT19/` |
 
@@ -213,7 +213,7 @@ labo, `abaqus.bat` se place d'office dans `C:\APPS\Abaqus2023_Work` et ne trouve
 |---|---|---|
 | 1 | Git Bash ou SolidWorks | **fait le 23/10** : contour de découpe `cad/dxf/Xmas_UT40.dxf` converti par `py shpb-ut-equilibrium/scripts/pre/dxf_to_step.py <dxf> <step> 1.5` (demande `ezdxf` et `cadquery-ocp`) en `cad/step/XMas_UT40_t1p5.step`. Autre voie : SolidWorks, tôle de 1,5 mm extrudée selon +Z depuis z = 0, exportée en STEP AP214 |
 | 2 | `build_bench.py` | ligne `UT40` de `SPECIMENS` : demi-largeur de la partie droite (5,0 mm si elle fait 10 mm), longueur de l'extensomètre (30 mm), jeux `gap_pusher` / `gap_output` donnés par `py shpb-ut-equilibrium/scripts/pre/pocket_gaps.py UT40` |
-| 3 | Abaqus/CAE | `SPEC = 'UT40'`, Run Script. Lire la longueur de l'éprouvette et la position de la barre de sortie (recalculées automatiquement) |
+| 3 | Abaqus/CAE | File → Run Script → `scripts/cae/build_UT40.py`. Lire la longueur de l'éprouvette et la position de la barre de sortie (recalculées automatiquement) |
 | 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40` |
 | 5 | `make_run.py` | `SPECIMENS['UT40']` : L_eff et F sont des estimations (34 mm, 15 kN), à recaler après le premier calcul |
 | 6 | `report_taskI.py` | `A0_MM2['UT40']` = largeur × 1,5 mm |
