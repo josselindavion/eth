@@ -11,11 +11,13 @@
 
 | Specimen / target rate (s⁻¹) | Equilibrium ($\lvert R\rvert$ < 5 %) | Striker velocity | 30 % strain | Gauge error |
 |---|---|---|---|---|
+| UT40 / 100 | yes, from 0.7 % | 6.00 m/s | in 2.37 ms | 2 % |
 | UT40 / 500 | partial, 2.9 % to 11.2 % | 19.95 m/s | in 0.57 ms | 4 % |
+| UT40 / 1000 | partial, 6.3 % to 9.8 % | 37.39 m/s | no (12.6 % max) | 65 % |
 
-- Equilibrium maintained until the end: none. Only partly reached: UT40 / 500 (2.9 % to 11.2 %); the largest ratios occur late in the test, when the force decreases (necking).
+- Equilibrium maintained until the end: UT40 / 100. Only partly reached: UT40 / 500 (2.9 % to 11.2 %), UT40 / 1000 (6.3 % to 9.8 %); the largest ratios occur late in the test, when the force decreases (necking).
 - The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, 30 % strain cannot be reached below about 142 s⁻¹.
-- The force read on the output bar gauge follows the true specimen force within 4 % of the maximum force after 5 % strain.
+- Even when the specimen is in equilibrium, the force read on the output bar gauge oscillates around the true specimen force: this must be considered when assessing the measured curves.
 
 *Gauge error*: largest difference between the force read on the output bar gauge and the exact specimen force after 5 % strain, relative to the maximum force.
 
@@ -72,7 +74,7 @@ where $t_1$ and $t_2$ are the instants at which the extensometer reaches $\varep
 - $\varepsilon_1$ = 5 %: before, the loading is not established (rise of the incident pulse, force rising to its maximum, reached at about 5 % strain).
 - $\varepsilon_2$ = 80 % of the maximum strain: the end of the test is excluded, where the strain rate drops when the pulse ends. This gives 24 % when 30 % is reached, and less otherwise (Table T4).
 
-Example (UT40 at 500 s⁻¹): the strain reaches 5 % at $t_1$ = 1.422 ms and 24.0 % at $t_2$ = 1.745 ms, so $\dot\varepsilon$ = (0.240 − 0.05) / (0.323 × 10⁻³ s) ≈ 590 s⁻¹. The full history is shown in F4 and other definitions in T4.
+Example (UT40 at 100 s⁻¹): the strain reaches 5 % at $t_1$ = 1.868 ms and 24.0 % at $t_2$ = 3.246 ms, so $\dot\varepsilon$ = (0.240 − 0.05) / (1.378 × 10⁻³ s) ≈ 138 s⁻¹. The full history is shown in F4 and other definitions in T4.
 
 ## Task I answers
 
@@ -80,7 +82,9 @@ Example (UT40 at 500 s⁻¹): the strain reaches 5 % at $t_1$ = 1.422 ms and 24.
 
 | Specimen / target rate (s⁻¹) | Striker velocity (m/s) | Achieved rate (s⁻¹) | Time to 30 % strain | Max strain |
 |---|---|---|---|---|
+| UT40 / 100 | 6.00 | 138 | 2.37 ms | 30.0 % |
 | UT40 / 500 | 19.95 | 590 | 0.57 ms | 30.0 % |
+| UT40 / 1000 | 37.39 | 770 | not reached | 12.6 % |
 
 *Striker velocity*: setting of the test. *Achieved rate*: see above. *Time to 30 % strain*: from the loading start. *Max strain*: 30 %, or less if the loading pulse ends before. The complete table, with all indicators, is `T1_conditions.csv`.
 
@@ -98,11 +102,15 @@ Example (UT40 at 500 s⁻¹): the strain reaches 5 % at $t_1$ = 1.422 ms and 24.
 
 | Specimen / target rate (s⁻¹) | Equilibrium from | Max $\lvert R\rvert$ after 5 % | Max $\lvert\Delta F\rvert$ after 5 % | Max force |
 |---|---|---|---|---|
+| UT40 / 100 | 0.7 % (0.11 ms) | 3.0 % | 0.11 kN | 15.02 kN at 5.9 % |
 | UT40 / 500 | 2.9 % to 11.2 % only | 17.4 % | 1.14 kN | 15.32 kN at 3.2 % |
+| UT40 / 1000 | 6.3 % to 9.8 % only | 283.6 % | 9.52 kN | 15.68 kN at 6.6 % |
 
 *Equilibrium from*: strain (and time after the loading start) from which $\lvert R\rvert$ < 5 % holds until the end of loading; 0.2 % is the lowest strain considered, so this value means "from the start". $\Delta F = F_{in} - F_{out}$.
 
+- **UT40 at 100 s⁻¹** (striker 6.00 m/s): equilibrium is established at 0.7 % strain, 0.11 ms after the loading start, and holds until the end of the loading (max $\lvert R\rvert$ after 5 % strain: 3.0 %).
 - **UT40 at 500 s⁻¹** (striker 19.95 m/s): equilibrium is **only partly reached**: $\lvert R\rvert$ < 5 % from 2.9 % to 11.2 % strain, but it reaches 17.4 % at other instants after 5 % strain ($\lvert F_{in} - F_{out}\rvert$ up to 1.14 kN, i.e. 7.5 % of the maximum force).
+- **UT40 at 1000 s⁻¹** (striker 37.39 m/s): equilibrium is **only partly reached**: $\lvert R\rvert$ < 5 % from 6.3 % to 9.8 % strain, but it reaches 283.6 % at other instants after 5 % strain ($\lvert F_{in} - F_{out}\rvert$ up to 9.52 kN, i.e. 60.7 % of the maximum force).
 
 The specimen teeth touch both pockets at the start: the force rises smoothly from zero, without the impact pulse and the rebound obtained when the specimen was centred with clearances (study `taskI_20261013-1554`).
 
@@ -112,7 +120,9 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 | Specimen / target rate (s⁻¹) | Equilibrium from (raw) | Equilibrium from (filtered) | Max $\lvert R\rvert$ (raw) | Max $\lvert R\rvert$ (filtered) |
 |---|---|---|---|---|
+| UT40 / 100 | 0.7 % | 0.7 % | 3.1 % | 3.0 % |
 | UT40 / 500 | n/a | n/a | 19.3 % | 17.4 % |
+| UT40 / 1000 | n/a | n/a | 278.6 % | 283.6 % |
 
 *Raw*: forces as written by Abaqus (one point per µs). Max $\lvert R\rvert$ after 5 % strain.
 
@@ -120,13 +130,15 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 ![Figure F4 – Strain rate in the specimen](F4_strain_rate.png)
 
-**Figure F4 – Strain rate in the specimen.** *Plotted:* the strain rate (vertical axis, logarithmic scale) against the engineering strain, one curve per target rate; dotted lines: target rates; dots: force maximum (onset of necking). *Source:* time derivative of the extensometer strain (filtered at 100 kHz before derivation): a kinematic quantity, equivalent to DIC; not a force, not the output bar gauge. *How to read it:* the curve should stay close to its target. Being a derivative, it amplifies small vibrations of the specimen (±10 to 30 % around the mean, period 10 to 20 µs at 1000 s⁻¹); on the logarithmic scale the 100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain shows the end of the loading pulse.
+**Figure F4 – Strain rate in the specimen.** *Plotted:* the strain rate (vertical axis, logarithmic scale) against the engineering strain, one curve per target rate; dotted lines: target rates; dots: force maximum (onset of necking). *Source:* time derivative of the extensometer strain (filtered at 100 kHz before derivation): a kinematic quantity, equivalent to DIC; not a force, not the output bar gauge. *How to read it:* the curve should stay close to its target. Being a derivative, it amplifies small vibrations of the specimen (±10 to 30 % around the mean, period 10 to 20 µs at 1000 s⁻¹); on the logarithmic scale the 100 s⁻¹ curve looks noisier than it is. A curve that drops before 30 % strain shows the end of the loading pulse (UT40 / 1000: 12.6 %).
 
 **Table T4 – Strain rate with different definitions** (s⁻¹).
 
 | Specimen / target rate (s⁻¹) | Achieved ($\varepsilon_1 \to \varepsilon_2$) | At max force | Nominal | Before max force | After max force |
 |---|---|---|---|---|---|
+| UT40 / 100 | 138 (5 → 24.0 %) | 107 | 127 | 72 to 105 | 115 to 171 |
 | UT40 / 500 | 590 (5 → 24.0 %) | 402 | 525 | 183 to 447 | 505 to 651 |
+| UT40 / 1000 | 770 (5 → 10.1 %) | 673 | 298 | 387 to 893 | -72 to 718 |
 
 *Achieved*: definition above (used in T1 and F5). *At max force*: value of F4 at the dot. *Nominal*: final strain divided by the whole loading time, start-up included. *Before / after max force*: range of the F4 curve before and after the dot (10th to 90th percentile).
 
@@ -152,7 +164,7 @@ $L_{eff}$ is an effective length relating the elongation rate to the extensomete
 
 **Figure F5 – Striker velocity required for a given strain rate.** *Plotted:* the striker velocity (vertical axis), i.e. the setting of the test, against the strain rate in the specimen (horizontal axis), one panel per specimen. Line: the formula above. Dots: the simulations, at the imposed striker velocity and the achieved strain rate (T1). Shaded: 30 % not reachable. *Source:* formula of `make_run.py` and simulation results. *How to read it:* choose a strain rate on the horizontal axis and read the striker velocity on the line; dots on the line confirm the formula.
 
-**Limit for 30 % strain.** The 5 m striker gives a 2.12 ms loading pulse, so 30 % strain requires at least 0.30 / 2.12 ms ≈ 142 s⁻¹; the output bar (5.99 m) also limits the measurement window to 2.33 ms (Beerli et al. 2026).
+**Limit for 30 % strain.** The 5 m striker gives a 2.12 ms loading pulse, so 30 % strain requires at least 0.30 / 2.12 ms ≈ 142 s⁻¹; the output bar (5.99 m) also limits the measurement window to 2.33 ms (Beerli et al. 2026). At 1000 s⁻¹ (UT40) the strain stops at 12.6 %; 30 % would need about 0.4 ms of loading (0.30 / 770 s⁻¹ + 0.03 ms start-up), i.e. a striker of about 1.0 m: almost the length of the 7.5 m launch tube, and longer than the measurement window.
 
 ## What the experiment will measure
 
@@ -170,7 +182,9 @@ In the experiment the force is only known from the output bar gauge. F2 and F3 c
 
 | Specimen / target rate (s⁻¹) | Max force | Max gauge error after 5 % |
 |---|---|---|
+| UT40 / 100 | 15.02 kN | 1.9 % of the max force |
 | UT40 / 500 | 15.32 kN | 4.2 % of the max force |
+| UT40 / 1000 | 15.68 kN | 65.4 % of the max force |
 
 The gauge signal follows the specimen force closely. With the specimen centred in the pockets (clearances of 0.36 mm, study `taskI_20261013-1554`), the specimen hit the output head at the start and the gauge error reached 3 / 15 / 39 % at 100 / 500 / 1000 s⁻¹: closing the clearances, as done in the lab before a test, is essential for the measurement.
 
@@ -182,15 +196,17 @@ These checks do not answer the Task I questions: they verify that the simulation
 
 | Specimen / target rate (s⁻¹) | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal energy |
 |---|---|---|---|---|
+| UT40 / 100 | 1.000 | 0.994 | 0.00 % | 1.4 % |
 | UT40 / 500 | 1.000 | 0.994 | 0.00 % | 0.5 % |
+| UT40 / 1000 | 1.000 | 0.994 | 0.04 % | 0.2 % |
 
-- **Incident strain / theory** – is the loading right? When the striker hits the input bar, one-dimensional wave theory gives the strain of the incident wave: $\varepsilon_{inc} = K\,V_{striker}/c$, with $c$ = 4871 m/s the wave speed in the bar and $K$ = 0.487 the share of the striker velocity transmitted to the bar ($K = Z_{striker}/(Z_{striker}+Z_{bar})$, $Z = \rho c A$). Example (UT40 at 500 s⁻¹): 0.487 × 19.95 / 4871 = $2.00 \times 10^{-3}$ (a compression: negative in `T1_conditions.csv`). The simulated value is the plateau of the virtual gauge on the input bar. A ratio of 1.000 means that the impact, the bar materials and the gauge reading are correct.
+- **Incident strain / theory** – is the loading right? When the striker hits the input bar, one-dimensional wave theory gives the strain of the incident wave: $\varepsilon_{inc} = K\,V_{striker}/c$, with $c$ = 4871 m/s the wave speed in the bar and $K$ = 0.487 the share of the striker velocity transmitted to the bar ($K = Z_{striker}/(Z_{striker}+Z_{bar})$, $Z = \rho c A$). Example (UT40 at 100 s⁻¹): 0.487 × 6.00 / 4871 = $6.01 \times 10^{-4}$ (a compression: negative in `T1_conditions.csv`). The simulated value is the plateau of the virtual gauge on the input bar. A ratio of 1.000 means that the impact, the bar materials and the gauge reading are correct.
 
 - **Kinetic energy / ½mV²** – is the striker mass right? At $t$ = 0 only the striker moves; its kinetic energy is compared with $\tfrac12 m V^2$ for the nominal striker (Ø20 × 5000 mm, 7850 kg/m³, $m$ = 12.3 kg). The ratio (0.994) is slightly below 1 because the mesh replaces the circular cross-section by a polygon with a slightly smaller area: the meshed striker is a little lighter. This does not change the incident wave, which depends on the striker velocity, not on its mass.
 
-- **Energy drift** – does the calculation create or lose energy? Without losses the total energy must stay constant. Abaqus keeps an energy balance (kinetic + internal + friction − external work, `ETOTAL`); the column gives its largest variation during the whole run, relative to the initial kinetic energy (0.00 % to 0.00 % here). Below about 1 %, contacts, ties and time integration are considered free of artificial energy.
+- **Energy drift** – does the calculation create or lose energy? Without losses the total energy must stay constant. Abaqus keeps an energy balance (kinetic + internal + friction − external work, `ETOTAL`); the column gives its largest variation during the whole run, relative to the initial kinetic energy (0.00 % to 0.04 % here). Below about 1 %, contacts, ties and time integration are considered free of artificial energy.
 
-- **Hourglass / internal energy** – does the mesh deform in a non-physical way? The hexahedra (C3D8R) are evaluated at a single point at their centre: fast, but some zigzag ("hourglass") deformations are not seen by that point and would meet no resistance. Abaqus adds a small artificial stiffness against them; the energy absorbed by it (`ALLAE`) is not physical. The column gives it at the end of the run relative to the real deformation energy (`ALLIE`): 0.5 % to 0.5 % here, well below the usual 5 % limit.
+- **Hourglass / internal energy** – does the mesh deform in a non-physical way? The hexahedra (C3D8R) are evaluated at a single point at their centre: fast, but some zigzag ("hourglass") deformations are not seen by that point and would meet no resistance. Abaqus adds a small artificial stiffness against them; the energy absorbed by it (`ALLAE`) is not physical. The column gives it at the end of the run relative to the real deformation energy (`ALLIE`): 0.2 % to 1.4 % here, well below the usual 5 % limit.
 
 ## Limitations
 
@@ -204,6 +220,14 @@ These checks do not answer the Task I questions: they verify that the simulation
 
 One figure per simulation, unfiltered signals over the whole simulated time: bar gauges, specimen forces and gauge force (not shifted), $R$ and extensometer strain. Shaded: from the loading start to 30 % strain.
 
+![UT40_R0100_00](../UT40_R0100_00/UT40_R0100_00_overview.png)
+
+*Control figure – UT40 at 100 s⁻¹.*
+
 ![UT40_R0500_00](../UT40_R0500_00/UT40_R0500_00_overview.png)
 
 *Control figure – UT40 at 500 s⁻¹.*
+
+![UT40_R1000_00](../UT40_R1000_00/UT40_R1000_00_overview.png)
+
+*Control figure – UT40 at 1000 s⁻¹.*

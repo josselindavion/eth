@@ -365,3 +365,24 @@ Output Field Frame Number  94, of  100, at step time 3.433E-03
    127374  3.470E-03 3.470E-03  00:53:56 1.120E-08     5003007  5.982E+04  1.103E+05
 Output Field Frame Number  95, of  100, at step time 3.470E-03
 Output Field Frame Number  19, of   20, at step time 3.470E-03
+   130706  3.506E-03 3.506E-03  00:55:20 1.076E-08     5003006  6.064E+04  1.103E+05
+Output Field Frame Number  96, of  100, at step time 3.506E-03
+   134150  3.543E-03 3.543E-03  00:56:47 1.039E-08     5003006  6.150E+04  1.103E+05
+Output Field Frame Number  97, of  100, at step time 3.543E-03
+   137718  3.579E-03 3.579E-03  00:58:17 1.009E-08     5003006  6.267E+04  1.103E+05
+Output Field Frame Number  98, of  100, at step time 3.579E-03
+   141387  3.616E-03 3.616E-03  00:59:49 9.834E-09     5003007  6.137E+04  1.103E+05
+Output Field Frame Number  99, of  100, at step time 3.616E-03
+   145144  3.652E-03 3.652E-03  01:01:23 9.613E-09     5003007  6.005E+04  1.103E+05
+Restart Number  1 at 3.65250E-03
+Output Field Frame Number 100, of  100, at step time 3.652E-03
+Output Field Frame Number  20, of   20, at step time 3.652E-03
+  EXPLICIT EXECUTABLE TIME SUMMARY
+       USER TIME (SEC)      =   29384.
+       SYSTEM TIME (SEC)    =   42.800
+       WALLCLOCK TIME (SEC) =         3685
+              INIT (SEC) =          3
+              MAIN (SEC) =       3682
+
+  THE ANALYSIS HAS COMPLETED SUCCESSFULLY
+

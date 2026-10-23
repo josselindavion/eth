@@ -1,2 +1,4 @@
 case_id,specimen,target rate (1/s),striker velocity (m/s),incident strain (-),achieved rate (1/s),rate at max force (1/s),nominal rate (1/s),time to 30 % (ms),max strain reached (-),max force (kN),strain at max force (-),equilibrium from strain (-),equilibrium after (ms),longest equilibrium interval from strain (-),longest equilibrium interval to strain (-),max |R| after 5 % (-),max |dF| after 5 % (kN),max gauge error after 5 % (-),hourglass / internal energy (-)
+UT40_R0100_00,UT40,100,6.002,-0.0006006,138,106.8,126.7,2.368,0.3001,15.02,0.05911,0.006824,0.108,0.006824,0.3001,0.03018,0.1123,0.01873,0.01428
 UT40_R0500_00,UT40,500,19.95,-0.001996,589.8,402.2,525.1,0.572,0.3004,15.32,0.03195,,,0.02885,0.1115,0.1736,1.144,0.04214,0.005138
+UT40_R1000_00,UT40,1000,37.39,-0.003741,770.3,672.7,298.4,,0.1259,15.68,0.06577,,,0.06251,0.09812,2.836,9.516,0.6542,0.002143

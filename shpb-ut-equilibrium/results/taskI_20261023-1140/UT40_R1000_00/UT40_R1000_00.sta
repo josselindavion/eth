@@ -369,3 +369,20 @@ Output Field Frame Number  19, of   20, at step time 1.742E-03
 Output Field Frame Number  96, of  100, at step time 1.760E-03
     67755  1.779E-03 1.779E-03  00:55:01 8.318E-09     5001639  3.038E+06  4.283E+06
 Output Field Frame Number  97, of  100, at step time 1.779E-03
+    70017  1.797E-03 1.797E-03  00:56:46 7.906E-09     5001639  3.075E+06  4.283E+06
+Output Field Frame Number  98, of  100, at step time 1.797E-03
+    72394  1.815E-03 1.815E-03  00:58:41 7.552E-09     5001638  3.112E+06  4.283E+06
+Output Field Frame Number  99, of  100, at step time 1.815E-03
+    74879  1.834E-03 1.834E-03  01:00:36 7.219E-09     5001638  3.150E+06  4.283E+06
+Restart Number  1 at 1.83380E-03
+Output Field Frame Number 100, of  100, at step time 1.834E-03
+Output Field Frame Number  20, of   20, at step time 1.834E-03
+  EXPLICIT EXECUTABLE TIME SUMMARY
+       USER TIME (SEC)      =   28880.
+       SYSTEM TIME (SEC)    =   53.280
+       WALLCLOCK TIME (SEC) =         3638
+              INIT (SEC) =         13
+              MAIN (SEC) =       3625
+
+  THE ANALYSIS HAS COMPLETED SUCCESSFULLY
+
