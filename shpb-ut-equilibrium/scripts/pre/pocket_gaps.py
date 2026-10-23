@@ -7,6 +7,8 @@ barre de sortie, directement sur les fichiers STEP (OpenCascade), dans le placem
 Resultat : les deux valeurs gap_pusher et gap_output a recopier dans SPECIMENS de build_bench.py.
 
   gap_pusher : de combien l'eprouvette doit reculer (-Y) pour toucher le logement du pusher.
+               Negatif si, dans le placement centre, elle recouvre deja le logement (UT40 : son bout cote
+               pusher est plus court que celui de l'UT19, or le placement centre se cale sur ce bout).
                C'est aussi la course du pusher (+Y) avant qu'il tire sur l'eprouvette.
   gap_output : de combien l'eprouvette doit avancer (+Y) pour toucher le logement de la barre de sortie.
 
@@ -36,6 +38,8 @@ from OCP.BRepBndLib import BRepBndLib
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopAbs import TopAbs_FACE
 from OCP.TopoDS import TopoDS
+from OCP.GProp import GProp_GProps
+from OCP.BRepGProp import BRepGProp
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STEP_DIR = os.path.join(ROOT, 'cad', 'step')
@@ -91,19 +95,36 @@ def dist(a, b):
 
 
 def gap(spec, other, sign):
-    """Plus petite translation selon Y (sens 'sign') qui met l'eprouvette au contact de 'other'."""
-    lo, hi = 0.0, 0.05
-    while dist(move(spec, vec=(0, sign * hi, 0)), other) > TOL:
-        lo, hi = hi, 2.0 * hi
-        if hi > 10.0:
-            sys.exit('Pas de contact a moins de 10 mm : placement a verifier')
+    """Translation selon Y (sens 'sign') qui amene l'eprouvette juste au contact de 'other'.
+    Positive : il y a un jeu a fermer. Negative : au depart les pieces se recouvrent deja (interpenetration),
+    il faut reculer de cette valeur pour qu'elles se touchent seulement."""
+    sep = lambda d: dist(move(spec, vec=(0, sign * d, 0)), other) > TOL      # separees ?
+    if sep(0.0):
+        lo, hi = 0.0, 0.05                     # lo : separees, hi : en contact
+        while sep(hi):
+            lo, hi = hi, 2.0 * hi
+            if hi > 10.0:
+                sys.exit('Pas de contact a moins de 10 mm : placement a verifier')
+    else:
+        lo, hi = -0.05, 0.0                    # deja en contact au depart : on recule jusqu'a les separer
+        while not sep(lo):
+            hi, lo = lo, 2.0 * lo
+            if lo < -10.0:
+                sys.exit('Recouvrement de plus de 10 mm : placement a verifier')
     for _ in range(40):
         mid = 0.5 * (lo + hi)
-        if dist(move(spec, vec=(0, sign * mid, 0)), other) > TOL:
+        if sep(mid):
             lo = mid
         else:
             hi = mid
     return hi
+
+
+def overlap_volume(a, b):
+    """Volume commun a deux solides (mm3) : 0 si elles se touchent seulement."""
+    g = GProp_GProps()
+    BRepGProp.VolumeProperties_s(BRepAlgoAPI_Common(a, b).Shape(), g)
+    return abs(g.Mass())
 
 
 def touching_faces(spec, other, tol=1.0e-3):
@@ -136,18 +157,28 @@ def main():
     output = crop_y(move(load(STEP_OUTPUT_BAR), (1, 0, 0), 90.0, (0, y_output_bar, Z_OUTPUT_AXIS)),
                     y_output_bar - 60.0, y_output_bar + 10.0)
 
+    print('Distance au repos (placement centre) : pusher %.4f mm, barre de sortie %.4f mm%s'
+          % (dist(spec, pusher), dist(spec, output),
+             '   -> deja en contact ou recouvrement : jeu negatif possible' if min(dist(spec, pusher), dist(spec, output)) <= TOL else ''))
     g_p = gap(spec, pusher, -1.0)
     g_o = gap(spec, output, +1.0)
     print('')
     print('Jeux dans le sens de la traction :')
     print('  gap_pusher = %.4f mm   (eprouvette vers -Y jusqu au logement du pusher)' % g_p)
     print('  gap_output = %.4f mm   (eprouvette vers +Y jusqu au logement de la barre de sortie)' % g_o)
-    print('  (jeux dans l autre sens : pusher %.4f mm, barre de sortie %.4f mm)'
-          % (gap(spec, pusher, +1.0), gap(spec, output, -1.0)))
 
     # Controle : jeux fermes comme dans build_bench.py (CLOSE_GAPS = True)
     spec_c = move(spec, vec=(0, -round(g_p, 4), 0))
     output_c = move(output, vec=(0, -round(g_p, 4) - round(g_o, 4), 0))
+    # jeu restant de l'autre cote des dents, une fois au contact (flancs non charges) : on decolle de EPS
+    # du flanc charge, puis on cherche le contact dans l'autre sens
+    EPS = 1.0e-3
+    print('  jeu restant de l autre cote des dents, une fois au contact : pusher %.4f mm, barre de sortie %.4f mm'
+          % (EPS + gap(move(spec_c, vec=(0, +EPS, 0)), pusher, +1.0),
+             EPS + gap(move(spec_c, vec=(0, -EPS, 0)), output_c, -1.0)))
+    print('')
+    print('Controle d interpenetration (volume commun, eprouvette levee de %.1f mm) : pusher %.4f mm3, barre de sortie %.4f mm3'
+          % (LIFT, overlap_volume(spec_c, pusher), overlap_volume(spec_c, output_c)))
     for name, other in (('du pusher', pusher), ('de la barre de sortie', output_c)):
         faces = touching_faces(spec_c, other)
         print('')

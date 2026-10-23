@@ -56,6 +56,7 @@ shpb-ut-equilibrium/
 | `scripts/pre/defeature_step.py` | enlève les trous M4 des STEP du pusher et de la barre de sortie | déjà fait, seulement si la CAO change |
 | `scripts/cae/build_bench.py` | Abaqus/CAE : importe, place, découpe et maille le banc ; écrit `model/geometry/_raw/SHPB_<éprouvette>_mesh.inp` | si la géométrie ou le maillage change |
 | `scripts/pre/inp_to_geo.py` | convertit ce fichier en 7 `.geo` (convention du labo) | après `build_bench.py` |
+| `scripts/pre/dxf_to_step.py` | contour 2D de découpe (DXF) → solide STEP de la tôle (épaisseur au choix) | nouvelle éprouvette fournie en DXF |
 | `scripts/pre/pocket_gaps.py` | mesure sur les STEP les jeux entre les dents de l'éprouvette et les logements (valeurs `gap_pusher`, `gap_output` de `build_bench.py`) ; demande `py -m pip install cadquery-ocp` | nouvelle éprouvette (UT40) ou nouveau logement |
 | `scripts/pre/make_run.py` | remplit les gabarits pour chaque calcul (vitesse du striker, durée) → `runs/<calcul>/` | appelé par `submit_study.py` |
 | `scripts/hpc/submit_study.py` | prépare les calculs, les copie sur Euler, lance un job array | à chaque étude |
@@ -210,7 +211,7 @@ labo, `abaqus.bat` se place d'office dans `C:\APPS\Abaqus2023_Work` et ne trouve
 
 | Étape | Où | Action |
 |---|---|---|
-| 1 | SolidWorks | tôle de 1,5 mm extrudée selon +Z depuis z = 0, exportée en STEP AP214 : `cad/step/XMas_UT40_t1p5.step`. Pousser le fichier |
+| 1 | Git Bash ou SolidWorks | **fait le 23/10** : contour de découpe `cad/dxf/Xmas_UT40.dxf` converti par `py shpb-ut-equilibrium/scripts/pre/dxf_to_step.py <dxf> <step> 1.5` (demande `ezdxf` et `cadquery-ocp`) en `cad/step/XMas_UT40_t1p5.step`. Autre voie : SolidWorks, tôle de 1,5 mm extrudée selon +Z depuis z = 0, exportée en STEP AP214 |
 | 2 | `build_bench.py` | ligne `UT40` de `SPECIMENS` : demi-largeur de la partie droite (5,0 mm si elle fait 10 mm), longueur de l'extensomètre (30 mm), jeux `gap_pusher` / `gap_output` donnés par `py shpb-ut-equilibrium/scripts/pre/pocket_gaps.py UT40` |
 | 3 | Abaqus/CAE | `SPEC = 'UT40'`, Run Script. Lire la longueur de l'éprouvette et la position de la barre de sortie (recalculées automatiquement) |
 | 4 | Git Bash | `py shpb-ut-equilibrium/scripts/pre/inp_to_geo.py UT40` |
@@ -245,6 +246,6 @@ labo, `abaqus.bat` se place d'office dans `C:\APPS\Abaqus2023_Work` et ne trouve
 | `docs/mesh.md` | maillage, pas de temps, trous M4, virtual topology, guidages, performances |
 | `docs/results.md` | dépouillement : filtre, indicateurs, formule de la vitesse du striker, historique des études |
 
-**Reste à faire** : fichier STEP de l'UT40 ; vérifier que la mise en contact initiale (22/10) supprime les oscillations de la jauge de sortie ; référence exacte des
+**Reste à faire** : calculs de l'UT40 (géométrie prête le 23/10) et recalage de L_eff / F pour l'UT40 ; référence exacte des
 400 mm de la jauge ; vitesse maximale du lanceur (37 m/s nécessaires pour l'UT40 à 1 000 /s ?) ; densités et
 matériau du pusher à confirmer.

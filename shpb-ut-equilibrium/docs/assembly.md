@@ -23,24 +23,33 @@ Depuis le 21/10/2026, `build_bench.py` calcule lui-même la position de l'éprou
 sortie à partir des sommets du fichier STEP de l'éprouvette (paramètre `SPEC`, tableau `SPECIMENS`). Hypothèse :
 toutes les éprouvettes ont les mêmes têtes (mêmes dents), donc s'emboîtent de la même façon dans les deux logements.
 
-| Grandeur | Règle | UT19 | UT40 (si 102,6875 mm de long, comme la NT20) |
+| Grandeur | Règle | UT19 | UT40 (103,181 mm, fichier du 23/10) |
 |---|---|---|---|
 | Rotation | +90° autour de Z : (x, y, z) → (−y, x, z), la longueur du STEP devient Y | | |
-| Translation X | centre de la largeur du STEP → X = 0 | 356.2728 | dépend du fichier |
+| Translation X | centre de la largeur du STEP → X = 0 | 356.2728 | 0.0000 |
 | Bout côté pusher | toujours en **Y = 201,7005** (le pusher ne bouge pas) | 201,7005 | 201,7005 |
-| Bout côté barre de sortie | 201,7005 − longueur | 124,013 | 99,013 |
-| Bout de la barre de sortie `Y_OUTPUT_BAR` | bout de l'éprouvette côté sortie + **31,700** | 155,713 | 130,713 |
-| Découpe tête / barre de sortie | `Y_OUTPUT_BAR` − 55,713 (tête de même longueur) | 100,000 | 75,000 |
+| Bout côté barre de sortie | 201,7005 − longueur | 124,013 | 98,520 |
+| Bout de la barre de sortie `Y_OUTPUT_BAR` | bout de l'éprouvette côté sortie + **31,700** | 155,713 | 130,220 |
+| Découpe tête / barre de sortie | `Y_OUTPUT_BAR` − 55,713 (tête de même longueur) | 100,000 | 74,507 |
 | Translation Z | fond de l'éprouvette sur Z = 28,6 (fond des logements) | 28,6 | 28,6 |
-| Jauge de sortie | `Y_OUTPUT_BAR` − 400 | −244,287 | −269,287 |
+| Jauge de sortie | `Y_OUTPUT_BAR` − 400 | −244,287 | −269,780 |
 
 Une éprouvette plus longue **recule la barre de sortie** d'autant. Contrôle : pour l'UT19, le script vérifie
 que le placement calculé est identique (à 0,001 mm près) au placement vérifié le 08/10/2026, et s'arrête sinon.
 Règles vérifiées hors Abaqus (OpenCascade) sur `XMas_UT_t1p5.step` : translation (356,2728 ; −1357,7622 ; 28,6),
 barre de sortie en 155,713, découpe en 100,000.
 
-**À vérifier sur le vrai fichier de l'UT40** : mêmes têtes que l'UT19 (sinon les deux constantes 201,7005 et
-31,700 ne s'appliquent pas), et absence de collision entre la tête de la barre de sortie reculée et le pusher.
+Ce tableau est le placement **centré** (avant mise en contact). Le placement final ajoute la mise en contact
+(section suivante) : UT19 éprouvette −0,3567 mm, barre de sortie en 155,000 ; UT40 éprouvette **+0,0365 mm**,
+barre de sortie en **130,000** (découpe 74,287, jauge −270,000).
+
+**UT40 (vérifié le 23/10/2026 sur le fichier issu du DXF)** : les têtes ne sont **pas exactement** celles de
+l'UT19. Même pas des dents, mais les flancs chargés sont 0,10 mm plus loin du bout (dents 0,10 mm plus épaisses
+dans le sens de la traction) et le bout côté pusher est 0,29 mm plus court. Conséquence : calée sur ce bout comme
+l'UT19, l'éprouvette centrée **recouvre déjà de 0,04 mm** le logement du pusher (`gap_pusher` négatif). La mise
+en contact règle ce cas (elle part des jeux mesurés, positifs ou négatifs), et `pocket_gaps.py` vérifie qu'à la
+fin il n'y a aucune interpénétration. Pas de collision entre la barre de sortie reculée et le pusher : 3,65 mm
+au plus près (corps du pusher Z = 15,7 / dessous de la barre de sortie Z = 19,35).
 
 ## Mise en contact initiale (depuis le 22/10/2026)
 
@@ -65,10 +74,14 @@ est calculé à partir de `Y_OUTPUT_BAR`. `CLOSE_GAPS = False` redonne l'ancien 
 selon Y qui met les deux solides en contact, l'éprouvette étant levée de 0,5 mm pendant la mesure pour ne pas
 compter le contact sur le fond du logement.
 
-| Logement | Jeu dans le sens de la traction | Jeu dans l'autre sens | Faces au contact une fois le jeu fermé |
+| Éprouvette, logement | Jeu dans le sens de la traction (placement centré) | Jeu restant de l'autre côté des dents, une fois au contact | Faces au contact une fois le jeu fermé |
 |---|---|---|---|
-| pusher | 0,3567 mm | 0,2818 mm | les flancs inclinés des **trois** dents (et les congés voisins) |
-| barre de sortie | 0,3563 mm | 0,1659 mm | les flancs inclinés des **trois** dents (et les congés voisins) |
+| UT19, pusher | 0,3567 mm | 0,6385 mm | les flancs inclinés des **trois** dents (et les congés voisins) |
+| UT19, barre de sortie | 0,3563 mm | 0,5222 mm | idem |
+| UT40, pusher | **−0,0365 mm** (recouvrement au départ) | 0,5321 mm | idem |
+| UT40, barre de sortie | 0,2562 mm | 0,4222 mm | idem |
+
+Interpénétration une fois au contact (volume commun) : ≤ 0,0014 mm³ (arrondi des translations à 1e-4 mm).
 
 Les trois dents touchent en même temps : le pas des dents est le même sur l'éprouvette et dans les logements.
 Le contact est exact sur la géométrie ; après maillage, les facettes des tétraèdres peuvent laisser des écarts

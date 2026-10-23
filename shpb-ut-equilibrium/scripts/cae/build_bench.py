@@ -53,11 +53,13 @@ SPECIMENS = {
     # sUT de Beerli 2026 (fig. 2a) : partie droite 15 mm x 5 mm ; zone DIC 12 mm
     'UT19': {'step': 'XMas_UT_t1p5.step', 'gauge_half_width': 2.5, 'ext_length': 12.0,
              'gap_pusher': 0.3567, 'gap_output': 0.3563},
-    # UT de Beerli 2026 (section 2.2) : partie utile 40 mm x 10 mm ; zone DIC 30 mm x 9 mm.
-    # A VERIFIER des que le fichier STEP est disponible (largeur de la partie droite, zone DIC,
-    # jeux : relancer scripts/pre/pocket_gaps.py UT40 ; valeurs de l'UT19 = memes tetes supposees).
+    # UT de Beerli 2026 (section 2.2) : zone DIC 30 mm x 9 mm. Geometrie : cad/dxf/Xmas_UT40.dxf (contour de
+    # decoupe, 23/10/2026) -> cad/step/XMas_UT40_t1p5.step (scripts/pre/dxf_to_step.py) : 103,181 x 30 mm,
+    # partie droite 40,08 x 10,00 mm, raccords R2,25. Jeux mesures par pocket_gaps.py UT40 : gap_pusher
+    # negatif car, calee sur son bout cote pusher (0,29 mm plus court que celui de l'UT19), l'eprouvette
+    # centree recouvre deja de 0,04 mm le logement du pusher ; CLOSE_GAPS la recule donc de 0,04 mm.
     'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
-             'gap_pusher': 0.3567, 'gap_output': 0.3563},
+             'gap_pusher': -0.0365, 'gap_output': 0.2562},
 }
 # Eprouvette donnee en ligne de commande (abaqus cae noGUI=build_bench.py -- UT40)
 for _arg in sys.argv[1:]:
