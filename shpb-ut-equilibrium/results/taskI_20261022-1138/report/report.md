@@ -190,6 +190,8 @@ The gauge signal follows the specimen force closely. With the specimen centred i
 
 ## Numerical quality
 
+These checks do not answer the Task I questions: they verify that the simulation can be trusted. Each column compares the simulation with a value known in advance, or measures a purely numerical error.
+
 **Table T6 – Numerical checks.**
 
 | Specimen / target rate (s⁻¹) | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal energy |
@@ -198,7 +200,13 @@ The gauge signal follows the specimen force closely. With the specimen centred i
 | UT19 / 500 | 1.000 | 0.994 | 0.18 % | 0.5 % |
 | UT19 / 1000 | 1.000 | 0.994 | 0.05 % | 0.2 % |
 
-Theory: incident strain $= K\,V_{striker}/c$; initial kinetic energy $\tfrac12 m V^2$ with the nominal striker mass (the small difference comes from the faceted mesh of the cylinder). The hourglass energy stays well below the usual 5 % limit.
+- **Incident strain / theory** – is the loading right? When the striker hits the input bar, one-dimensional wave theory gives the strain of the incident wave: $\varepsilon_{inc} = K\,V_{striker}/c$, with $c$ = 4871 m/s the wave speed in the bar and $K$ = 0.487 the share of the striker velocity transmitted to the bar ($K = Z_{striker}/(Z_{striker}+Z_{bar})$, $Z = \rho c A$). Example (UT19 at 100 s⁻¹): 0.487 × 2.48 / 4871 = $2.48 \times 10^{-4}$ (a compression: negative in `T1_conditions.csv`). The simulated value is the plateau of the virtual gauge on the input bar. A ratio of 1.000 means that the impact, the bar materials and the gauge reading are correct.
+
+- **Kinetic energy / ½mV²** – is the striker mass right? At $t$ = 0 only the striker moves; its kinetic energy is compared with $\tfrac12 m V^2$ for the nominal striker (Ø20 × 5000 mm, 7850 kg/m³, $m$ = 12.3 kg). The ratio (0.994) is slightly below 1 because the mesh replaces the circular cross-section by a polygon with a slightly smaller area: the meshed striker is a little lighter. This does not change the incident wave, which depends on the striker velocity, not on its mass.
+
+- **Energy drift** – does the calculation create or lose energy? Without losses the total energy must stay constant. Abaqus keeps an energy balance (kinetic + internal + friction − external work, `ETOTAL`); the column gives its largest variation during the whole run, relative to the initial kinetic energy (0.00 % to 0.18 % here). Below about 1 %, contacts, ties and time integration are considered free of artificial energy.
+
+- **Hourglass / internal energy** – does the mesh deform in a non-physical way? The hexahedra (C3D8R) are evaluated at a single point at their centre: fast, but some zigzag ("hourglass") deformations are not seen by that point and would meet no resistance. Abaqus adds a small artificial stiffness against them; the energy absorbed by it (`ALLAE`) is not physical. The column gives it at the end of the run relative to the real deformation energy (`ALLIE`): 0.2 % to 0.5 % here, well below the usual 5 % limit.
 
 ## Limitations
 

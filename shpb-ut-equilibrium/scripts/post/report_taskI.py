@@ -806,14 +806,41 @@ def write_report(study, rows, out):
 
     # ------------------------------------------------------------ qualite
     P('## Numerical quality')
+    P('These checks do not answer the Task I questions: they verify that the simulation can be trusted. Each column '
+      'compares the simulation with a value known in advance, or measures a purely numerical error.')
     P('**Table T6 – Numerical checks.**')
     P(md_table(['Specimen / target rate (s⁻¹)', 'Incident strain / theory', 'Kinetic energy / ½mV²', 'Energy drift',
                 'Hourglass / internal energy'],
                [[label(r), '%.3f' % (r['incident_strain'] / r['incident_theory']), '%.3f' % r['ke0_ratio'],
                  pct(r['energy_drift'], 2), pct(r['hourglass'], 1)] for r in rows]))
-    P('Theory: incident strain $= K\\,V_{striker}/c$; initial kinetic energy $\\tfrac12 m V^2$ with the nominal '
-      'striker mass (the small difference comes from the faceted mesh of the cylinder). The hourglass energy stays '
-      'well below the usual 5 % limit.')
+    r0 = rows[0]
+    m_str = RHO_STRIKER * np.pi * 0.010 ** 2 * L_STRIKER_M
+    rng = lambda key, f: (f(min(r_[key] for r_ in rows)), f(max(r_[key] for r_ in rows)))
+    P('- **Incident strain / theory** – is the loading right? When the striker hits the input bar, one-dimensional '
+      'wave theory gives the strain of the incident wave: $\\varepsilon_{inc} = K\\,V_{striker}/c$, with '
+      '$c$ = %.0f m/s the wave speed in the bar and $K$ = %.3f the share of the striker velocity transmitted to the '
+      'bar ($K = Z_{striker}/(Z_{striker}+Z_{bar})$, $Z = \\rho c A$). Example (%s): %.3f × %.2f / %.0f = %s '
+      '(a compression: negative in `T1_conditions.csv`). The simulated value is the plateau of the virtual gauge on '
+      'the input bar. A ratio of 1.000 means that the impact, '
+      'the bar materials and the gauge reading are correct.'
+      % (C_BAR, make_run.K_IMP, label_long(r0), make_run.K_IMP, r0['v_striker'], C_BAR, sci(abs(r0['incident_theory']))))
+    P('- **Kinetic energy / ½mV²** – is the striker mass right? At $t$ = 0 only the striker moves; its kinetic '
+      'energy is compared with $\\tfrac12 m V^2$ for the nominal striker (Ø20 × %.0f mm, %.0f kg/m³, $m$ = %.1f kg). '
+      'The ratio (%.3f) is slightly below 1 because the mesh replaces the circular cross-section by a polygon with a '
+      'slightly smaller area: the meshed striker is a little lighter. This does not change the incident wave, which '
+      'depends on the striker velocity, not on its mass.'
+      % (1e3 * L_STRIKER_M, RHO_STRIKER, m_str, r0['ke0_ratio']))
+    P('- **Energy drift** – does the calculation create or lose energy? Without losses the total energy must stay '
+      'constant. Abaqus keeps an energy balance (kinetic + internal + friction − external work, `ETOTAL`); the column '
+      'gives its largest variation during the whole run, relative to the initial kinetic energy (%s to %s here). '
+      'Below about 1 %%, contacts, ties and time integration are considered free of artificial energy.'
+      % tuple(pct(x, 2) for x in rng('energy_drift', float)))
+    P('- **Hourglass / internal energy** – does the mesh deform in a non-physical way? The hexahedra (C3D8R) are '
+      'evaluated at a single point at their centre: fast, but some zigzag ("hourglass") deformations are not seen by '
+      'that point and would meet no resistance. Abaqus adds a small artificial stiffness against them; the energy '
+      'absorbed by it (`ALLAE`) is not physical. The column gives it at the end of the run relative to the real '
+      'deformation energy (`ALLIE`): %s to %s here, well below the usual 5 %% limit.'
+      % tuple(pct(x, 1) for x in rng('hourglass', float)))
 
     # ------------------------------------------------------------ limites
     P('## Limitations')
