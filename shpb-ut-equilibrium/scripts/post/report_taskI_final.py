@@ -52,10 +52,8 @@ PROBE_RUNS = [                           # (etude, calcul, legende)
 # Images copiees du journal (captures Abaqus, geometrie) : (source relative au repo, nom dans img/)
 JOURNAL_IMG = [
     'journal/figures/2026-10-22/pocket_contact_UT19.png',
-    'journal/figures/2026-10-22/cae_assembly_contact_UT19.png',
     'journal/figures/2026-10-22/gap_impact_UT19_R1000.png',
     'journal/figures/2026-10-23/UT40_vs_UT19_outline.png',
-    'journal/figures/2026-10-23/UT40_head_vs_UT19_tip_aligned.png',
     'journal/figures/2026-10-23/UT40_pocket_contact.png',
     'journal/figures/2026-10-23/UT40_R1000_PEEQ_last_frame.png',
     'journal/figures/2026-10-27/ecart_dents_UT40_R0500.png',
@@ -319,6 +317,64 @@ def fig_first_ut40(first, recal, out):
     rt.save(fig, out, 'G4_first_UT40_R1000')
 
 
+def considere():
+    """Point de Considere de la loi de Swift-Voce (deformation elastique negligee) : dk/deps = k."""
+    e = np.linspace(1e-4, 0.3, 30000)
+    k = SV['alpha'] * SV['A'] * (e + SV['e0']) ** SV['n'] + (1 - SV['alpha']) * (SV['k0'] + SV['Q'] * (1 - np.exp(-SV['beta'] * e)))
+    _, h = plastic_wave_speed(e)
+    i = int(np.argmax(h <= k))
+    k0 = SV['alpha'] * SV['A'] * SV['e0'] ** SV['n'] + (1 - SV['alpha']) * SV['k0']
+    return {'e': e, 'k': k, 'h': h, 'eps_true': e[i], 'k_star': k[i], 'eng': np.exp(e[i]) - 1,
+            'eng_stress': k[i] * np.exp(-e[i]), 'k_yield': k0}
+
+
+def fig_necking(out):
+    """Gauche : construction de Considere sur la loi du DP1000. Droite : boucle de l'instabilite de striction."""
+    cs = considere()
+    fig, axs = plt.subplots(1, 2, figsize=(10.4, 3.9), gridspec_kw={'width_ratios': [1.0, 1.15]})
+    ax = axs[0]
+    e, k, h = cs['e'], cs['k'], cs['h']
+    ax.plot(100 * e, k, color='#2a78d6', lw=1.6, label='flow stress $k$ (true stress)')
+    ax.plot(100 * e, h, color='#eb6834', lw=1.6, label='hardening slope $dk/d\\varepsilon_p$')
+    ax.plot(100 * (np.exp(e) - 1), k * np.exp(-e), color=rt.INK, lw=1.2, ls='--',
+            label='engineering stress $k\\,e^{-\\varepsilon}$ = F / A$_0$\n(against engineering strain)')
+    ax.plot(100 * cs['eps_true'], cs['k_star'], 'o', ms=7, color=rt.INK, mfc='white', mew=1.4)
+    ax.annotate('Considère: slope = stress\n→ maximum force', (100 * cs['eps_true'], cs['k_star']),
+                xytext=(9, 1900), fontsize=7.5, color=rt.INK, arrowprops=dict(arrowstyle='->', color=rt.INK2, lw=0.8))
+    ax.set_xlim(0, 15)
+    ax.set_ylim(0, 3000)
+    ax.set_xlabel('strain (%)')
+    ax.set_ylabel('stress (MPa)')
+    ax.set_title('DP1000 law: when does the force stop rising?', loc='left', fontsize=9.5)
+    ax.grid(True, color=rt.GRID, linewidth=0.6)
+    for s_ in ('top', 'right'):
+        ax.spines[s_].set_visible(False)
+    ax.legend(fontsize=7, loc='upper right')
+    # boucle
+    ax = axs[1]
+    ax.axis('off')
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 7.4)
+    boxes = [(5.0, 6.5, 'a section is slightly weaker\n(defect: geometry, grain, inclusion)'),
+             (8.6, 3.9, 'it carries the same\nforce on a smaller\narea → higher stress'),
+             (5.0, 1.3, 'it strains plastically\nmore than the rest'),
+             (1.4, 3.9, 'volume is conserved\n→ its area shrinks\nfaster')]
+    for x, y, txt in boxes:
+        ax.text(x, y, txt, ha='center', va='center', fontsize=7.6, color=rt.INK,
+                bbox=dict(boxstyle='round,pad=0.45', fc='#f6f6f3', ec=rt.INK2, lw=0.8))
+    arr = dict(arrowstyle='->', color=rt.INK2, lw=1.1, connectionstyle='arc3,rad=-0.25')
+    for (x0, y0), (x1, y1) in (((6.9, 6.3), (8.6, 4.8)), ((8.6, 3.0), (6.6, 1.3)), ((3.4, 1.3), (1.4, 3.0)),
+                               ((1.4, 4.8), (3.1, 6.3))):
+        ax.annotate('', xy=(x1, y1), xytext=(x0, y0), arrowprops=arr)
+    ax.text(5.0, 4.9, 'before the force maximum:\nhardening makes it stronger\n→ the loop stops,\nstrain stays uniform',
+            ha='center', va='top', fontsize=7.0, color='#1baf7a')
+    ax.text(5.0, 2.9, 'after it:\nthe loop amplifies → neck', ha='center', va='top', fontsize=7.0,
+            color='#d03b3b', weight='bold')
+    ax.set_title('Why necking is an instability', loc='left', fontsize=9.5)
+    rt.save(fig, out, 'G6_necking')
+    return cs
+
+
 def fig_probes(prb, out):
     """Erreur max (apres 5 %) a chaque sonde, en fonction de la distance au bout de la barre de sortie."""
     fig, axs = rt.new_axes(1, w=6.4, h=3.3)
@@ -404,7 +460,7 @@ def kn(x):
     return '%.2f kN' % x
 
 
-def write(ref, centred, first, prb, out):
+def write(ref, centred, first, prb, out, cs):
     rows = [r for r, _ in ref]
     by = {(r['specimen'], int(r['target_rate'])): (r, c) for r, c in ref}
     by_c = {int(r['target_rate']): r for r, _ in centred}
@@ -435,7 +491,7 @@ def write(ref, centred, first, prb, out):
       'signal processing · Simulation campaign · Answer 1: force equilibrium · Answer 2: loading speeds · UT19 '
       'and UT40 compared · What the experiment will measure · Necking, localisation and fracture: how far the '
       'results are valid · Numerical quality and computing cost · Limitations · Conclusions and recommendations · '
-      'Open questions for the supervisors · Appendices A to E.')
+      'Appendices A and B.')
 
     # ------------------------------------------------------------------ resume
     D.H(2, 'Summary')
@@ -686,12 +742,12 @@ def write(ref, centred, first, prb, out):
           [['`taskI_20261012-1811`', 'first UT19 runs, 4 ms simulated', 'the pusher pitches under the eccentric load → vertical guides added'],
            ['`taskI_20261013-1127`', 'guides; striker velocity $V = \\dot\\varepsilon \\times 15$ mm', '100 s⁻¹ gives only 21 s⁻¹ → striker formula with the specimen force'],
            ['`%s`' % CENTRED_UT19, 'new formula; simulated time per case; specimen centred in the pockets',
-            '%.0f / %.0f / %.0f s⁻¹; gauge error %s / %s / %s (Appendix B)' % (by_c[100]['achieved_rate'], by_c[500]['achieved_rate'], by_c[1000]['achieved_rate'],
+            '%.0f / %.0f / %.0f s⁻¹; gauge error %s / %s / %s (section *The initial contact is essential*)' % (by_c[100]['achieved_rate'], by_c[500]['achieved_rate'], by_c[1000]['achieved_rate'],
                                                                        pct(by_c[100]['gauge_err_after5'], 0), pct(by_c[500]['gauge_err_after5'], 0), pct(by_c[1000]['gauge_err_after5'], 0))],
            ['`diag_20261021-1626`', 'UT19 at 1000 s⁻¹ with force probes', 'the gauge error comes from the specimen hitting the output pocket after crossing the clearance'],
            ['**`%s`**' % REF['UT19'], '**initial contact** of the teeth in both pockets', 'UT19 reference: equilibrium from the start at all rates; gauge error ≤ %s' % pct(max(r['gauge_err_after5'] for r in u19), 0)],
            ['`%s`' % FIRST_UT40, 'UT40 (geometry from the cutting drawing), estimated striker velocities',
-            '%.0f / %.0f / %.0f s⁻¹; at 1000 s⁻¹ the strain localises outside the extensometer; formula recalibrated (Appendix C)'
+            '%.0f / %.0f / %.0f s⁻¹; at 1000 s⁻¹ the strain localises outside the extensometer; formula recalibrated (Appendix B)'
             % (by_f[100]['achieved_rate'], by_f[500]['achieved_rate'], by_f[1000]['achieved_rate'])],
            ['**`%s`**' % REF['UT40'], 'UT40 with the recalibrated striker formula',
             'UT40 reference: %.0f / %.0f / %.0f s⁻¹; sudden localisation at 500 s⁻¹' % tuple(r['achieved_rate'] for r in u40)]],
@@ -833,7 +889,7 @@ def write(ref, centred, first, prb, out):
     P('$L_{eff}$ is shorter than the parallel section (12.7 instead of 15 mm for the UT19; 30.1 instead of '
       '40 mm for the UT40), because the extensometer sees the most strained part of it. The effective force is '
       'lower than the maximum force (7.0 against ≈ 7.5 kN, 10.4 against ≈ 15 kN) because the force decreases '
-      'during necking, much more for the UT40. The recalibration of the UT40 is detailed in Appendix C.')
+      'during necking, much more for the UT40. The recalibration of the UT40 is detailed in Appendix B.')
     D.fig('striker', 'F5_striker_velocity.png', 'Striker velocity required for a given strain rate',
           'the striker velocity against the achieved strain rate, one panel per specimen. Line: the formula with '
           'the current constants (last version of each specimen in %s). Dots: the reference simulations, which used '
@@ -1036,17 +1092,94 @@ def write(ref, centred, first, prb, out):
 
     # ------------------------------------------------------------------ validite
     D.H(2, 'Necking, localisation and fracture: how far the results are valid')
-    D.H(3, 'What happens in the specimen')
-    P('After the force maximum (%s strain) the specimen necks: the deformation concentrates in a short zone of '
-      'the parallel section, which thins in width and thickness while the rest of the specimen stops deforming. '
-      'The force decreases. To reach 30 %% strain over the extensometer, the neck alone has to provide almost all '
-      'the elongation (≈ %.1f mm for the UT19, ≈ %.1f mm for the UT40).'
-      % ('%.0f to %s' % (100 * min(r['eps_at_Fmax'] for r in rows), pct(max(r['eps_at_Fmax'] for r in rows), 0)),
-         0.3 * L0['UT19'], 0.3 * L0['UT40']))
-    P('**What the model cannot do: fracture.** The DP1000 model has **no fracture criterion**. A real sheet '
-      'breaks in the neck; the simulated one keeps stretching until the elements at the centre of the neck '
-      'collapse. The results after that are a numerical consequence of the missing fracture model, not an '
-      'effect of the test.')
+    D.H(3, 'Plasticity and necking: what happens in the specimen')
+    P('**From elastic to plastic.** In the elastic range the atoms of the crystal lattice are only moved slightly '
+      'apart, like springs: the deformation disappears on unloading. Beyond the yield stress, planes of atoms slide '
+      'over each other and the deformation becomes permanent. The sliding does not happen in one block: it '
+      'propagates through line defects of the lattice, the **dislocations**, which need much less force to move '
+      'than a whole plane of atoms. With the law of the model, plastic flow starts at $k(0)$ ≈ %.0f MPa.'
+      % cs['k_yield'])
+    P('**Hardening.** While the metal deforms, the dislocations multiply, become entangled and pile up at grain '
+      'boundaries and, in a dual-phase steel such as DP1000, at the hard islands of martensite embedded in the soft '
+      'ferrite. A higher stress is then needed to keep deforming: this is strain hardening, described by the '
+      'Swift–Voce law $k(\\varepsilon_p)$ of the model (≈ %.0f MPa at 5 %% plastic strain). Plastic flow also '
+      '**conserves the volume**: when the specimen gets longer, its cross-section gets smaller,'
+      % float(np.interp(0.05, cs['e'], cs['k'])))
+    P('$$\nA\\,L = A_0\\,L_0 \\quad\\Rightarrow\\quad A = A_0\\,e^{-\\varepsilon}\n$$')
+    P('with $\\varepsilon$ the true (logarithmic) strain.')
+    P('**The force maximum (Considère).** The force carried by the specimen is $F = \\sigma A$. Hardening '
+      'increases $\\sigma$, the elongation decreases $A$. At first hardening is strong and the force rises; '
+      'hardening then slows down (the slope of the law decreases) until both effects balance and the force '
+      'reaches a maximum. Writing $dF = 0$:')
+    P('$$\ndF = A\\,d\\sigma + \\sigma\\,dA = 0, \\qquad \\frac{dA}{A} = -d\\varepsilon '
+      '\\quad\\Rightarrow\\quad \\frac{d\\sigma}{d\\varepsilon} = \\sigma\n$$')
+    P('The force is maximum when the slope of the hardening curve equals the stress itself. For the DP1000 law '
+      'this happens at a true strain of %.2f %% (engineering strain %.1f %%), at a true stress of %.0f MPa and an '
+      'engineering stress of %.0f MPa (%s, left). The simulations reproduce it: the force maximum is reached '
+      'between %.0f and %.0f %% engineering strain (%s).'
+      % (100 * cs['eps_true'], 100 * cs['eng'], cs['k_star'], cs['eng_stress'], F('necking'),
+         100 * min(r['eps_at_Fmax'] for r in rows), 100 * max(r['eps_at_Fmax'] for r in rows), T('eq')))
+    P('**Why necking is an instability: the role of defects.** No specimen is perfectly uniform: somewhere a '
+      'section is slightly weaker (cutting tolerance, such as the 0.02 mm taper of the UT40 drawing; a grain with '
+      'an unfavourable orientation; a cluster of martensite; an inclusion; a scratch). Every section carries the '
+      'same force, so the weaker one has a slightly higher stress and deforms slightly more. What happens next '
+      'depends on which side of the force maximum the specimen is (%s, right):' % F('necking'))
+    P(md_table(['', 'Before the force maximum', 'After the force maximum'],
+               [['The weaker section strains a little more…', '…so it hardens more', '…but hardening no longer compensates the loss of area'],
+                ['Consequence', 'it becomes stronger: the defect is **corrected**, the strain stays uniform',
+                 'it becomes even weaker: the defect is **amplified**'],
+                ['Name', 'stable, homogeneous deformation', '**necking** (plastic instability)']]))
+    P('Beyond the maximum the loop runs away: less area, higher stress, more strain, even less area. The '
+      'deformation concentrates in a short zone, and the rest of the specimen stops deforming and even unloads '
+      'elastically. In a simulation, which has no material defects, the trigger comes from the slight '
+      'non-uniformities of the model: the shape of the specimen (fillets, heads), the mesh, the taper of the UT40 '
+      'and, at high rates, the **waves**: the pulled end (pusher side) strains first. This is why, in the first UT40 '
+      'run at 1000 s⁻¹, the neck formed at the pusher-side end of the parallel section.')
+    D.fig('necking', 'G6_necking.png', 'Necking of the DP1000: force maximum and instability',
+          'left: flow stress $k$ (true stress) and hardening slope $dk/d\\varepsilon_p$ of the DP1000 law against '
+          'the true plastic strain, and engineering stress $k\\,e^{-\\varepsilon}$ against the engineering strain '
+          '(dashed); circle: Considère point. Right: the feedback loop of necking.',
+          'Swift–Voce law of the model (Beerli et al. 2026, table 4); elastic strain neglected.',
+          'where the two solid curves cross, the slope of the law equals the stress: the dashed engineering curve '
+          'reaches its maximum there. Before that point a local defect is corrected by hardening; after it the '
+          'loop on the right amplifies it.')
+    P('**Two stages of necking in a sheet.** First a **diffuse neck**: the parallel section thins in width and '
+      'thickness over a fairly long zone, from the force maximum on. Later a **localised neck**: the strain '
+      'concentrates in a narrow band, about as wide as the sheet thickness, where the sheet thins mostly through '
+      'its thickness. For a power hardening law $\\sigma = K\\varepsilon^n$ in uniaxial tension, the diffuse neck '
+      'starts at $\\varepsilon = n$ and the localised neck at $\\varepsilon = 2n$ (Hill), along a band inclined '
+      'by ≈ 55° to the loading direction in an isotropic sheet. As an order of magnitude for our law, twice the '
+      'Considère strain is ≈ %.0f %% true strain. In the half model, the symmetry condition at mid-width forces '
+      'the neck to stay symmetric: a single inclined band cannot form, only a symmetric pattern. This only '
+      'matters once the neck localises.' % (200 * cs['eps_true']))
+    P('**Why the engineering curve after necking depends on the specimen.** The neck has about the same '
+      'physical size in both specimens (it scales with the width and the thickness), but the engineering strain is '
+      'its elongation divided by the extensometer length. To reach 30 %% the neck must elongate by ≈ %.1f mm over '
+      'the %.0f mm extensometer of the UT19, but by ≈ %.1f mm over the %.0f mm extensometer of the UT40: the UT40 '
+      'neck becomes much thinner and its force falls much further (%s at 30 %% strain, 1000 s⁻¹, against %s for '
+      'the UT19; %s). After necking, the engineering stress–strain curve is therefore **no longer a property of '
+      'the material**: it depends on the specimen geometry and on the extensometer.'
+      % (0.3 * L0['UT19'], L0['UT19'], 0.3 * L0['UT40'], L0['UT40'], pct(force_at(by[('UT40', 1000)], 0.3), 0),
+         pct(force_at(by[('UT19', 1000)], 0.3), 0), F('cmp')))
+    P('**Fracture of a real DP1000 sheet.** A real DP1000 breaks by ductile damage in the neck: (1) '
+      '**nucleation** of micro-voids, mostly at the ferrite–martensite interfaces, because the hard martensite '
+      'does not follow the deforming ferrite; (2) **growth** of the voids, driven by the triaxial stress state in '
+      'the neck (the surrounding material restrains the thinning zone); (3) **coalescence** of the voids into a '
+      'crack, often along a shear band. Its martensite makes DP1000 one of the least ductile dual-phase steels.')
+    P('**What the model cannot do: fracture.** The DP1000 model has neither voids nor a fracture criterion. A '
+      'real sheet breaks in the neck; the simulated one keeps thinning until a few elements at the centre of the '
+      'neck collapse. Once the strain is concentrated in a few elements, the result also depends on the element '
+      'size (0.5 mm here): with a finer mesh the collapse would happen at a different strain. The results after '
+      'that are a numerical consequence of the missing fracture model, not an effect of the test.')
+    D.tab('stages', 'Stages of deformation of a DP1000 UT40 and validity of the model',
+          ['Stage', 'Engineering strain (order of magnitude)', 'Model'],
+          [['elastic', '0 – 0.3 %', 'valid'],
+           ['uniform plastic deformation (hardening)', '0.3 – %.0f %%' % (100 * cs['eng']), 'valid'],
+           ['diffuse necking (after Considère)', '%.0f – ≈ 10 %%' % (100 * cs['eng']), 'valid; result depends on the geometry'],
+           ['localised necking, then real fracture', '≈ 10 – 11 %', 'symmetry imposed at mid-width; no fracture'],
+           ['beyond (collapse of elements)', '%s at 500 s⁻¹' % pct(by[('UT40', 500)][0]['drop_eps'], 0), 'numerical artefact']],
+          'Fracture strain: Beerli et al. (2026), quasi-static, UT40 geometry; the other limits follow from the '
+          'Considère point of the law and the simulations.')
     D.H(3, 'The sudden localisation of the UT40 at 500 s⁻¹')
     rr5, cc5 = by[('UT40', 500)]
     drop = drop_detail(by[('UT40', 500)])
@@ -1185,6 +1318,8 @@ def write(ref, centred, first, prb, out):
         '**Assumed values**: densities of the bars and of the striker; material of the pusher (maraging '
         'according to Beerli et al. 2026, tool steel according to an old CAD file).',
         '**Guides** modelled as continuous, frictionless and without clearance.',
+        '**Half model**: the symmetry at mid-width forces a symmetric neck; a single inclined localised band '
+        'cannot form (relevant only once the neck localises).',
         '**UT40 drawing**: slight taper of the parallel section and teeth 0.10 mm thicker than on the UT19, as '
         'in the cutting file; to be confirmed on real specimens.',
     ])
@@ -1217,20 +1352,6 @@ def write(ref, centred, first, prb, out):
         'the lab); otherwise the gauge measures the impact of the specimen on the output head.',
     ])
 
-    # ------------------------------------------------------------------ questions
-    D.H(2, 'Open questions for the supervisors')
-    D.bullets([
-        'Is the specimen material of Task I DP1000? If yes, is 30 % engineering strain a meaningful target, '
-        'given its fracture strain of ≈ 11 % on the UT40?',
-        'Should a fracture criterion be added, and with which data (fracture strain or Hosford–Coulomb '
-        'parameters)?',
-        'Maximum striker velocity of the launcher (needed: up to %.1f m/s).' % max(r['v_striker'] for r in rows),
-        'Reference point of the 400 mm distance of the output gauge; densities of the bars and of the striker; '
-        'material of the pusher.',
-        'Are the taper of the UT40 parallel section and its thicker teeth real (cutting file) or a drawing '
-        'detail?',
-    ])
-
     # ------------------------------------------------------------------ annexes
     D.H(2, 'Appendix A – Specimen forces over the whole test')
     P('$F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the loading start to the end of '
@@ -1242,15 +1363,7 @@ def write(ref, centred, first, prb, out):
               'per target rate.', 'reference study `%s`, filtered section forces.' % REF[s],
               'where the two curves overlap the specimen is in equilibrium; the vertical distance between them is '
               '$\\Delta F$.')
-    D.H(2, 'Appendix B – UT19 centred in the pockets (study `%s`)' % CENTRED_UT19)
-    P('Results of the UT19 with the old placement (specimen centred, clearance of 0.36 mm on each side), kept '
-      'for comparison (%s).' % T('contact'))
-    cen = [r for r, _ in centred]
-    D.tab('cen', 'UT19 centred: main indicators',
-          ['Target rate (s⁻¹)', 'Achieved rate', 'Equilibrium, $R$', 'Max $\\lvert R\\rvert$ after 5 %', 'Gauge error'],
-          [['%d' % r['target_rate'], '%.0f s⁻¹' % r['achieved_rate'], eq_short(r), pct(r['R_max_after5'], 1),
-            pct(r['gauge_err_after5'], 1)] for r in cen])
-    D.H(2, 'Appendix C – First UT40 study and recalibration (study `%s`)' % FIRST_UT40)
+    D.H(2, 'Appendix B – First UT40 study and recalibration (study `%s`)' % FIRST_UT40)
     fst = [r for r, _ in first]
     P('The first UT40 velocities were estimated with $L_{eff}$ = 34 mm and $F$ = 15 kN (scaled from the UT19).')
     D.tab('first', 'First UT40 study: main indicators',
@@ -1268,37 +1381,6 @@ def write(ref, centred, first, prb, out):
     Lc, Fc = refit([(a['achieved_rate'], a['v_striker']), (b['achieved_rate'], b['v_striker'])])
     P('so $L_{eff}$ = %.1f mm and $F$ = %.1f kN (rounded to 30.1 mm and 10.4 kN in `make_run.py`). The '
       'effective force is low because the force of the UT40 drops strongly during necking.' % (Lc, Fc / 1e3))
-    D.H(2, 'Appendix D – Force probes and control figures')
-    P('Force along the output side for the two 1000 s⁻¹ reference runs (each probe compared with the true '
-      'specimen force):')
-    D.img('pr19', 'img/UT19_R1000_00_probes.png', 'UT19 / 1000 in contact: force at each probe',
-          'grey thick line: true specimen force; blue: force through the slice at that position, moved back by '
-          'its wave travel time; one panel per position from the output head (top) to the gauge (bottom).',
-          '`scripts/post/plot_probes.py`, study `%s`.' % REF['UT19'])
-    D.img('pr40', 'img/UT40_R1000_00_probes.png', 'UT40 / 1000 recalibrated: force at each probe',
-          'as %s.' % F('pr19'), '`scripts/post/plot_probes.py`, study `%s`.' % REF['UT40'])
-    P('Control figure of each reference simulation (unfiltered signals over the whole simulated time: bar '
-      'gauges, specimen forces and gauge force not shifted, $R$, extensometer strain; shaded: from the loading '
-      'start to 30 % strain):')
-    for r in rows:
-        D.fig('ov_%s' % r['case_id'], 'img/%s_overview.png' % r['case_id'], 'Control figure – %s' % label_long(r),
-              'against the simulated time, top to bottom: strain of the input and output bar gauges; specimen '
-              'forces $F_{in}$, $F_{out}$ and output gauge force (not shifted); $R$ unfiltered; extensometer '
-              'strain.', 'study `%s`, raw signals (not filtered).' % r['study'],
-              'shaded: from the loading start to 30 % strain (or to the maximum strain). The input gauge shows '
-              'the incident pulse and the reflected wave; the output gauge shows the transmitted force about '
-              '82 µs after the specimen force.')
-    D.H(2, 'Appendix E – Files and reproducibility')
-    D.bullets([
-        '`T_all_runs.csv` (next to this report): every indicator of every simulation used in this report.',
-        'Per-study reports: `results/<study>/report/report.md` (`scripts/post/report_taskI.py`).',
-        'This report: `python shpb-ut-equilibrium/scripts/post/report_taskI_final.py` (reads the history files '
-        'of the studies listed above; Abaqus/Viewer images are copied from `journal/figures/`).',
-        'Model: `scripts/cae/build_bench.py` (Abaqus/CAE), `scripts/pre/make_run.py` (striker velocity and '
-        'simulated time), `model/templates/SHPB_UT_main.inp`; documentation in `docs/`.',
-        'References: Beerli et al. (2026), dynamic tensile testing with the load inversion device; Roth et al. '
-        '(2015), mesh sizes and gauge filtering.',
-    ])
     return D.text()
 
 
@@ -1375,7 +1457,8 @@ def drop_detail(rc):
 
 # ============================================================
 def main():
-    os.makedirs(os.path.join(OUT, 'img'), exist_ok=True)
+    shutil.rmtree(os.path.join(OUT, 'img'), ignore_errors=True)       # images plus utilisees : retirees
+    os.makedirs(os.path.join(OUT, 'img'))
     ref = load(REF['UT19']) + load(REF['UT40'])
     ref.sort(key=lambda rc: (rc[0]['specimen'], rc[0]['target_rate']))
     centred = load(CENTRED_UT19)
@@ -1399,15 +1482,11 @@ def main():
     fig_first_ut40(first, ref, OUT)
     prb = [(name, probe_errors(st, case)) for st, case, name in PROBE_RUNS]
     fig_probes(prb, OUT)
+    cs = fig_necking(OUT)
 
     # images copiees (journal, sondes, figures de controle)
     for src in JOURNAL_IMG:
         shutil.copy(os.path.join(REPO, src), os.path.join(OUT, 'img', os.path.basename(src)))
-    for st, case in ((REF['UT19'], 'UT19_R1000_00'), (REF['UT40'], 'UT40_R1000_00')):
-        shutil.copy(os.path.join(RESULTS, st, case, case + '_probes.png'), os.path.join(OUT, 'img'))
-    for r, _ in ref:
-        shutil.copy(os.path.join(RESULTS, r['study'], r['case_id'], r['case_id'] + '_overview.png'),
-                    os.path.join(OUT, 'img'))
 
     # tableau de tous les indicateurs
     allrows = [r for r, _ in ref + centred + first]
@@ -1419,7 +1498,7 @@ def main():
         df[k] = [r[k] for r in allrows]
     df.to_csv(os.path.join(OUT, 'T_all_runs.csv'), index=False, float_format='%.4g')
 
-    text = write(ref, centred, first, prb, OUT)
+    text = write(ref, centred, first, prb, OUT, cs)
     with open(os.path.join(OUT, 'report.md'), 'w', encoding='utf-8') as f:
         f.write(text.rstrip() + '\n')
     print('Rapport final : %s (%d lignes)' % (os.path.join(OUT, 'report.md'), text.count('\n')))
