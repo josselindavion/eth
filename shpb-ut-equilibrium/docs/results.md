@@ -129,7 +129,7 @@ soit 3,65 / 2,13 / 1,83 ms à 100 / 500 / 1 000 /s. Une colonne `t_step_ms` dans
 | `diag_20261021-1626` | sondes de force le long de la sortie (1 000 /s) | les oscillations naissent avant la tête : l'éprouvette traverse le jeu et frappe la tête de sortie |
 | `taskI_20261022-1138` | **mise en contact initiale** (jeux fermés, `CLOSE_GAPS`) ; sondes à 1 000 /s | équilibre dès le début aux 3 vitesses ; erreur de la jauge 1,5 / 3,9 / 4,8 % (au lieu de 3 / 15 / 39 %) ; **étude de référence** |
 | `taskI_20261023-1140` | UT40 (géométrie du DXF), vitesses du striker estimées | 138 / 590 / 770 /s ; équilibre complet seulement à 100 /s ; à 1 000 /s striction au bout côté pusher, **hors de l'extensomètre** (bloqué à 12,6 %) ; formule recalée |
-| `taskI_20261023-1518` | UT40 avec la formule recalée + UT40S (partie droite parfaitement droite) | 82 / 498 / 940 /s ; UT40 = UT40S (le rétrécissement ne joue pas) ; 30 % atteints à 1 000 /s ; à 500 /s, chute brutale des forces vers 19 % de déformation (cause à identifier) |
+| `taskI_20261023-1518` | UT40 avec la formule recalée (+ test UT40S, partie droite parfaitement droite : mêmes résultats à 1–2 % près, calculs UT40S retirés le 27/10, seul l'UT40 est gardé) | 82 / 498 / 940 /s ; le rétrécissement de la partie droite ne joue pas ; 30 % atteints à 1 000 /s ; à 500 /s, chute brutale des forces vers 19 % de déformation (cause à identifier) |
 
 ---
 

@@ -63,7 +63,8 @@ SPECIMENS = {
     'UT40': {'step': 'XMas_UT40_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
              'gap_pusher': -0.0365, 'gap_output': 0.2562},
     # UT40 avec la partie droite rendue parfaitement droite (10,00 mm ; scripts/pre/straighten_gauge.py) :
-    # memes tetes, donc memes jeux (verifie par pocket_gaps.py UT40S)
+    # memes tetes, donc memes jeux (verifie par pocket_gaps.py UT40S). GEOMETRIE DE TEST (23/10/2026) : memes
+    # resultats que l'UT40 a 1-2 % pres ; ses calculs n'ont pas ete gardes. Conservee pour refaire le test.
     'UT40S': {'step': 'XMas_UT40S_t1p5.step', 'gauge_half_width': 5.0, 'ext_length': 30.0,
               'gap_pusher': -0.0365, 'gap_output': 0.2562},
 }

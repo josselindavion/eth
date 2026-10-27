@@ -56,7 +56,7 @@ shpb-ut-equilibrium/
 | `scripts/pre/defeature_step.py` | enlève les trous M4 des STEP du pusher et de la barre de sortie | déjà fait, seulement si la CAO change |
 | `scripts/cae/build_bench.py` | Abaqus/CAE : importe, place, découpe et maille le banc ; écrit `model/geometry/_raw/SHPB_<éprouvette>_mesh.inp` | si la géométrie ou le maillage change |
 | `scripts/pre/inp_to_geo.py` | convertit ce fichier en 7 `.geo` (convention du labo) | après `build_bench.py` |
-| `scripts/pre/straighten_gauge.py` | copie d'un contour DXF avec la partie droite rendue parfaitement droite (UT40S) | test de l'effet du rétrécissement de la partie droite |
+| `scripts/pre/straighten_gauge.py` | copie d'un contour DXF avec la partie droite rendue parfaitement droite (UT40S) | test de l'effet du rétrécissement de la partie droite (fait le 23/10 : aucun effet ; seul l'UT40 est gardé dans les résultats) |
 | `scripts/pre/dxf_to_step.py` | contour 2D de découpe (DXF) → solide STEP de la tôle (épaisseur au choix) | nouvelle éprouvette fournie en DXF |
 | `scripts/pre/pocket_gaps.py` | mesure sur les STEP les jeux entre les dents de l'éprouvette et les logements (valeurs `gap_pusher`, `gap_output` de `build_bench.py`) ; demande `py -m pip install cadquery-ocp` | nouvelle éprouvette (UT40) ou nouveau logement |
 | `scripts/pre/make_run.py` | remplit les gabarits pour chaque calcul (vitesse du striker, durée) → `runs/<calcul>/` | appelé par `submit_study.py` |
