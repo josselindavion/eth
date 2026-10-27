@@ -828,36 +828,16 @@ def write(ref, centred, first, prb, out):
           'the slope is the strain rate. At 100 s⁻¹ the strain stops growing at the end of the pulse, before '
           '30 %; at 500 and 1000 s⁻¹ 30 % is reached well within the pulse.')
     D.H(3, 'Striker velocity formula')
-    P('The elongation rate of the inverter (pusher pocket moving away from the output pocket) is approximately')
-    P('$$\nv \\approx 2\\,v_i - \\frac{2F}{\\rho c A}, \\qquad v_i = K\\,V, \\qquad K = '
-      '\\frac{Z_{striker}}{Z_{striker} + Z_{bar}} = %.3f\n$$' % K)
-    P('where $V$ is the striker velocity, $v_i$ the particle velocity of the incident wave, $F$ the specimen '
-      'force and $\\rho c A$ = %.0f N·s/m the impedance of the bars: the specimen force both slows the pusher '
-      'down and pushes the output bar. Writing $v = \\dot\\varepsilon\\,L_{eff}$ gives' % Z_BAR)
-    P('$$\nV = \\frac{\\dot\\varepsilon\\,L_{eff} + 2F/(\\rho c A)}{2K}\n$$')
-    P('$L_{eff}$ is an effective length relating the elongation rate of the pockets to the strain rate of the '
-      'extensometer, and $F$ an effective specimen force. Both are calibrated on simulations:')
-    D.tab('calib', 'Constants of the striker formula',
-          ['Specimen', '$L_{eff}$', '$F$', 'Calibration', 'Velocities for 100 / 500 / 1000 s⁻¹'],
-          [['UT19', '%.1f mm' % sp['UT19']['L_eff_mm'], '%.1f kN' % (sp['UT19']['F_N'] / 1e3),
-            'first UT19 simulation at 500 s⁻¹ (study `taskI_20261013-1127`: 485 s⁻¹ achieved, mean force 6.4–6.8 kN)',
-            ' / '.join('%.2f' % make_run.striker_velocity('UT19', x) for x in (100, 500, 1000)) + ' m/s'],
-           ['UT40', '%.1f mm' % sp['UT40']['L_eff_mm'], '%.1f kN' % (sp['UT40']['F_N'] / 1e3),
-            'first UT40 study (`%s`) at 100 and 500 s⁻¹: two runs, two unknowns (Appendix C)' % FIRST_UT40,
-            ' / '.join('%.2f' % make_run.striker_velocity('UT40', x) for x in (100, 500, 1000)) + ' m/s']])
+    for block in rt.striker_section(rows, lambda k, t: '**Table [[tab:%s]] – %s.**' % (k, t), T('cond')):
+        P(block)
     P('$L_{eff}$ is shorter than the parallel section (12.7 instead of 15 mm for the UT19; 30.1 instead of '
       '40 mm for the UT40), because the extensometer sees the most strained part of it. The effective force is '
       'lower than the maximum force (7.0 against ≈ 7.5 kN, 10.4 against ≈ 15 kN) because the force decreases '
-      'during necking, much more for the UT40. The force term matters: at 100 s⁻¹, $2F/\\rho c A$ is as large '
-      'as the useful term $\\dot\\varepsilon L_{eff}$ (UT19: %.2f against %.2f m/s; UT40: %.2f against %.2f m/s), '
-      'so a 10 %% error on $F$ gives about 10 %% error on the strain rate. A first estimate without it '
-      '($V = \\dot\\varepsilon \\times$ 15 mm) gave 21 s⁻¹ instead of 100 s⁻¹ for the UT19.'
-      % (2 * sp['UT19']['F_N'] / Z_BAR, 100 * sp['UT19']['L_eff_mm'] * 1e-3, 2 * sp['UT40']['F_N'] / Z_BAR,
-         100 * sp['UT40']['L_eff_mm'] * 1e-3))
+      'during necking, much more for the UT40. The recalibration of the UT40 is detailed in Appendix C.')
     D.fig('striker', 'F5_striker_velocity.png', 'Striker velocity required for a given strain rate',
           'the striker velocity against the achieved strain rate, one panel per specimen. Line: the formula with '
-          'the constants of %s. Dots: the reference simulations. Shaded: 30 %% strain not reachable with the 5 m '
-          'striker.' % T('calib'),
+          'the current constants (last version of each specimen in %s). Dots: the reference simulations, which used '
+          'these constants (%s). Shaded: 30 %% strain not reachable with the 5 m striker.' % (T('striker_hist'), T('striker_used')),
           'formula of `make_run.py`; simulation results.',
           'choose a strain rate on the horizontal axis and read the striker velocity on the line; a dot on the '
           'line means that the formula predicted the simulation exactly.')

@@ -138,7 +138,7 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 > **Figure 3 – Force equilibrium relative to the maximum force.**
 >
-> *Plotted* – $R_{mod} = (F_{in} - F_{out}) / F_{max}$ against the engineering strain, over the whole useful window (from the loading start to 30 % strain or to the maximum strain), one curve per target rate; dotted vertical line: sudden localisation in the neck (Table 8), if any.
+> *Plotted* – $R_{mod} = (F_{in} - F_{out}) / F_{max}$ against the engineering strain, over the whole useful window (from the loading start to 30 % strain or to the maximum strain), one curve per target rate; dotted vertical line: sudden localisation in the neck (Table 11), if any.
 >
 > *Source* – same filtered section forces as Figure 1.
 >
@@ -200,21 +200,50 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 After the force maximum the strain rate is established close to the target and increases slowly, because the force decreases (necking) and brakes the bench less. Before the force maximum, during the uniform hardening phase, the strain rate is not yet stable at the higher rates (negative values: rebound of the specimen in the pockets).
 
-**Striker velocity.** The elongation rate of the inverter is approximately
+**How the striker velocity is chosen.** The only setting of a test is the striker velocity $V$. The velocity needed for a target strain rate $\dot\varepsilon$ is estimated with one-dimensional wave theory, in five steps:
+
+| Step | What happens | Equation |
+|---|---|---|
+| 1 | the striker hits the input bar; the bar material starts moving at the particle velocity $v_i$, smaller than $V$ (impedances $Z = \rho c A$ of striker and bar) | $v_i = K\,V$, $K = Z_{striker}/(Z_{striker}+Z_{bar})$ = 0.487 |
+| 2 | at the end of the input bar the wave reflects: the pusher moves about twice as fast | $\approx 2\,v_i$ |
+| 3 | the specimen pulls back with its force $F$: it brakes the pusher and pulls the output bar towards it; both reduce the elongation rate | $-\,2F/(\rho c A)$, $\rho c A$ = 12242 N·s/m |
+| 4 | elongation rate of the specimen | $v = 2KV - 2F/(\rho c A)$ |
+| 5 | the elongation rate is related to the strain rate of the extensometer by an effective length | $v = \dot\varepsilon\,L_{eff}$ |
+
+Solving for $V$:
 
 $$
-v \approx 2\,v_i - \frac{2F}{\rho c A}, \qquad v_i = K\,V_{striker}, \qquad K = \frac{Z_{striker}}{Z_{striker} + Z_{bar}} = 0.487
+V = \frac{\dot\varepsilon\,L_{eff} + 2F/(\rho c A)}{2K}
 $$
 
-where $v_i$ is the particle velocity of the incident wave and $F$ the specimen force: the specimen force both slows the inverter down and pushes the output bar ($\rho c A$ = 12242 N·s/m). Writing $v = \dot\varepsilon\,L_{eff}$ gives
+Two quantities of this formula are **not known before the simulation**: $L_{eff}$, the length that effectively elongates as seen by the extensometer (not exactly the parallel section: fillets and heads also deform a little, and the extensometer is shorter than the parallel section), and $F$, the effective specimen force during the test (it rises to its maximum, then decreases during necking). Both are obtained by **calibration**: they are adjusted so that the formula matches simulations already run, and the adjusted formula is used to choose the velocities of the next simulations. The successive versions are:
 
-$$
-V_{striker} = \frac{\dot\varepsilon\,L_{eff} + 2F/(\rho c A)}{2K}
-$$
+**Table 7 – Successive versions of the striker velocity formula.**
 
-- UT19: $L_{eff}$ = 12.7 mm, $F$ = 7.0 kN (calibrated on a first simulation at 500 s⁻¹).
+| Specimen | Version | $L_{eff}$ / $F$ | How the constants were obtained | Used in study | Achieved rates (target 100 / 500 / 1000 s⁻¹) |
+|---|---|---|---|---|---|
+| UT19 | first attempt | no force term | striker velocity proportional to the strain rate, $V = \dot\varepsilon \times 15$ mm, without the force term | `taskI_20261013-1127` | 100 s⁻¹ targeted, only 21 s⁻¹ achieved: the specimen force brakes the pusher |
+| UT19 | calibrated | 12.7 mm / 7.0 kN | force term added; $L_{eff}$ and $F$ calibrated on a first UT19 simulation at 500 s⁻¹ (485 s⁻¹ achieved, mean specimen force 6.4–6.8 kN) | `taskI_20261013-1554`, `taskI_20261022-1138` | 110 / 546 / 1066 s⁻¹ (in contact) |
 
-$L_{eff}$ is an effective length relating the elongation rate to the extensometer strain rate. For the UT19, a first estimate without the force term ($V = \dot\varepsilon \times$ 15 mm) gave 21 s⁻¹ instead of 100 s⁻¹, because the specimen force is then almost as large as the force carried by the incident wave.
+**Table 8 – Striker velocities of this report and the formula version they come from.**
+
+| Specimen / target rate (s⁻¹) | Striker velocity | Formula version | Achieved rate | Deviation from target |
+|---|---|---|---|---|
+| UT19 / 100 | 2.48 m/s | calibrated | 105 s⁻¹ | +5 % |
+| UT19 / 500 | 7.69 m/s | calibrated | 546 s⁻¹ | +9 % |
+| UT19 / 1000 | 14.20 m/s | calibrated | 1073 s⁻¹ | +7 % |
+
+*Achieved rate*: see *Definitions and signal processing*; same values as in Table 5.
+
+**Why the achieved rate differs from the target.** (1) $L_{eff}$ and $F$ are effective constants: a first estimate can be far off (UT40 first estimate: $F$ = 15 kN, whereas the force of the UT40 drops strongly during necking and the effective value is ≈ 10.4 kN; with $F$ too large the formula over-compensates the braking and the strain rate is too high). (2) The formula assumes a constant force and a constant strain rate, which is not the case: the force rises, then decreases during necking, and its average depends on how far the test goes. Probable consequence: a test that stops early (100 s⁻¹, end of the pulse) keeps a higher mean force than the one used for calibration, is braked more and runs slower than the target. (3) At low rate the braking term is of the same order as the useful term, so a small error on $F$ gives a large error on the rate:
+
+**Table 9 – Sensitivity of the strain rate to the force constant $F$.**
+
+| Specimen | Useful term $\dot\varepsilon L_{eff}$ at 100 s⁻¹ | Braking term $2F/\rho c A$ | Rate change for 1 kN error on $F$ | Same, relative at 100 / 500 / 1000 s⁻¹ |
+|---|---|---|---|---|
+| UT19 | 1.27 m/s | 1.14 m/s | 12.9 s⁻¹ | 13 % / 3 % / 1 % |
+
+*Rate change for 1 kN*: $\Delta\dot\varepsilon = 2\,\Delta F / (\rho c A\,L_{eff})$ at a given striker velocity, with the current constants.
 
 ![Figure 5 – Striker velocity required for a given strain rate](F5_striker_velocity.png)
 
@@ -252,7 +281,7 @@ In the experiment the force is only known from the output bar gauge. Figure 6 an
 >
 > *How to read it* – where the coloured line follows the grey one, the gauge measures the specimen correctly; where it oscillates around it, the measurement distorts the true response. The grey curves are identical at the three rates because the simulated material is rate independent. Axis cut at 1600 MPa (spike of the gauge signal below 2 % strain).
 
-**Table 7 – Error of the output bar gauge.**
+**Table 10 – Error of the output bar gauge.**
 
 | Specimen / target rate (s⁻¹) | Max force | Max gauge error after 5 % | Before the sudden localisation | Fastest force drop (in 10 µs) |
 |---|---|---|---|---|
@@ -272,7 +301,7 @@ The force in the specimen is smooth, whereas the gauge signal oscillates around 
 
 **When does a real DP1000 specimen break?** Beerli et al. (2026, section 4.1.1, fig. 7a) report an engineering strain to fracture of **11 %** for DP1000 in quasi-static uniaxial tension (0.001 s⁻¹) on the 40 × 10 mm UT specimen, i.e. the UT40 geometry. At high strain rates, the same paper reports that the elongation to fracture of DP1000 does not decrease with the strain rate (section 4.2.1), but gives no value here. For the short specimen (UT19, 15 mm) the engineering strain to fracture is larger, since the neck is a larger part of a shorter gauge length; no value is available.
 
-**Table 8 – Validity of each simulation.**
+**Table 11 – Validity of each simulation.**
 
 | Specimen / target rate (s⁻¹) | Max strain | Sudden localisation (force drop) | Max PEEQ at 11 % strain | Max PEEQ at max strain |
 |---|---|---|---|---|
@@ -292,7 +321,7 @@ The force in the specimen is smooth, whereas the gauge signal oscillates around 
 
 These checks do not answer the Task I questions: they verify that the simulation can be trusted. Each column compares the simulation with a value known in advance, or measures a purely numerical error.
 
-**Table 9 – Numerical checks.**
+**Table 12 – Numerical checks.**
 
 | Specimen / target rate (s⁻¹) | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal energy |
 |---|---|---|---|---|
@@ -320,7 +349,7 @@ These checks do not answer the Task I questions: they verify that the simulation
 
 ## Appendix A – Specimen forces over the whole test
 
-$F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the loading start to the end of the useful window (+ 15 %), one panel per target rate. Dotted lines: 5, 10, 20 and 30 % strain; red line: sudden localisation in the neck (Table 8), if any. Equilibrium means that the two curves overlap.
+$F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the loading start to the end of the useful window (+ 15 %), one panel per target rate. Dotted lines: 5, 10, 20 and 30 % strain; red line: sudden localisation in the neck (Table 11), if any. Equilibrium means that the two curves overlap.
 
 ![Forces over the whole test, UT19](FA_forces_full_UT19.png)
 

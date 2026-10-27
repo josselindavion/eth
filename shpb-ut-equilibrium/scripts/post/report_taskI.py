@@ -656,6 +656,113 @@ def case_sentence(r):
     return s
 
 
+# Historique des versions de la formule du striker (journal 13/10, 22/10, 23/10 ; docs/results.md section 4).
+# (eprouvette, nom, L_eff mm ou None, F N ou None, comment les constantes ont ete obtenues, etude, resultat)
+STRIKER_HISTORY = [
+    ('UT19', 'first attempt', None, None,
+     'striker velocity proportional to the strain rate, $V = \\dot\\varepsilon \\times 15$ mm, without the force term',
+     'taskI_20261013-1127', '100 s⁻¹ targeted, only 21 s⁻¹ achieved: the specimen force brakes the pusher'),
+    ('UT19', 'calibrated', 12.7, 7000.0,
+     'force term added; $L_{eff}$ and $F$ calibrated on a first UT19 simulation at 500 s⁻¹ (485 s⁻¹ achieved, '
+     'mean specimen force 6.4–6.8 kN)', 'taskI_20261013-1554, taskI_20261022-1138',
+     '110 / 546 / 1066 s⁻¹ (in contact)'),
+    ('UT40', 'first estimate', 34.0, 15000.0,
+     'estimated from the UT19 before any UT40 simulation: $L_{eff}$ = 40 mm × 12.7 / 15 (same ratio to the '
+     'parallel section as the UT19), $F$ = maximum force of the UT40 (twice the section of the UT19)',
+     'taskI_20261023-1140', '138 / 590 / 770 s⁻¹ (1000 s⁻¹: localisation outside the extensometer)'),
+    ('UT40', 'recalibrated', 30.1, 10400.0,
+     'two equations, two unknowns, from the runs at 100 and 500 s⁻¹ of the first estimate (138 s⁻¹ at 6.00 m/s, '
+     '590 s⁻¹ at 19.95 m/s)', 'taskI_20261023-1518', '82 / 498 / 940 s⁻¹'),
+]
+
+
+def signed_pct(x):
+    v = round(100 * x)
+    return '+%d %%' % v if v > 0 else ('−%d %%' % -v if v < 0 else '0 %')
+
+
+def striker_section(rows, cap, ref_cond):
+    """Section commune (rapports par etude et rapport final) : comment la vitesse du striker est choisie,
+    pourquoi la vitesse de deformation obtenue differe de la cible, versions successives de la formule.
+    cap(cle, titre) -> legende de tableau ; ref_cond = renvoi vers le tableau des conditions d'essai.
+    Retourne une liste de paragraphes markdown."""
+    Z, K = make_run.Z_BARRE, make_run.K_IMP
+    specs = sorted(set(r['specimen'] for r in rows))
+    out = []
+    out.append('**How the striker velocity is chosen.** The only setting of a test is the striker velocity $V$. '
+               'The velocity needed for a target strain rate $\\dot\\varepsilon$ is estimated with one-dimensional '
+               'wave theory, in five steps:')
+    out.append(md_table(['Step', 'What happens', 'Equation'], [
+        ['1', 'the striker hits the input bar; the bar material starts moving at the particle velocity $v_i$, '
+              'smaller than $V$ (impedances $Z = \\rho c A$ of striker and bar)',
+         '$v_i = K\\,V$, $K = Z_{striker}/(Z_{striker}+Z_{bar})$ = %.3f' % K],
+        ['2', 'at the end of the input bar the wave reflects: the pusher moves about twice as fast',
+         '$\\approx 2\\,v_i$'],
+        ['3', 'the specimen pulls back with its force $F$: it brakes the pusher and pulls the output bar towards '
+              'it; both reduce the elongation rate', '$-\\,2F/(\\rho c A)$, $\\rho c A$ = %.0f N·s/m' % Z],
+        ['4', 'elongation rate of the specimen', '$v = 2KV - 2F/(\\rho c A)$'],
+        ['5', 'the elongation rate is related to the strain rate of the extensometer by an effective length',
+         '$v = \\dot\\varepsilon\\,L_{eff}$'],
+    ]))
+    out.append('Solving for $V$:')
+    out.append('$$\nV = \\frac{\\dot\\varepsilon\\,L_{eff} + 2F/(\\rho c A)}{2K}\n$$')
+    out.append('Two quantities of this formula are **not known before the simulation**: $L_{eff}$, the length '
+               'that effectively elongates as seen by the extensometer (not exactly the parallel section: fillets '
+               'and heads also deform a little, and the extensometer is shorter than the parallel section), and '
+               '$F$, the effective specimen force during the test (it rises to its maximum, then decreases during '
+               'necking). Both are obtained by **calibration**: they are adjusted so that the formula matches '
+               'simulations already run, and the adjusted formula is used to choose the velocities of the next '
+               'simulations. The successive versions are:')
+    hist = [h for h in STRIKER_HISTORY if h[0] in specs]
+    out.append(cap('striker_hist', 'Successive versions of the striker velocity formula'))
+    out.append(md_table(['Specimen', 'Version', '$L_{eff}$ / $F$', 'How the constants were obtained', 'Used in study',
+                         'Achieved rates (target 100 / 500 / 1000 s⁻¹)'],
+                        [[h[0], h[1], ('%.1f mm / %.1f kN' % (h[2], h[3] / 1e3)) if h[2] else 'no force term',
+                          h[4], ', '.join('`%s`' % x.strip() for x in h[5].split(',')), h[6]] for h in hist]))
+    # version utilisee par cette etude
+    lines = []
+    for r in rows:
+        ver = 'other'
+        for h in hist:
+            if h[0] == r['specimen'] and h[2]:
+                vh = (r['target_rate'] * h[2] * 1e-3 + 2 * h[3] / Z) / (2 * K)
+                if abs(r['v_striker'] / vh - 1) < 0.01:
+                    ver = h[1]
+        lines.append([label(r), '%.2f m/s' % r['v_striker'], ver, '%.0f s⁻¹' % r['achieved_rate'],
+                      signed_pct(r['achieved_rate'] / r['target_rate'] - 1)])
+    out.append(cap('striker_used', 'Striker velocities of this report and the formula version they come from'))
+    out.append(md_table(['Specimen / target rate (s⁻¹)', 'Striker velocity', 'Formula version', 'Achieved rate',
+                         'Deviation from target'], lines))
+    out.append('*Achieved rate*: see *Definitions and signal processing*; same values as in %s.' % ref_cond)
+    # pourquoi la cible n'est pas atteinte exactement
+    sens = []
+    for s_ in specs:
+        c = make_run.SPECIMENS.get(s_)
+        if not c:
+            continue
+        L = c['L_eff_mm'] * 1e-3
+        useful = 100 * L
+        brake = 2 * c['F_N'] / Z
+        per_kN = 2e3 / (Z * L)
+        sens.append([s_, '%.2f m/s' % useful, '%.2f m/s' % brake, '%.1f s⁻¹' % per_kN,
+                     '%.0f %% / %.0f %% / %.0f %%' % (per_kN, per_kN / 5, per_kN / 10)])
+    out.append('**Why the achieved rate differs from the target.** (1) $L_{eff}$ and $F$ are effective constants: '
+               'a first estimate can be far off (UT40 first estimate: $F$ = 15 kN, whereas the force of the UT40 '
+               'drops strongly during necking and the effective value is ≈ 10.4 kN; with $F$ too large the formula '
+               'over-compensates the braking and the strain rate is too high). (2) The formula assumes a constant '
+               'force and a constant strain rate, which is not the case: the force rises, then decreases during '
+               'necking, and its average depends on how far the test goes. Probable consequence: a test that stops '
+               'early (100 s⁻¹, end of the pulse) keeps a higher mean force than the one used for calibration, is '
+               'braked more and runs slower than the target. (3) At low rate the braking term is of the same order '
+               'as the useful term, so a small error on $F$ gives a large error on the rate:')
+    out.append(cap('striker_sens', 'Sensitivity of the strain rate to the force constant $F$'))
+    out.append(md_table(['Specimen', 'Useful term $\\dot\\varepsilon L_{eff}$ at 100 s⁻¹', 'Braking term $2F/\\rho c A$',
+                         'Rate change for 1 kN error on $F$', 'Same, relative at 100 / 500 / 1000 s⁻¹'], sens))
+    out.append('*Rate change for 1 kN*: $\\Delta\\dot\\varepsilon = 2\\,\\Delta F / (\\rho c A\\,L_{eff})$ at a '
+               'given striker velocity, with the current constants.')
+    return out
+
+
 def write_report(study, rows, out, has_peeq=False):
     specs = sorted(set(r['specimen'] for r in rows))
     rate_min = EPS_TARGET / (PULSE_MS * 1e-3)
@@ -953,20 +1060,9 @@ def write_report(study, rows, out, has_peeq=False):
       'the force decreases (necking) and brakes the bench less. Before the force maximum, during the uniform '
       'hardening phase, the strain rate is not yet stable at the higher rates' +
       (' (negative values: rebound of the specimen in the pockets).' if gaps else '.'))
-    P('**Striker velocity.** The elongation rate of the inverter is approximately')
-    P('$$\nv \\approx 2\\,v_i - \\frac{2F}{\\rho c A}, \\qquad v_i = K\\,V_{striker}, \\qquad '
-      'K = \\frac{Z_{striker}}{Z_{striker} + Z_{bar}} = %.3f\n$$' % make_run.K_IMP)
-    P('where $v_i$ is the particle velocity of the incident wave and $F$ the specimen force: the specimen force '
-      'both slows the inverter down and pushes the output bar ($\\rho c A$ = %.0f N·s/m). Writing '
-      '$v = \\dot\\varepsilon\\,L_{eff}$ gives' % make_run.Z_BARRE)
-    P('$$\nV_{striker} = \\frac{\\dot\\varepsilon\\,L_{eff} + 2F/(\\rho c A)}{2K}\n$$')
-    for s_ in specs:
-        if sp.get(s_):
-            P('- %s: $L_{eff}$ = %.1f mm, $F$ = %.1f kN (%s).' % (s_, sp[s_]['L_eff_mm'], sp[s_]['F_N'] / 1e3,
-                                                                  sp[s_].get('source', '').replace('s-1', 's⁻¹')))
-    P('$L_{eff}$ is an effective length relating the elongation rate to the extensometer strain rate. For the UT19, '
-      'a first estimate without the force term ($V = \\dot\\varepsilon \\times$ 15 mm) gave 21 s⁻¹ instead of '
-      '100 s⁻¹, because the specimen force is then almost as large as the force carried by the incident wave.')
+    for block in striker_section(rows, lambda k, t: '**Table T%s – %s.**' % ({'striker_hist': '4b', 'striker_used': '4c',
+                                                                         'striker_sens': '4d'}[k], t), 'Table T1'):
+        P(block)
     olds = {s_: formula_used([(None, (r, None)) for r in rows if r['specimen'] == s_]) for s_ in specs}
     old_txt = ''.join(
         ' **%s: the velocities of this study were chosen with an earlier version of the formula** ($L_{eff}$ = '

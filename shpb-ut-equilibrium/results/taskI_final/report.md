@@ -376,34 +376,64 @@ After the force maximum the strain rate settles close to the target and increase
 
 ### Striker velocity formula
 
-The elongation rate of the inverter (pusher pocket moving away from the output pocket) is approximately
+**How the striker velocity is chosen.** The only setting of a test is the striker velocity $V$. The velocity needed for a target strain rate $\dot\varepsilon$ is estimated with one-dimensional wave theory, in five steps:
 
-$$
-v \approx 2\,v_i - \frac{2F}{\rho c A}, \qquad v_i = K\,V, \qquad K = \frac{Z_{striker}}{Z_{striker} + Z_{bar}} = 0.487
-$$
+| Step | What happens | Equation |
+|---|---|---|
+| 1 | the striker hits the input bar; the bar material starts moving at the particle velocity $v_i$, smaller than $V$ (impedances $Z = \rho c A$ of striker and bar) | $v_i = K\,V$, $K = Z_{striker}/(Z_{striker}+Z_{bar})$ = 0.487 |
+| 2 | at the end of the input bar the wave reflects: the pusher moves about twice as fast | $\approx 2\,v_i$ |
+| 3 | the specimen pulls back with its force $F$: it brakes the pusher and pulls the output bar towards it; both reduce the elongation rate | $-\,2F/(\rho c A)$, $\rho c A$ = 12242 N·s/m |
+| 4 | elongation rate of the specimen | $v = 2KV - 2F/(\rho c A)$ |
+| 5 | the elongation rate is related to the strain rate of the extensometer by an effective length | $v = \dot\varepsilon\,L_{eff}$ |
 
-where $V$ is the striker velocity, $v_i$ the particle velocity of the incident wave, $F$ the specimen force and $\rho c A$ = 12242 N·s/m the impedance of the bars: the specimen force both slows the pusher down and pushes the output bar. Writing $v = \dot\varepsilon\,L_{eff}$ gives
+Solving for $V$:
 
 $$
 V = \frac{\dot\varepsilon\,L_{eff} + 2F/(\rho c A)}{2K}
 $$
 
-$L_{eff}$ is an effective length relating the elongation rate of the pockets to the strain rate of the extensometer, and $F$ an effective specimen force. Both are calibrated on simulations:
+Two quantities of this formula are **not known before the simulation**: $L_{eff}$, the length that effectively elongates as seen by the extensometer (not exactly the parallel section: fillets and heads also deform a little, and the extensometer is shorter than the parallel section), and $F$, the effective specimen force during the test (it rises to its maximum, then decreases during necking). Both are obtained by **calibration**: they are adjusted so that the formula matches simulations already run, and the adjusted formula is used to choose the velocities of the next simulations. The successive versions are:
 
-**Table 13 – Constants of the striker formula.**
+**Table 13 – Successive versions of the striker velocity formula.**
 
-| Specimen | $L_{eff}$ | $F$ | Calibration | Velocities for 100 / 500 / 1000 s⁻¹ |
+| Specimen | Version | $L_{eff}$ / $F$ | How the constants were obtained | Used in study | Achieved rates (target 100 / 500 / 1000 s⁻¹) |
+|---|---|---|---|---|---|
+| UT19 | first attempt | no force term | striker velocity proportional to the strain rate, $V = \dot\varepsilon \times 15$ mm, without the force term | `taskI_20261013-1127` | 100 s⁻¹ targeted, only 21 s⁻¹ achieved: the specimen force brakes the pusher |
+| UT19 | calibrated | 12.7 mm / 7.0 kN | force term added; $L_{eff}$ and $F$ calibrated on a first UT19 simulation at 500 s⁻¹ (485 s⁻¹ achieved, mean specimen force 6.4–6.8 kN) | `taskI_20261013-1554`, `taskI_20261022-1138` | 110 / 546 / 1066 s⁻¹ (in contact) |
+| UT40 | first estimate | 34.0 mm / 15.0 kN | estimated from the UT19 before any UT40 simulation: $L_{eff}$ = 40 mm × 12.7 / 15 (same ratio to the parallel section as the UT19), $F$ = maximum force of the UT40 (twice the section of the UT19) | `taskI_20261023-1140` | 138 / 590 / 770 s⁻¹ (1000 s⁻¹: localisation outside the extensometer) |
+| UT40 | recalibrated | 30.1 mm / 10.4 kN | two equations, two unknowns, from the runs at 100 and 500 s⁻¹ of the first estimate (138 s⁻¹ at 6.00 m/s, 590 s⁻¹ at 19.95 m/s) | `taskI_20261023-1518` | 82 / 498 / 940 s⁻¹ |
+
+**Table 14 – Striker velocities of this report and the formula version they come from.**
+
+| Specimen / target rate (s⁻¹) | Striker velocity | Formula version | Achieved rate | Deviation from target |
 |---|---|---|---|---|
-| UT19 | 12.7 mm | 7.0 kN | first UT19 simulation at 500 s⁻¹ (study `taskI_20261013-1127`: 485 s⁻¹ achieved, mean force 6.4–6.8 kN) | 2.48 / 7.69 / 14.20 m/s |
-| UT40 | 30.1 mm | 10.4 kN | first UT40 study (`taskI_20261023-1140`) at 100 and 500 s⁻¹: two runs, two unknowns (Appendix C) | 4.83 / 17.18 / 32.62 m/s |
+| UT19 / 100 | 2.48 m/s | calibrated | 110 s⁻¹ | +10 % |
+| UT19 / 500 | 7.69 m/s | calibrated | 546 s⁻¹ | +9 % |
+| UT19 / 1000 | 14.20 m/s | calibrated | 1066 s⁻¹ | +7 % |
+| UT40 / 100 | 4.83 m/s | recalibrated | 82 s⁻¹ | −18 % |
+| UT40 / 500 | 17.18 m/s | recalibrated | 498 s⁻¹ | 0 % |
+| UT40 / 1000 | 32.62 m/s | recalibrated | 940 s⁻¹ | −6 % |
 
-$L_{eff}$ is shorter than the parallel section (12.7 instead of 15 mm for the UT19; 30.1 instead of 40 mm for the UT40), because the extensometer sees the most strained part of it. The effective force is lower than the maximum force (7.0 against ≈ 7.5 kN, 10.4 against ≈ 15 kN) because the force decreases during necking, much more for the UT40. The force term matters: at 100 s⁻¹, $2F/\rho c A$ is as large as the useful term $\dot\varepsilon L_{eff}$ (UT19: 1.14 against 1.27 m/s; UT40: 1.70 against 3.01 m/s), so a 10 % error on $F$ gives about 10 % error on the strain rate. A first estimate without it ($V = \dot\varepsilon \times$ 15 mm) gave 21 s⁻¹ instead of 100 s⁻¹ for the UT19.
+*Achieved rate*: see *Definitions and signal processing*; same values as in Table 11.
+
+**Why the achieved rate differs from the target.** (1) $L_{eff}$ and $F$ are effective constants: a first estimate can be far off (UT40 first estimate: $F$ = 15 kN, whereas the force of the UT40 drops strongly during necking and the effective value is ≈ 10.4 kN; with $F$ too large the formula over-compensates the braking and the strain rate is too high). (2) The formula assumes a constant force and a constant strain rate, which is not the case: the force rises, then decreases during necking, and its average depends on how far the test goes. Probable consequence: a test that stops early (100 s⁻¹, end of the pulse) keeps a higher mean force than the one used for calibration, is braked more and runs slower than the target. (3) At low rate the braking term is of the same order as the useful term, so a small error on $F$ gives a large error on the rate:
+
+**Table 15 – Sensitivity of the strain rate to the force constant $F$.**
+
+| Specimen | Useful term $\dot\varepsilon L_{eff}$ at 100 s⁻¹ | Braking term $2F/\rho c A$ | Rate change for 1 kN error on $F$ | Same, relative at 100 / 500 / 1000 s⁻¹ |
+|---|---|---|---|---|
+| UT19 | 1.27 m/s | 1.14 m/s | 12.9 s⁻¹ | 13 % / 3 % / 1 % |
+| UT40 | 3.01 m/s | 1.70 m/s | 5.4 s⁻¹ | 5 % / 1 % / 1 % |
+
+*Rate change for 1 kN*: $\Delta\dot\varepsilon = 2\,\Delta F / (\rho c A\,L_{eff})$ at a given striker velocity, with the current constants.
+
+$L_{eff}$ is shorter than the parallel section (12.7 instead of 15 mm for the UT19; 30.1 instead of 40 mm for the UT40), because the extensometer sees the most strained part of it. The effective force is lower than the maximum force (7.0 against ≈ 7.5 kN, 10.4 against ≈ 15 kN) because the force decreases during necking, much more for the UT40. The recalibration of the UT40 is detailed in Appendix C.
 
 ![Striker velocity required for a given strain rate](F5_striker_velocity.png)
 
 > **Figure 10 – Striker velocity required for a given strain rate.**
 >
-> *Plotted* – the striker velocity against the achieved strain rate, one panel per specimen. Line: the formula with the constants of Table 13. Dots: the reference simulations. Shaded: 30 % strain not reachable with the 5 m striker.
+> *Plotted* – the striker velocity against the achieved strain rate, one panel per specimen. Line: the formula with the current constants (last version of each specimen in Table 13). Dots: the reference simulations, which used these constants (Table 14). Shaded: 30 % strain not reachable with the 5 m striker.
 >
 > *Source* – formula of `make_run.py`; simulation results.
 >
@@ -411,7 +441,7 @@ $L_{eff}$ is shorter than the parallel section (12.7 instead of 15 mm for the UT
 
 **Accuracy and possible refinement.** With these constants the achieved rates deviate from the targets by +10 % / +9 % / +7 % (UT19) and −18 % / 0 % / −6 % (UT40) (Table 11). The constants can be refined by a least-squares fit of the formula on all the simulations of each specimen (three UT19 runs; five UT40 runs: the reference study and the two usable runs of the first one):
 
-**Table 14 – Refined striker velocities (least-squares fit, not yet simulated).**
+**Table 16 – Refined striker velocities (least-squares fit, not yet simulated).**
 
 | Specimen | Fitted $L_{eff}$ | Fitted $F$ | Velocity for 100 / 500 / 1000 s⁻¹ | Change |
 |---|---|---|---|---|
@@ -440,7 +470,7 @@ The two specimens have the same heads and the same section-to-width ratio; they 
 >
 > *How to read it* – the stress curves coincide up to the force maximum (same material); after it, the longer UT40 loses its force much faster, because the same neck is averaged over a longer extensometer. In the bottom row, the UT40 leaves the ±5 % band at 500 and 1000 s⁻¹.
 
-**Table 15 – UT19 / UT40 side by side.**
+**Table 17 – UT19 / UT40 side by side.**
 
 | Target rate | Strain at max force | Time to max force | Max $\lvert R_{mod}\rvert$ after 5 % | Force at 30 % / max force |
 |---|---|---|---|---|
@@ -450,9 +480,9 @@ The two specimens have the same heads and the same section-to-width ratio; they 
 
 Each cell: UT19 / UT40. *Time to max force*: from the loading start. *Force at 30 %*: mean of $F_{in}$ and $F_{out}$; for the UT40 at 500 s⁻¹ it is read after the sudden localisation and only indicative.
 
-**Why the UT40 is harder to equilibrate (interpretation).** Equilibrium needs the stress waves to cross the specimen several times while the force changes. In the elastic range the waves travel at $c_0 = \sqrt{E/\rho}$ = 4984 m/s and cross the parallel section in 3 µs (UT19) or 8 µs (UT40). Once the specimen yields, the changes of force travel at the plastic wave speed $c_p = \sqrt{h/\rho}$, with $h = dk/d\varepsilon_p$ the slope of the hardening law: $h$ = 9661 MPa and $c_p$ = 1109 m/s at 1 % plastic strain, 1046 MPa and 365 m/s at 5 %. One crossing of the parallel section then takes ≈ 14–41 µs for the UT19 and ≈ 36–110 µs for the UT40. The force maximum is reached ≈ 116 µs after the loading start at 1000 s⁻¹ (Table 15): about 3 to 8 plastic crossings for the UT19, but only 1.1 to 3.2 for the UT40. After the maximum force (Considère) the slope of the engineering stress–strain curve is negative, the neck concentrates the deformation, and the remaining force differences are no longer evened out. This is consistent with the simulations: the UT40 is in equilibrium at 100 s⁻¹ (894 µs to the force maximum) and only during an intermediate interval at 500 and 1000 s⁻¹.
+**Why the UT40 is harder to equilibrate (interpretation).** Equilibrium needs the stress waves to cross the specimen several times while the force changes. In the elastic range the waves travel at $c_0 = \sqrt{E/\rho}$ = 4984 m/s and cross the parallel section in 3 µs (UT19) or 8 µs (UT40). Once the specimen yields, the changes of force travel at the plastic wave speed $c_p = \sqrt{h/\rho}$, with $h = dk/d\varepsilon_p$ the slope of the hardening law: $h$ = 9661 MPa and $c_p$ = 1109 m/s at 1 % plastic strain, 1046 MPa and 365 m/s at 5 %. One crossing of the parallel section then takes ≈ 14–41 µs for the UT19 and ≈ 36–110 µs for the UT40. The force maximum is reached ≈ 116 µs after the loading start at 1000 s⁻¹ (Table 17): about 3 to 8 plastic crossings for the UT19, but only 1.1 to 3.2 for the UT40. After the maximum force (Considère) the slope of the engineering stress–strain curve is negative, the neck concentrates the deformation, and the remaining force differences are no longer evened out. This is consistent with the simulations: the UT40 is in equilibrium at 100 s⁻¹ (894 µs to the force maximum) and only during an intermediate interval at 500 and 1000 s⁻¹.
 
-**Consequence for the tests.** The neck needs about the same elongation in both specimens, but it is averaged over a 30 mm extensometer instead of 12 mm: to reach 30 % engineering strain the neck of the UT40 must provide ≈ 9.0 mm of elongation against ≈ 3.6 mm for the UT19, and the force falls to ≈ 19 % of its maximum instead of ≈ 49 % (1000 s⁻¹, Table 15). The UT40 is therefore much closer to fracture at 30 % strain.
+**Consequence for the tests.** The neck needs about the same elongation in both specimens, but it is averaged over a 30 mm extensometer instead of 12 mm: to reach 30 % engineering strain the neck of the UT40 must provide ≈ 9.0 mm of elongation against ≈ 3.6 mm for the UT19, and the force falls to ≈ 19 % of its maximum instead of ≈ 49 % (1000 s⁻¹, Table 17). The UT40 is therefore much closer to fracture at 30 % strain.
 
 ## What the experiment will measure
 
@@ -488,7 +518,7 @@ In the experiment the specimen force is only known from the output bar gauge. Fi
 >
 > *How to read it* – where the coloured line follows the grey one, the gauge measures the specimen correctly. The grey curves are the same at the three rates because the simulated material is rate independent.
 
-**Table 16 – Error of the output bar gauge.**
+**Table 18 – Error of the output bar gauge.**
 
 | Specimen / target rate (s⁻¹) | Max error after 5 % | Before a sudden localisation | Fastest force drop (10 µs) |
 |---|---|---|---|
@@ -507,7 +537,7 @@ Except after the sudden localisation of the UT40 at 500 s⁻¹, the gauge follow
 
 Before 22 Oct 2026 the specimen was centred in the pockets, with a clearance of 0.36 mm on each side. The same UT19 simulations (same striker velocities) gave a very different measurement:
 
-**Table 17 – UT19: specimen centred with clearances (study `taskI_20261013-1554`) and in contact (`taskI_20261022-1138`).**
+**Table 19 – UT19: specimen centred with clearances (study `taskI_20261013-1554`) and in contact (`taskI_20261022-1138`).**
 
 | Indicator | 100 s⁻¹ | 500 s⁻¹ | 1000 s⁻¹ |
 |---|---|---|---|
@@ -541,9 +571,9 @@ Each cell: centred → in contact. Same processing for both studies.
 
 ### Where a measurement error comes from: force probes
 
-In the four simulations with force probes, the force through five slices of the output side (output head, tie, bar) was compared with the true specimen force, each signal moved back by its own wave travel time to the bar end (Figure 17, Table 18).
+In the four simulations with force probes, the force through five slices of the output side (output head, tie, bar) was compared with the true specimen force, each signal moved back by its own wave travel time to the bar end (Figure 17, Table 20).
 
-**Table 18 – Max error after 5 % strain at each probe (% of the max force).**
+**Table 20 – Max error after 5 % strain at each probe (% of the max force).**
 
 | Position | UT19 / 1000, centred (gaps) | UT19 / 1000, in contact | UT40 / 1000, first run (37.4 m/s) | UT40 / 1000, recalibrated (32.6 m/s) |
 |---|---|---|---|---|
@@ -584,7 +614,7 @@ After the force maximum (5 to 7 % strain) the specimen necks: the deformation co
 
 At 0.44 ms after the loading start (18.2 % strain) both specimen forces drop within 10 µs (input side 8.2 → 4.3 kN, output side 8.6 → 5.4 kN, unfiltered), then reload with strong oscillations, while the extensometer keeps stretching to 30 %. Three explanations were checked in Abaqus/Viewer on the field outputs around this instant (frames 79, 81 and 83: 1.686, 1.728 and 1.771 ms of simulated time; lab journal, 27 Oct 2026):
 
-**Table 19 – Three explanations of the force drop, and their check.**
+**Table 21 – Three explanations of the force drop, and their check.**
 
 | Explanation | Check in Abaqus/Viewer | Result |
 |---|---|---|
@@ -680,7 +710,7 @@ In the first UT40 study the striker velocity for 1000 s⁻¹ was estimated too h
 
 Beerli et al. (2026, section 4.1.1, fig. 7a) report an engineering strain to fracture of **11 %** for DP1000 in quasi-static uniaxial tension (0.001 s⁻¹) on the 40 × 10 mm UT specimen, i.e. the UT40 geometry, the lowest of the five DP steels of the paper. At high strain rates the elongation to fracture of DP1000 does not decrease (section 4.2.1), but no value is given. The paper's fracture model (Hosford–Coulomb with a neural-network rate dependence) has no published parameters. For the UT19 the engineering strain to fracture is larger, since the neck is a larger part of a shorter extensometer; no value is available.
 
-**Table 20 – Validity of each reference simulation.**
+**Table 22 – Validity of each reference simulation.**
 
 | Specimen / target rate (s⁻¹) | Max strain | Sudden localisation | Beyond 11 % (DP1000 fracture, UT40)? |
 |---|---|---|---|
@@ -703,7 +733,7 @@ Beerli et al. (2026, section 4.1.1, fig. 7a) report an engineering strain to fra
 
 These checks do not answer the Task I questions: they verify that the simulations can be trusted.
 
-**Table 21 – Numerical checks.**
+**Table 23 – Numerical checks.**
 
 | Specimen / target rate (s⁻¹) | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal |
 |---|---|---|---|---|
@@ -719,7 +749,7 @@ These checks do not answer the Task I questions: they verify that the simulation
 - **Energy drift** – does the calculation create or lose energy? Largest variation of the total energy balance of Abaqus (`ETOTAL`) during the run, relative to the initial kinetic energy; below ≈ 1 %, contacts, ties and time integration create no artificial energy.
 - **Hourglass / internal** – does the mesh deform in a non-physical way? Energy absorbed by the artificial stiffness against the zero-energy modes of the reduced-integration hexahedra (`ALLAE`), relative to the deformation energy (`ALLIE`) at the end; usual limit 5 %.
 
-**Table 22 – Computing cost (Euler, 8 cores per simulation).**
+**Table 24 – Computing cost (Euler, 8 cores per simulation).**
 
 | Specimen / target rate (s⁻¹) | Simulated time | Increments | Final stable time increment | Wall time |
 |---|---|---|---|---|
@@ -753,14 +783,14 @@ From the `.sta` file of each run. The stable time increment falls when the neck 
 
 **Answer 2 – Loading speeds.**
 
-**Table 23 – Striker velocities for the experiments (5 m striker).**
+**Table 25 – Striker velocities for the experiments (5 m striker).**
 
 | Specimen | 100 s⁻¹ | 500 s⁻¹ | 1000 s⁻¹ |
 |---|---|---|---|
 | UT19 | 2.48 m/s → 23 % max | 7.69 m/s → 30 % in 0.60 ms | 14.20 m/s → 30 % in 0.32 ms |
 | UT40 | 4.83 m/s → 17 % max | 17.18 m/s → 30 % in 0.67 ms | 32.62 m/s → 30 % in 0.36 ms |
 
-Velocities of the reference simulations (rate-independent material). Refined values: Table 14.
+Velocities of the reference simulations (rate-independent material). Refined values: Table 16.
 
 - 30 % strain cannot be reached below ≈ 142 s⁻¹ with the 5 m striker.
 - For DP1000, 30 % engineering strain is beyond the fracture strain of the UT40 (≈ 11 %).
@@ -800,9 +830,9 @@ $F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the load
 
 ## Appendix B – UT19 centred in the pockets (study `taskI_20261013-1554`)
 
-Results of the UT19 with the old placement (specimen centred, clearance of 0.36 mm on each side), kept for comparison (Table 17).
+Results of the UT19 with the old placement (specimen centred, clearance of 0.36 mm on each side), kept for comparison (Table 19).
 
-**Table 24 – UT19 centred: main indicators.**
+**Table 26 – UT19 centred: main indicators.**
 
 | Target rate (s⁻¹) | Achieved rate | Equilibrium, $R$ | Max $\lvert R\rvert$ after 5 % | Gauge error |
 |---|---|---|---|---|
@@ -814,7 +844,7 @@ Results of the UT19 with the old placement (specimen centred, clearance of 0.36 
 
 The first UT40 velocities were estimated with $L_{eff}$ = 34 mm and $F$ = 15 kN (scaled from the UT19).
 
-**Table 25 – First UT40 study: main indicators.**
+**Table 27 – First UT40 study: main indicators.**
 
 | Target rate (s⁻¹) | Striker velocity | Achieved rate | Max strain | Equilibrium, $R$ | Sudden localisation |
 |---|---|---|---|---|---|
