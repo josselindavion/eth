@@ -216,6 +216,8 @@ $$
 
 $L_{eff}$ is an effective length relating the elongation rate to the extensometer strain rate. For the UT19, a first estimate without the force term ($V = \dot\varepsilon \times$ 15 mm) gave 21 s⁻¹ instead of 100 s⁻¹, because the specimen force is then almost as large as the force carried by the incident wave.
 
+**Note (UT40).** The striker velocities of this study (6.00 m/s / 19.95 m/s / 37.39 m/s) were computed with an earlier estimate of the formula, $L_{eff}$ = 34 mm and $F$ = 15 kN, which is why the achieved strain rates differ from the targets. The constants given above are the current ones; they were recalibrated afterwards (calibrated on the first UT40 simulations at 100 and 500 s-1, study taskI_20261023-1140), and the next study used the corrected velocities.
+
 ![Figure 5 – Striker velocity required for a given strain rate](F5_striker_velocity.png)
 
 > **Figure 5 – Striker velocity required for a given strain rate.**
@@ -224,7 +226,7 @@ $L_{eff}$ is an effective length relating the elongation rate to the extensomete
 >
 > *Source* – formula of `make_run.py` and simulation results.
 >
-> *How to read it* – choose a strain rate on the horizontal axis and read the striker velocity on the line; dots on the line confirm the formula.
+> *How to read it* – choose a strain rate on the horizontal axis and read the striker velocity on the line; dots on the line confirm the formula. **UT40: the velocities of this study were chosen with an earlier version of the formula** ($L_{eff}$ = 34 mm, $F$ = 15 kN, dashed line; open circles: target rate; arrows: rate actually achieved). The solid line is the current formula, recalibrated afterwards: if it was calibrated on this study, its points lie on it by construction, which is not a validation.
 
 **Limit for 30 % strain.** The 5 m striker gives a 2.12 ms loading pulse, so 30 % strain requires at least 0.30 / 2.12 ms ≈ 142 s⁻¹; the output bar (5.99 m) also limits the measurement window to 2.33 ms (Beerli et al. 2026). At 1000 s⁻¹ (UT40) the strain stops at 12.6 %; 30 % would need about 0.4 ms of loading (0.30 / 770 s⁻¹ + 0.03 ms start-up), i.e. a striker of about 1.0 m: almost the length of the 7.5 m launch tube, and longer than the measurement window.
 

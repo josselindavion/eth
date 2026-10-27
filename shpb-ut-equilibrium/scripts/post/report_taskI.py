@@ -472,6 +472,22 @@ def fig_peeq(groups, out):
     return True
 
 
+def formula_used(items):
+    """Constantes (L_eff en mm, F en N) de la formule qui a donne les vitesses du striker de ces calculs,
+    retrouvees a partir des couples (vitesse visee, vitesse du striker) : 2 K V = vit. x L_eff + 2 F / Z.
+    None si ces vitesses sont celles de la formule actuelle de make_run.py (ecart < 1 %)."""
+    rs = [r for _, (r, _c) in items]
+    spec = rs[0]['specimen']
+    if not make_run.SPECIMENS.get(spec) or len(rs) < 2:
+        return None
+    if all(abs(r['v_striker'] / make_run.striker_velocity(spec, r['target_rate']) - 1) < 0.01 for r in rs):
+        return None
+    x = np.array([r['target_rate'] for r in rs])
+    y = np.array([2 * make_run.K_IMP * r['v_striker'] for r in rs])
+    L, c = np.polyfit(x, y, 1)
+    return 1e3 * L, c * make_run.Z_BARRE / 2.0
+
+
 def fig_striker(groups, out):
     """Un panneau par eprouvette : formule de make_run.py (ligne) et calculs (points)."""
     fig, axs = new_axes(len(groups), w=4.2, h=3.2)
@@ -479,10 +495,23 @@ def fig_striker(groups, out):
     rr = np.linspace(20, 1300, 200)
     for k, (ax, (spec, items)) in enumerate(zip(axs, groups)):
         vmax = max(r['v_striker'] for _, (r, _c) in items)
+        old = formula_used(items)
         if make_run.SPECIMENS.get(spec):
             vv = [make_run.striker_velocity(spec, x) for x in rr]
-            ax.plot(rr, vv, color=INK2, lw=1.0, label='estimate (make_run.py)')
+            ax.plot(rr, vv, color=INK2, lw=1.0,
+                    label='current formula (make_run.py)' if old else 'estimate (make_run.py)')
             vmax = max(vmax, max(vv))
+        if old:
+            # formule qui a servi a choisir les vitesses de CES calculs (avant recalage) : pointilles ;
+            # cercles vides = vitesse visee, fleche -> vitesse obtenue
+            vo = [(x * old[0] * 1e-3 + 2 * old[1] / make_run.Z_BARRE) / (2 * make_run.K_IMP) for x in rr]
+            ax.plot(rr, vo, color=INK2, lw=1.0, ls='--', label='formula used for these runs')
+            vmax = max(vmax, max(vo))
+            for col, (r, c) in items:
+                ax.plot(r['target_rate'], r['v_striker'], 'o', ms=7, mfc='white', mec=col, mew=1.2)
+                ax.annotate('', xy=(r['achieved_rate'], r['v_striker']), xytext=(r['target_rate'], r['v_striker']),
+                            arrowprops=dict(arrowstyle='->', color=col, lw=0.9, shrinkA=4, shrinkB=4))
+            ax.plot([], [], 'o', ms=7, mfc='white', mec=INK2, label='target of these runs')
         ytop = 1.1 * vmax
         ax.axvspan(0, rate_min, color=BAND, zorder=0)
         ax.text(rate_min * 0.5, 0.97 * ytop, '30 %\nnot\nreachable', ha='center', va='top', color=INK2,
@@ -938,13 +967,28 @@ def write_report(study, rows, out, has_peeq=False):
     P('$L_{eff}$ is an effective length relating the elongation rate to the extensometer strain rate. For the UT19, '
       'a first estimate without the force term ($V = \\dot\\varepsilon \\times$ 15 mm) gave 21 s⁻¹ instead of '
       '100 s⁻¹, because the specimen force is then almost as large as the force carried by the incident wave.')
+    olds = {s_: formula_used([(None, (r, None)) for r in rows if r['specimen'] == s_]) for s_ in specs}
+    old_txt = ''.join(
+        ' **%s: the velocities of this study were chosen with an earlier version of the formula** ($L_{eff}$ = '
+        '%.0f mm, $F$ = %.0f kN, dashed line; open circles: target rate; arrows: rate actually achieved). The '
+        'solid line is the current formula, recalibrated afterwards: if it was calibrated on this study, its '
+        'points lie on it by construction, which is not a validation.' % (s_, o[0], o[1] / 1e3)
+        for s_, o in olds.items() if o)
+    for s_, o in olds.items():
+        if o:
+            P('**Note (%s).** The striker velocities of this study (%s) were computed with an earlier estimate of '
+              'the formula, $L_{eff}$ = %.0f mm and $F$ = %.0f kN, which is why the achieved strain rates differ '
+              'from the targets. The constants given above are the current ones; they were recalibrated '
+              'afterwards (%s), and the next study used the corrected velocities.'
+              % (s_, ' / '.join('%.2f m/s' % r['v_striker'] for r in rows if r['specimen'] == s_), o[0], o[1] / 1e3,
+                 sp[s_]['source']))
     figure('F5_striker_velocity.png', 'Figure F5 – Striker velocity required for a given strain rate',
            'the striker velocity (vertical axis), i.e. the setting of the test, against the strain rate in the '
            'specimen (horizontal axis), one panel per specimen. Line: the formula above. Dots: the simulations, at '
            'the imposed striker velocity and the achieved strain rate (T1). Shaded: 30 % not reachable.',
            'formula of `make_run.py` and simulation results.',
            'choose a strain rate on the horizontal axis and read the striker velocity on the line; dots on the '
-           'line confirm the formula.')
+           'line confirm the formula.' + old_txt)
     lim = ('**Limit for 30 %% strain.** The 5 m striker gives a %.2f ms loading pulse, so 30 %% strain requires at '
            'least 0.30 / %.2f ms ≈ %.0f s⁻¹; the output bar (5.99 m) also limits the measurement window to '
            '%.2f ms (Beerli et al. 2026).' % (PULSE_MS, PULSE_MS, rate_min, OUTPUT_WINDOW_MS))
