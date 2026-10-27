@@ -18,6 +18,7 @@
 | UT40S / 500 | partial, 2.4 % to 10.1 % | 17.18 m/s | in 0.67 ms | 21 % |
 | UT40S / 1000 | partial, 5.4 % to 8.9 % | 32.62 m/s | in 0.36 ms | 6 % |
 
+- **Validity limit (no fracture model).** DP1000 fractures at about 11 % engineering strain in a quasi-static tensile test on the 40 × 10 mm UT specimen (Beerli et al. 2026). The model cannot fracture: beyond that point the neck keeps thinning until a few elements collapse, which makes the force drop suddenly (UT40 / 500 at 18 %, UT40S / 500 at 18 %). Results beyond fracture are not representative of a test, and 30 % strain may not be reachable with DP1000 (see *How far are the results valid?*).
 - Equilibrium maintained until the end: UT40 / 100, UT40S / 100. Only partly reached: UT40 / 500 (2.4 % to 10.5 %), UT40 / 1000 (5.4 % to 8.9 %), UT40S / 500 (2.4 % to 10.1 %), UT40S / 1000 (5.4 % to 8.9 %); the largest ratios occur late in the test, when the force decreases (necking).
 - The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, 30 % strain cannot be reached below about 142 s⁻¹.
 - Even when the specimen is in equilibrium, the force read on the output bar gauge oscillates around the true specimen force: this must be considered when assessing the measured curves.
@@ -219,6 +220,33 @@ In the experiment the force is only known from the output bar gauge. F2 and F3 c
 
 The gauge signal follows the specimen force closely. With the specimen centred in the pockets (clearances of 0.36 mm, study `taskI_20261013-1554`), the specimen hit the output head at the start and the gauge error reached 3 / 15 / 39 % at 100 / 500 / 1000 s⁻¹: closing the clearances, as done in the lab before a test, is essential for the measurement.
 
+## How far are the results valid? Necking, localisation and fracture
+
+**What happens in the specimen.** After the force maximum (at about 5–6 % strain) the specimen necks: the deformation concentrates in a short zone of the parallel section, which thins in width and thickness while the rest of the specimen stops deforming. The force decreases. To reach 30 % strain over the extensometer, the neck alone has to provide almost all the elongation (≈ 9.0 mm over the 30 mm extensometer of the UT40).
+
+**What the model cannot do: fracture.** The specimen material (DP1000, Swift–Voce hardening, von Mises) has **no fracture criterion**. A real sheet breaks in the neck; the simulated one keeps stretching. When the neck becomes very thin, the deformation concentrates in a few elements at its centre, which collapse within a few tens of microseconds (equivalent plastic strain jumping from about 1 to about 9 in the UT40 at 500 s⁻¹, seen in Abaqus/Viewer). At that moment the section suddenly loses its strength: both specimen forces drop within ≈ 10 µs, then the specimen reloads and oscillates. This produces large force differences between the two ends of the specimen and a large gauge error, **but it is a numerical consequence of the missing fracture model, not an effect of the test**.
+
+**When does a real DP1000 specimen break?** Beerli et al. (2026, section 4.1.1, fig. 7a) report an engineering strain to fracture of **11 %** for DP1000 in quasi-static uniaxial tension (0.001 s⁻¹) on the 40 × 10 mm UT specimen, i.e. the UT40 geometry. At high strain rates, the same paper reports that the elongation to fracture of DP1000 does not decrease with the strain rate (section 4.2.1), but gives no value here. For the short specimen (UT19, 15 mm) the engineering strain to fracture is larger, since the neck is a larger part of a shorter gauge length; no value is available.
+
+**Table T7 – Validity of each simulation.**
+
+| Specimen / target rate (s⁻¹) | Max strain | Sudden localisation (force drop) | Max PEEQ at 11 % strain | Max PEEQ at max strain |
+|---|---|---|---|---|
+| UT40 / 100 | 16.9 % | none | n/a | n/a |
+| UT40 / 500 | 30.1 % | at 18.2 % (0.44 ms) | n/a | n/a |
+| UT40 / 1000 | 30.1 % | none | n/a | n/a |
+| UT40S / 100 | 16.8 % | none | n/a | n/a |
+| UT40S / 500 | 30.0 % | at 18.5 % (0.45 ms) | n/a | n/a |
+| UT40S / 1000 | 30.0 % | none | n/a | n/a |
+
+*Sudden localisation*: first drop of the mean specimen force (unfiltered) by more than 20 % of the maximum force within 10 µs, after the force maximum. *Max PEEQ*: largest equivalent plastic strain in the specimen (Abaqus field output, one value every ≈ 20 µs; "n/a" if not extracted yet).
+
+**Consequences for Task I.**
+
+- The equilibrium and gauge-error indicators are meaningful only before fracture. After a sudden localisation they describe a numerical artefact.
+- For DP1000 the question "which loading speed reaches 30 % strain?" has to be put together with fracture: with a quasi-static elongation to fracture of 11 %, 30 % engineering strain is very likely not reachable with the UT40, whatever the loading speed.
+- To be decided with the supervisors: the material of the Task I specimens (DP1000 assumed here), and the fracture strain (or the Hosford–Coulomb fracture model of Beerli et al. 2026) to use to cut the results.
+
 ## Numerical quality
 
 These checks do not answer the Task I questions: they verify that the simulation can be trusted. Each column compares the simulation with a value known in advance, or measures a purely numerical error.
@@ -249,6 +277,7 @@ These checks do not answer the Task I questions: they verify that the simulation
 - The gauge signal is shifted, not corrected for dispersion; the reference of the 400 mm gauge distance is to be confirmed (about 6 µs uncertainty).
 - Initial contact without pre-load in both pockets, as described by the lab; a residual clearance or a pre-load in a real test would change the start of the signals.
 - Assumed values: densities of the bars and of the striker, material of the inverter (maraging).
+- No fracture model for the specimen: results after fracture (DP1000: ≈ 11 % engineering strain in a quasi-static test on the UT40 geometry) are not representative (section *How far are the results valid?*).
 
 ## Appendix – Control figures
 

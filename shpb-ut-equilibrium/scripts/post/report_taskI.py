@@ -58,6 +58,11 @@ A0_MM2 = {                   # section initiale de la partie droite de l'eprouve
 RATE_COLORS = ['#2a78d6', '#eb6834', '#1baf7a']
 # Etudes lancees AVANT la mise en contact initiale (22/10/2026, CLOSE_GAPS de build_bench.py) : eprouvette
 # centree dans les logements, avec un jeu de 0,36 mm de chaque cote. Le texte du rapport en depend.
+# Rupture du DP1000 (Beerli et al. 2026, section 4.1.1 et fig. 7a) : en traction uniaxiale quasi statique
+# (0,001 /s), sur l'eprouvette UT de 40 x 10 mm (= notre UT40), deformation nominale a rupture 0,11.
+DP1000_UT_FRACTURE_EPS = 0.11
+# Localisation brutale : chute de la force moyenne de plus de DROP_FRAC x force max en DROP_US microsecondes
+DROP_FRAC, DROP_US = 0.20, 10.0
 CENTRED_STUDIES = ('taskI_20261012-1811', 'taskI_20261013-1127', 'taskI_20261013-1554', 'diag_20261021-1626')
 INK, INK2, GRID, BAND = '#1f1f1d', '#52514e', '#e3e2de', '#efeeea'
 
@@ -187,7 +192,27 @@ def analyse(csv):
         'ke0_ratio': ke0 / (0.5 * m_striker * v ** 2 * 1e3),
         'energy_drift': (d.ETOTAL_mJ.max() - d.ETOTAL_mJ.min()) / ke0,
     }
-    curves = {'t_ms': 1e3 * (t - t[k0]), 'eps': eps, 'Fi': Fi, 'Fo': Fo, 'Fg': Fg, 'R': R,
+    # Localisation brutale dans la striction (modele sans rupture) : chute rapide de la force moyenne (brute)
+    n_drop = max(1, int(round(DROP_US * 1e-6 * fs)))
+    Fm_r = 0.5 * (Fi_raw + Fo_raw)
+    after = (idx > iF) & (idx <= i_end - n_drop)
+    jd = np.where(after[:len(t) - n_drop] & (Fm_r[n_drop:] - Fm_r[:-n_drop] < -DROP_FRAC * Fi[iF]))[0]
+    res['drop_eps'] = eps[jd[0]] if len(jd) else np.nan
+    res['drop_t_ms'] = 1e3 * (t[jd[0]] - t[k0]) if len(jd) else np.nan
+    # PEEQ max de l'eprouvette (scripts/post/extract_peeq.py), si disponible
+    peeq_csv = csv.replace('_history.csv', '_peeq.csv')
+    pq = None
+    if os.path.exists(peeq_csv):
+        q = pd.read_csv(peeq_csv, comment='#')
+        e_q = np.interp(q.time_s.values, t, eps)
+        pq = {'eps': e_q, 'peeq': q.peeq_max.values, 'y': q.y_max_mm.values}
+        res['peeq_at_frac'] = float(np.interp(DP1000_UT_FRACTURE_EPS, e_q, q.peeq_max.values)) \
+            if e_q.max() >= DP1000_UT_FRACTURE_EPS else np.nan
+        j_end = int(np.argmin(np.abs(q.time_s.values - t[i_end])))
+        res['peeq_at_end'] = float(q.peeq_max.values[j_end])
+    else:
+        res['peeq_at_frac'] = res['peeq_at_end'] = np.nan
+    curves = {'t_ms': 1e3 * (t - t[k0]), 'eps': eps, 'Fi': Fi, 'Fo': Fo, 'Fg': Fg, 'R': R, 'peeq': pq,
               't_abs_ms': 1e3 * t, 'eps_gauge_in': d.eps_gauge_in.values, 'eps_gauge_out': d.eps_gauge_out.values,
               'Fi_raw': Fi_raw, 'Fo_raw': Fo_raw, 'Fg_raw': d.sig_gauge_out.values * A_BAR_MM2, 'R_raw': R_raw,
               'rate': rate_t, 'win': win, 'valid': valid, 'iF': iF, 'i_eq': i_eq, 'i_eq_from': i_eq_from}
@@ -354,6 +379,34 @@ def fig_strain_rate(groups, out):
     save(fig, out, 'F4_strain_rate')
 
 
+def fig_peeq(groups, out):
+    """F6 : PEEQ max dans l'eprouvette en fonction de la deformation nominale ; points = chute brutale."""
+    groups = [(sp, [it for it in items if it[1][1]['peeq'] is not None]) for sp, items in groups]
+    groups = [g for g in groups if g[1]]
+    if not groups:
+        return False
+    fig, axs = new_axes(len(groups), w=4.2, h=3.2)
+    for ax, (spec, items) in zip(axs, groups):
+        for col, (r, c) in items:
+            q = c['peeq']
+            m = q['eps'] <= r['eps_max'] + 1e-9
+            ax.plot(100 * q['eps'][m], q['peeq'][m], color=col, lw=1.5, marker='.', ms=3, label=rate_label(r))
+            if not np.isnan(r['drop_eps']):
+                ax.plot(100 * r['drop_eps'], np.interp(r['drop_eps'], q['eps'], q['peeq']), 'o', ms=8,
+                        mfc='none', mec=col, mew=1.5)
+        if spec.startswith('UT40'):
+            ax.axvline(100 * DP1000_UT_FRACTURE_EPS, color=INK, lw=1.0, ls='--')
+            ax.text(100 * DP1000_UT_FRACTURE_EPS, ax.get_ylim()[1] * 0.97, ' DP1000 fracture,\n quasi-static UT\n (Beerli 2026)',
+                    fontsize=7, va='top', color=INK2)
+        ax.set_xlim(0, 32)
+        ax.set_xlabel('engineering strain, extensometer (%)')
+        ax.set_ylabel('max equivalent plastic strain in the specimen')
+        ax.set_title('%s  (circle: sudden force drop)' % spec, loc='left')
+        ax.legend(fontsize=8, loc='upper left')
+    save(fig, out, 'F6_localisation_peeq')
+    return True
+
+
 def fig_striker(groups, out):
     """Un panneau par eprouvette : formule de make_run.py (ligne) et calculs (points)."""
     fig, axs = new_axes(len(groups), w=4.2, h=3.2)
@@ -509,7 +562,7 @@ def case_sentence(r):
     return s
 
 
-def write_report(study, rows, out):
+def write_report(study, rows, out, has_peeq=False):
     specs = sorted(set(r['specimen'] for r in rows))
     rate_min = EPS_TARGET / (PULSE_MS * 1e-3)
     tol = round(100 * EQ_TOL)
@@ -558,7 +611,17 @@ def write_report(study, rows, out):
         eq_txt = ('- Equilibrium maintained until the end: %s. ' % (', '.join(ok_) if ok_ else 'none') +
                   ('Only partly reached: %s; the largest ratios occur late in the test, when the force decreases '
                    '(necking).\n' % ', '.join(part_) if part_ else '\n'))
-    P(eq_txt +
+    drops = [r for r in rows if not np.isnan(r['drop_eps'])]
+    frac_txt = ('- **Validity limit (no fracture model).** DP1000 fractures at about %s engineering strain in a '
+                'quasi-static tensile test on the 40 × 10 mm UT specimen (Beerli et al. 2026). The model cannot '
+                'fracture: beyond that point the neck keeps thinning%s. Results beyond fracture are not '
+                'representative of a test, and 30 %% strain may not be reachable with DP1000 '
+                '(see *How far are the results valid?*).\n'
+                % (pct(DP1000_UT_FRACTURE_EPS, 0),
+                   (' until a few elements collapse, which makes the force drop suddenly (%s)'
+                    % ', '.join('%s at %s' % (label(r), pct(r['drop_eps'], 0)) for r in drops)) if drops else ''))
+    P(frac_txt +
+      eq_txt +
       '- The striker velocity must account for the specimen force (see *Loading speeds*). With the 5 m striker, '
       '30 %% strain cannot be reached below about %.0f s⁻¹.\n' % rate_min +
       ('- The force read on the output bar gauge follows the true specimen force within %s of the maximum force '
@@ -811,6 +874,57 @@ def write_report(study, rows, out):
           'and the gauge error reached 3 / 15 / 39 % at 100 / 500 / 1000 s⁻¹: closing the clearances, as done in '
           'the lab before a test, is essential for the measurement.')
 
+    # ------------------------------------------------------------ validite : striction, localisation, rupture
+    P('## How far are the results valid? Necking, localisation and fracture')
+    P('**What happens in the specimen.** After the force maximum (at about 5–6 %% strain) the specimen necks: the '
+      'deformation concentrates in a short zone of the parallel section, which thins in width and thickness while '
+      'the rest of the specimen stops deforming. The force decreases. To reach 30 %% strain over the extensometer, '
+      'the neck alone has to provide almost all the elongation (%s).'
+      % '; '.join(sorted(set('≈ %.1f mm over the %.0f mm extensometer of the %s' % (0.30 * ext[s_], ext[s_], s_.rstrip('S'))
+                             for s_ in specs))))
+    P('**What the model cannot do: fracture.** The specimen material (DP1000, Swift–Voce hardening, von Mises) has '
+      '**no fracture criterion**. A real sheet breaks in the neck; the simulated one keeps stretching. When the neck '
+      'becomes very thin, the deformation concentrates in a few elements at its centre, which collapse within a few '
+      'tens of microseconds (equivalent plastic strain jumping from about 1 to about 9 in the UT40 at 500 s⁻¹, '
+      'seen in Abaqus/Viewer). At that moment the section suddenly loses its strength: both specimen forces drop '
+      'within ≈ 10 µs, then the specimen reloads and oscillates. This produces large force differences between the '
+      'two ends of the specimen and a large gauge error, **but it is a numerical consequence of the missing fracture '
+      'model, not an effect of the test**.')
+    P('**When does a real DP1000 specimen break?** Beerli et al. (2026, section 4.1.1, fig. 7a) report an '
+      'engineering strain to fracture of **%s** for DP1000 in quasi-static uniaxial tension (0.001 s⁻¹) on the '
+      '40 × 10 mm UT specimen, i.e. the UT40 geometry. At high strain rates, the same paper reports that the '
+      'elongation to fracture of DP1000 does not decrease with the strain rate (section 4.2.1), but gives no value '
+      'here. For the short specimen (UT19, 15 mm) the engineering strain to fracture is larger, since the neck is a '
+      'larger part of a shorter gauge length; no value is available.' % pct(DP1000_UT_FRACTURE_EPS, 0))
+    P('**Table T7 – Validity of each simulation.**')
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Max strain', 'Sudden localisation (force drop)',
+                'Max PEEQ at %s strain' % pct(DP1000_UT_FRACTURE_EPS, 0), 'Max PEEQ at max strain'],
+               [[label(r), pct(r['eps_max'], 1),
+                 ('at %s (%.2f ms)' % (pct(r['drop_eps'], 1), r['drop_t_ms'])) if not np.isnan(r['drop_eps']) else 'none',
+                 fmt(r['peeq_at_frac'], '%.2f'), fmt(r['peeq_at_end'], '%.2f')] for r in rows]))
+    P('*Sudden localisation*: first drop of the mean specimen force (unfiltered) by more than %d %% of the maximum '
+      'force within %.0f µs, after the force maximum. *Max PEEQ*: largest equivalent plastic strain in the specimen '
+      '(Abaqus field output, one value every ≈ 20 µs; "n/a" if not extracted yet).' % (round(100 * DROP_FRAC), DROP_US))
+    if has_peeq:
+        figure('F6_localisation_peeq.png', 'Figure F6 – Localisation in the neck',
+               'the largest equivalent plastic strain (PEEQ) in the specimen against the engineering strain of '
+               'the extensometer, one curve per target rate; circles: sudden force drop (Table T7); dashed line '
+               '(UT40 only): quasi-static engineering strain to fracture of DP1000 (Beerli et al. 2026).',
+               'Abaqus field output of the specimen (PEEQ at the integration points), extracted by '
+               '`scripts/post/extract_peeq.py`; strain of the virtual extensometer at the same instants.',
+               'PEEQ grows steadily while the neck develops; a sudden steep rise marks the collapse of a few '
+               'elements. A real specimen would have broken before: only the part of the curves left of the dashed '
+               'line corresponds to a test that can actually be performed.')
+    P('**Consequences for Task I.**')
+    P('- The equilibrium and gauge-error indicators are meaningful only before fracture. After a sudden '
+      'localisation they describe a numerical artefact.\n'
+      '- For DP1000 the question "which loading speed reaches 30 %% strain?" has to be put together with fracture: '
+      'with a quasi-static elongation to fracture of %s, 30 %% engineering strain is very likely not reachable with '
+      'the UT40, whatever the loading speed.\n'
+      '- To be decided with the supervisors: the material of the Task I specimens (DP1000 assumed here), and the '
+      'fracture strain (or the Hosford–Coulomb fracture model of Beerli et al. 2026) to use to cut the results.'
+      % pct(DP1000_UT_FRACTURE_EPS, 0))
+
     # ------------------------------------------------------------ qualite
     P('## Numerical quality')
     P('These checks do not answer the Task I questions: they verify that the simulation can be trusted. Each column '
@@ -862,6 +976,9 @@ def write_report(study, rows, out):
          'Initial contact without pre-load in both pockets, as described by the lab; a residual clearance or a '
          'pre-load in a real test would change the start of the signals.'),
         'Assumed values: densities of the bars and of the striker, material of the inverter (maraging).',
+        'No fracture model for the specimen: results after fracture (DP1000: ≈ %s engineering strain in a '
+        'quasi-static test on the UT40 geometry) are not representative (section *How far are the results '
+        'valid?*).' % pct(DP1000_UT_FRACTURE_EPS, 0),
     ]
     if not any(s_.startswith('UT40') for s_ in specs):
         lim.append('The long-gauge specimen (UT40) is not simulated yet (geometry not available).')
@@ -906,11 +1023,12 @@ def main():
     fig_stress_strain(groups, out)
     fig_strain_rate(groups, out)
     fig_striker(groups, out)
+    has_peeq = fig_peeq(groups, out)
     for r, c in data:
         fig_case_overview(r, c, os.path.join(study_dir, r['case_id'], r['case_id'] + '_overview.png'))
     rows = [r for r, _ in data]
     write_csv(rows, out)
-    write_report(study, rows, out)
+    write_report(study, rows, out, has_peeq)
 
     for r in rows:
         print('%-15s %5.0f /s obtenus | %s | equilibre des %s | |R| max apres 5 %% : %4.1f %% | jauge : %4.1f %%'

@@ -9,6 +9,7 @@
 #
 # Pour chaque calcul TERMINE (THE ANALYSIS HAS COMPLETED SUCCESSFULLY dans le .sta) :
 #   - abaqus python extract_history.py  ->  <case>_history.csv + <case>_inventory.txt
+#   - abaqus python extract_peeq.py     ->  <case>_peeq.csv (PEEQ max de l'eprouvette par image)
 #   - avec --clean : supprime les fichiers de reprise / temporaires d'Abaqus
 #     (.res .abq .pac .sel .stt .mdl .prt .com .par .pes .pmg .ipm .lck),
 #     qui ne servent qu'a relancer un calcul interrompu. Le .odb est GARDE.
@@ -26,6 +27,7 @@ for a in "$@"; do
 done
 HERE=$(cd "$(dirname "$0")" && pwd)
 EXTRACT="$HERE/../post/extract_history.py"
+PEEQ="$HERE/../post/extract_peeq.py"
 
 if [ ! -d "$STUDY_DIR" ]; then
     echo "Dossier d'etude introuvable : $STUDY_DIR" >&2
@@ -46,12 +48,18 @@ for d in */; do
     else
         (cd "$c" && abaqus python "$EXTRACT" "$PWD" 2>&1 | grep -v -i "^abaqus license\|^<\|checked out")
     fi
+    # PEEQ max de l'eprouvette par image (localisation dans la striction ; depuis le 27/10/2026)
+    if [ -z "$FORCE" ] && [ "$c/${c}_peeq.csv" -nt "$c/$c.odb" ]; then
+        echo "$c : PEEQ deja extraite"
+    else
+        (cd "$c" && abaqus python "$PEEQ" "$PWD" 2>&1 | grep -v -i "^abaqus license\|^<\|checked out")
+    fi
     if [ "$CLEAN" == "--clean" ]; then
         rm -f "$c/$c".{res,abq,pac,sel,stt,mdl,prt,com,par,pes,pmg,ipm,lck}
     fi
 done
 
 NAME=$(basename "$STUDY_DIR")
-tar czf "${NAME}_results.tgz" */*_history.csv */*_inventory.txt */*_paras.inp */*.sta */*.msg 2>/dev/null
+tar czf "${NAME}_results.tgz" */*_history.csv */*_peeq.csv */*_inventory.txt */*_paras.inp */*.sta */*.msg 2>/dev/null
 echo "Archive : $STUDY_DIR/${NAME}_results.tgz ($(du -h "${NAME}_results.tgz" | cut -f1))"
 du -sh "$STUDY_DIR" | sed 's/^/Place occupee par l etude : /'

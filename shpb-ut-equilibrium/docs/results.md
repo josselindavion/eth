@@ -156,3 +156,21 @@ Décision (encadrants, 22/10) : au labo, tout est au contact avant l'essai. Les 
 Comparaison avant / après : `py shpb-ut-equilibrium/scripts/post/compare_studies.py <étude avant> <étude après>
 "<nom avant>" "<nom après>"` (même traitement que le rapport ; figures C1–C3 et tableau dans
 `results/<étude après>/compare_<étude avant>/compare.md`).
+
+---
+
+## 7. Validité : striction, localisation, rupture (depuis le 27/10/2026)
+
+Le matériau de l'éprouvette n'a **pas de critère de rupture**. Après la striction, la matière continue de s'étirer
+jusqu'à ce que quelques éléments au centre de la striction s'écrasent (PEEQ qui passe d'environ 1 à 9 en 40 µs dans
+l'UT40 à 500 /s, vu dans Abaqus/Viewer) : les deux forces de l'éprouvette chutent alors en ≈ 10 µs. Ce n'est pas un
+effet de l'essai.
+
+| Indicateur (rapport, tableau T7 et figure F6) | Définition |
+|---|---|
+| localisation brutale | première chute de la force moyenne (brute) de plus de 20 % de la force max en 10 µs, après le maximum de force |
+| PEEQ max | plus grande déformation plastique équivalente de l'éprouvette à chaque image de sortie champ (`extract_peeq.py`) |
+| rupture du DP1000 | 11 % de déformation nominale en traction quasi statique sur l'éprouvette UT de 40 × 10 mm (Beerli et al. 2026, § 4.1.1, fig. 7a) |
+
+Les résultats au-delà de la rupture ne représentent pas un essai. Pour le DP1000, 30 % de déformation nominale ne sont
+très probablement pas atteignables avec l'UT40 ; matériau et critère de rupture à décider avec les encadrants.
