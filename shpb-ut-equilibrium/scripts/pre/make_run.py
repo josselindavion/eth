@@ -50,7 +50,7 @@ SPECIMENS = {
     # -> L_eff = 30,1 mm, F = 10,4 kN (force efficace basse : la force chute fortement pendant la striction).
     # Le cas a 1000 /s n'est pas utilisable (striction hors de l'extensometre).
     'UT40': {'L_eff_mm': 30.1, 'F_N': 10400.0,
-             'source': 'calibrated on the first UT40 simulations at 100 and 500 s-1 (study taskI_20261023-1140)'},
+             'source': 'calibrated on the first UT40 simulations at 100 and 500 s-1, study taskI_20261023-1140'},
     # UT40 a partie droite parfaitement droite (cad/dxf/Xmas_UT40S.dxf, scripts/pre/straighten_gauge.py) :
     # memes valeurs que l'UT40 (meme section a 0,1 % pres)
     'UT40S': {'L_eff_mm': 30.1, 'F_N': 10400.0,
