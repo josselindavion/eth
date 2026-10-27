@@ -57,6 +57,17 @@ $$
 | erreur max de la jauge après 5 % | $\max \lvert F_{jauge} - F_{out}\rvert / F_{max}$ |
 | contrôles numériques | onde incidente / théorie, énergie cinétique initiale / $\tfrac12 mV^2$, dérive de l'énergie totale, hourglass / énergie interne |
 
+**Deuxième définition de l'équilibre, $R_{mod}$** (depuis le 27/10/2026) : même écart, divisé par une force fixe,
+la force maximale de l'essai :
+
+$$
+R_{mod} = \frac{F_{in} - F_{out}}{F_{max}}
+$$
+
+Défini sur **tout** l'essai, même quand les forces sont faibles (début du chargement, fin de striction), alors que
+$R$ y devient très grand ou n'est pas évalué. Seuil 5 % (≈ 0,38 kN pour l'UT19, ≈ 0,76 kN pour l'UT40). Rapport :
+figure F1c, tableau T2b. Sert aux analyses de stabilité complémentaires.
+
 **Vitesse de déformation obtenue** (une valeur par calcul) :
 
 $$

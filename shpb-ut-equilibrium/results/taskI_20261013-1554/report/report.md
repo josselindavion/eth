@@ -127,6 +127,28 @@ The force is maximum at about 5 to 8 % strain and then decreases (necking). The 
 
 *Raw*: forces as written by Abaqus (one point per µs). Max $\lvert R\rvert$ after 5 % strain.
 
+**Second definition: $R_{mod}$, relative to the maximum force.**
+
+$$
+R_{mod} = \frac{F_{in} - F_{out}}{F_{max}}, \qquad F_{max} = \max(F_{in}) \text{ (constant for a test)}
+$$
+
+$R$ divides the force difference by the current mean force: at the start of loading and late in the test (necking) this force is small, so $R$ becomes large for small differences, and it is not evaluated at all below 0.2 % strain. $R_{mod}$ uses the same difference but always divides by the same value, the maximum force of the test: it is defined over the **whole test** and measures the force difference on a fixed scale (5 % of $F_{max}$: ≈ 0.38 kN for the UT19). Used for complementary stability analyses.
+
+![Figure F1c – Force equilibrium relative to the maximum force](F1c_equilibrium_Rmod.png)
+
+**Figure F1c – Force equilibrium relative to the maximum force.** *Plotted:* $R_{mod} = (F_{in} - F_{out}) / F_{max}$ against the engineering strain, over the whole useful window (from the loading start to 30 % strain or to the maximum strain), one curve per target rate; dotted vertical line: sudden localisation in the neck (Table T7), if any. *Source:* same filtered section forces as F1. *How to read it:* inside the shaded band the force difference is below 5 % of the maximum force. Compared with F1, the curves are not amplified at the start and at the end of the test, where the force is small.
+
+**Table T2b – Equilibrium with $R_{mod}$.**
+
+| Specimen / target rate (s⁻¹) | $\lvert R_{mod}\rvert$ < 5 % from | Max $\lvert R_{mod}\rvert$ after 5 % | Max $\lvert R_{mod}\rvert$, whole test |
+|---|---|---|---|
+| UT19 / 100 | 0.4 % (0.21 ms) | 0.6 % | 24.5 % |
+| UT19 / 500 | 2.5 % (0.12 ms) | 3.7 % | 43.9 % |
+| UT19 / 1000 | 25.9 % (0.29 ms) | 8.0 % | 35.2 % |
+
+*From*: strain (and time after the loading start) from which $\lvert R_{mod}\rvert$ < 5 % holds until the end of the useful window, the search starting at the loading start. *Whole test*: from the loading start to the end of the window, start of loading included.
+
 ### Loading speeds
 
 ![Figure F4 – Strain rate in the specimen](F4_strain_rate.png)
@@ -181,11 +203,13 @@ In the experiment the force is only known from the output bar gauge. F2 and F3 c
 
 **Table T5 – Error of the output bar gauge.**
 
-| Specimen / target rate (s⁻¹) | Max force | Max gauge error after 5 % |
-|---|---|---|
-| UT19 / 100 | 7.50 kN | 3.1 % of the max force |
-| UT19 / 500 | 7.56 kN | 15.0 % of the max force |
-| UT19 / 1000 | 7.58 kN | 38.9 % of the max force |
+| Specimen / target rate (s⁻¹) | Max force | Max gauge error after 5 % | Before the sudden localisation | Fastest force drop (in 10 µs) |
+|---|---|---|---|---|
+| UT19 / 100 | 7.50 kN | 3.1 % | no localisation | 0.1 kN |
+| UT19 / 500 | 7.56 kN | 15.0 % | no localisation | 0.3 kN |
+| UT19 / 1000 | 7.58 kN | 38.9 % | no localisation | 0.7 kN |
+
+*Gauge error*: largest difference between the gauge force and the true specimen force, relative to the maximum force. *Fastest force drop*: largest decrease of the mean specimen force (unfiltered) within 10 µs after the force maximum.
 
 The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude that grows with the loading speed. An oscillating measured curve therefore does not mean that the specimen is out of equilibrium. Origin (identified on 22 Oct 2026 with force probes along the output side): the specimen crosses the clearance of the output pocket and hits the output head (force spike of about twice the specimen force), which then rings at about 40 kHz.
 
@@ -242,6 +266,14 @@ These checks do not answer the Task I questions: they verify that the simulation
 - Assumed values: densities of the bars and of the striker, material of the inverter (maraging).
 - No fracture model for the specimen: results after fracture (DP1000: ≈ 11 % engineering strain in a quasi-static test on the UT40 geometry) are not representative (section *How far are the results valid?*).
 - The long-gauge specimen (UT40) is not simulated yet (geometry not available).
+
+## Appendix – Specimen forces over the whole test
+
+$F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the loading start to the end of the useful window (+ 15 %), one panel per target rate. Dotted lines: 5, 10, 20 and 30 % strain; red line: sudden localisation in the neck (Table T7), if any. Equilibrium means that the two curves overlap.
+
+![Forces over the whole test, UT19](FA_forces_full_UT19.png)
+
+*Figure A – UT19: input and output specimen forces over the whole test.*
 
 ## Appendix – Control figures
 

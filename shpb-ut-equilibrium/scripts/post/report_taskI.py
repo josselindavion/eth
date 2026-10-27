@@ -212,7 +212,23 @@ def analyse(csv):
         res['peeq_at_end'] = float(q.peeq_max.values[j_end])
     else:
         res['peeq_at_frac'] = res['peeq_at_end'] = np.nan
-    curves = {'t_ms': 1e3 * (t - t[k0]), 'eps': eps, 'Fi': Fi, 'Fo': Fo, 'Fg': Fg, 'R': R, 'peeq': pq,
+    # R_mod : meme ecart que R, divise par la force max (constante) -> defini sur tout l'essai (27/10/2026)
+    Fmax = Fi[iF]
+    R_mod = np.where(win, (Fi - Fo) / Fmax, np.nan)
+    bad_m = win & (np.abs(np.nan_to_num(R_mod)) >= EQ_TOL)
+    lb = np.nonzero(bad_m[:i_end + 1])[0]
+    cand = k0 if len(lb) == 0 else lb[-1] + 1
+    res['eps_eq_mod'] = eps[cand] if cand <= i_end and eps[cand] < 0.9 * eps[i_end] else np.nan
+    res['t_eq_mod_ms'] = 1e3 * (t[cand] - t[k0]) if not np.isnan(res['eps_eq_mod']) else np.nan
+    res['Rmod_max_after5'] = np.nanmax(np.abs(R_mod[plateau])) if plateau.any() else np.nan
+    res['Rmod_max_all'] = np.nanmax(np.abs(R_mod[win]))
+    # vitesse de chute la plus rapide de la force (brute) apres le maximum, sur DROP_US
+    d_n = Fm_r[n_drop:] - Fm_r[:-n_drop]
+    w_n = after[:len(t) - n_drop]
+    res['fastest_drop_kN'] = -d_n[w_n].min() / 1e3 if w_n.any() else np.nan
+    pre_drop = g & (eps < (res['drop_eps'] if not np.isnan(res['drop_eps']) else np.inf))
+    res['gauge_err_before_drop'] = (np.abs(Fg - Fo)[pre_drop].max() / Fmax) if pre_drop.any() else np.nan
+    curves = {'t_ms': 1e3 * (t - t[k0]), 'eps': eps, 'Fi': Fi, 'Fo': Fo, 'Fg': Fg, 'R': R, 'peeq': pq, 'R_mod': R_mod,
               't_abs_ms': 1e3 * t, 'eps_gauge_in': d.eps_gauge_in.values, 'eps_gauge_out': d.eps_gauge_out.values,
               'Fi_raw': Fi_raw, 'Fo_raw': Fo_raw, 'Fg_raw': d.sig_gauge_out.values * A_BAR_MM2, 'R_raw': R_raw,
               'rate': rate_t, 'win': win, 'valid': valid, 'iF': iF, 'i_eq': i_eq, 'i_eq_from': i_eq_from}
@@ -257,6 +273,55 @@ def fig_equilibrium(groups, out):
         ax.set_title('%s  (shaded: |R| < %d %%)' % (spec, round(100 * EQ_TOL)), loc='left')
         ax.legend(loc='upper center', ncol=3, fontsize=8)
     save(fig, out, 'F1_equilibrium')
+
+
+def fig_equilibrium_mod(groups, out):
+    """F1c : R_mod = (F_in - F_out) / F_max sur tout l'essai."""
+    fig, axs = new_axes(len(groups), w=4.2)
+    for ax, (spec, items) in zip(axs, groups):
+        ax.axhspan(-100 * EQ_TOL, 100 * EQ_TOL, color=BAND, zorder=0)
+        for col, (r, c) in items:
+            m = c['win']
+            ax.plot(100 * c['eps'][m], 100 * c['R_mod'][m], color=col, lw=1.4, label=rate_label(r))
+            if not np.isnan(r['drop_eps']):
+                ax.axvline(100 * r['drop_eps'], color=col, lw=0.8, ls=':')
+        ax.set_ylim(-20, 20)
+        ax.set_xlim(0, 32)
+        ax.set_xlabel('engineering strain (%)')
+        ax.set_ylabel('R$_{mod}$ = (F$_{in}$ - F$_{out}$) / F$_{max}$ (%)')
+        ax.set_title('%s  (shaded: |R$_{mod}$| < %d %%)' % (spec, round(100 * EQ_TOL)), loc='left')
+        ax.legend(loc='upper center', ncol=3, fontsize=8)
+    save(fig, out, 'F1c_equilibrium_Rmod')
+
+
+def fig_forces_full(spec, items, out):
+    """Annexe : F_in et F_out sur tout l'essai (du debut du chargement a la fin de la fenetre utile + 15 %)."""
+    fig, axs = new_axes(len(items), w=3.6, h=3.1)
+    for k, (ax, (col, (r, c))) in enumerate(zip(axs, items)):
+        t, eps = c['t_ms'], c['eps']
+        i_end = int(np.nonzero(c['win'])[0][-1])
+        t_end = 1.15 * t[i_end]
+        m = (t >= -0.02 * t_end) & (t <= t_end)
+        ax.plot(t[m], c['Fi'][m] / 1e3, color=col, lw=1.6, label='F$_{in}$ (input section)')
+        ax.plot(t[m], c['Fo'][m] / 1e3, color=INK, lw=1.0, ls='--', label='F$_{out}$ (output section)')
+        ymax = 1.15 * max(c['Fi'][m].max(), c['Fo'][m].max()) / 1e3
+        for e in (0.05, 0.10, 0.20, 0.30):
+            j = int(np.argmax((eps >= e) & (t >= 0)))
+            if eps[j] >= e and t[j] <= t_end:
+                ax.axvline(t[j], color=INK2, lw=0.6, ls=':')
+                ax.text(t[j], ymax * 0.99, ' %d %%' % round(100 * e), color=INK2, fontsize=7, va='top')
+        if not np.isnan(r['drop_eps']):
+            td = r['drop_t_ms']
+            ax.axvline(td, color='#d03b3b', lw=1.0)
+            ax.text(td, ymax * 0.10, ' sudden\n localisation', color='#d03b3b', fontsize=7, va='bottom')
+        ax.set_ylim(0, ymax)
+        ax.set_xlim(t[m][0], t_end)
+        ax.set_title('%s, %s' % (spec, rate_label(r)), loc='left')
+        ax.set_xlabel('time from loading start (ms)')
+        if k == 0:
+            ax.set_ylabel('force (kN)')
+            ax.legend(loc='lower left', fontsize=7)
+    save(fig, out, 'FA_forces_full_%s' % spec)
 
 
 def fig_equilibrium_onset(spec, items, out):
@@ -774,6 +839,30 @@ def write_report(study, rows, out, has_peeq=False):
                [[label(r), fmt(100 * r['eps_eq_raw'], '%.1f %%'), fmt(100 * r['eps_eq'], '%.1f %%'),
                  pct(r['R_max_after5_raw'], 1), pct(r['R_max_after5'], 1)] for r in rows]))
     P('*Raw*: forces as written by Abaqus (one point per µs). Max $\\lvert R\\rvert$ after 5 % strain.')
+    P('**Second definition: $R_{mod}$, relative to the maximum force.**')
+    P('$$\nR_{mod} = \\frac{F_{in} - F_{out}}{F_{max}}, \\qquad F_{max} = \\max(F_{in}) \\text{ (constant for a test)}\n$$')
+    P('$R$ divides the force difference by the current mean force: at the start of loading and late in the test '
+      '(necking) this force is small, so $R$ becomes large for small differences, and it is not evaluated at all '
+      'below %s strain. $R_{mod}$ uses the same difference but always divides by the same value, the maximum force '
+      'of the test: it is defined over the **whole test** and measures the force difference on a fixed scale '
+      '(5 %% of $F_{max}$: %s). Used for complementary stability analyses.'
+      % (pct(EPS_START, 1), ', '.join('≈ %.2f kN for the %s' % (0.05 * np.mean([r['F_max_kN'] for r in rows if r['specimen'] == s_]), s_)
+                                      for s_ in specs)))
+    figure('F1c_equilibrium_Rmod.png', 'Figure F1c – Force equilibrium relative to the maximum force',
+           '$R_{mod} = (F_{in} - F_{out}) / F_{max}$ against the engineering strain, over the whole useful window '
+           '(from the loading start to 30 % strain or to the maximum strain), one curve per target rate; dotted '
+           'vertical line: sudden localisation in the neck (Table T7), if any.',
+           'same filtered section forces as F1.',
+           'inside the shaded band the force difference is below 5 % of the maximum force. Compared with F1, the '
+           'curves are not amplified at the start and at the end of the test, where the force is small.')
+    P('**Table T2b – Equilibrium with $R_{mod}$.**')
+    P(md_table(['Specimen / target rate (s⁻¹)', '$\\lvert R_{mod}\\rvert$ < 5 % from', 'Max $\\lvert R_{mod}\\rvert$ after 5 %',
+                'Max $\\lvert R_{mod}\\rvert$, whole test'],
+               [[label(r), ('%s (%.2f ms)' % (pct(r['eps_eq_mod'], 1), r['t_eq_mod_ms'])) if not np.isnan(r['eps_eq_mod'])
+                 else 'not maintained', pct(r['Rmod_max_after5'], 1), pct(r['Rmod_max_all'], 1)] for r in rows]))
+    P('*From*: strain (and time after the loading start) from which $\\lvert R_{mod}\\rvert$ < 5 % holds until the '
+      'end of the useful window, the search starting at the loading start. *Whole test*: from the loading start '
+      'to the end of the window, start of loading included.')
 
     P('### Loading speeds')
     figure('F4_strain_rate.png', 'Figure F4 – Strain rate in the specimen',
@@ -859,9 +948,34 @@ def write_report(study, rows, out, has_peeq=False):
            'the three rates because the simulated material is rate independent.' +
            (' Axis cut at 1600 MPa (spike of the gauge signal below 2 % strain).' if gaps else ''))
     P('**Table T5 – Error of the output bar gauge.**')
-    P(md_table(['Specimen / target rate (s⁻¹)', 'Max force', 'Max gauge error after 5 %'],
-               [[label(r), '%.2f kN' % r['F_max_kN'], '%s of the max force' % pct(r['gauge_err_after5'], 1)]
-                for r in rows]))
+    P(md_table(['Specimen / target rate (s⁻¹)', 'Max force', 'Max gauge error after 5 %',
+                'Before the sudden localisation', 'Fastest force drop (in 10 µs)'],
+               [[label(r), '%.2f kN' % r['F_max_kN'], pct(r['gauge_err_after5'], 1),
+                 pct(r['gauge_err_before_drop'], 1) if not np.isnan(r['drop_eps']) else 'no localisation',
+                 '%.1f kN' % r['fastest_drop_kN']] for r in rows]))
+    P('*Gauge error*: largest difference between the gauge force and the true specimen force, relative to the '
+      'maximum force. *Fastest force drop*: largest decrease of the mean specimen force (unfiltered) within 10 µs '
+      'after the force maximum.')
+    if any(not np.isnan(r['drop_eps']) for r in rows):
+        P('**Why a sudden localisation makes the gauge wrong, and why only in these runs.** The gauge does not '
+          'measure the specimen: it measures the wave in the output bar, 400 mm away, after the force has gone '
+          'through the specimen head, the pocket and the output head, and it is moved back in time by 82 µs. This '
+          'works as long as the specimen force changes **slowly** compared with the time the waves need to cross '
+          'these parts (a few tens of µs): they then simply pass the force on. All specimens neck, but in a normal '
+          'neck the force decreases gradually: at most %s in 10 µs in the runs without localisation. When a few '
+          'elements collapse in the neck, the force drops by %s in 10 µs, a step instead of a slope. The heads and '
+          'the output bar cannot follow such a step: they are set into vibration, and the gauge records this '
+          'ringing on top of the specimen force. (Seen with the force probes of the first UT40 run at 1000 s⁻¹, '
+          'study `taskI_20261023-1140`, localised at 11.8 %%: after the localisation the force deviates in the '
+          'same way at every position, from the output head to the gauge, so the ringing starts at the head.) '
+          'Before the localisation the gauge error of these runs is small (%s). '
+          'Only the runs in which the neck collapses **before** the end of the useful window are affected: the '
+          'others stop earlier (end of the loading pulse at 100 s⁻¹), reach 30 %% with a less advanced neck (UT19: '
+          'only ≈ 3.6 mm of neck elongation over 12 mm), or keep a more diffuse neck.'
+          % ('%.1f kN' % max(r['fastest_drop_kN'] for r in rows if np.isnan(r['drop_eps']))
+             if any(np.isnan(r['drop_eps']) for r in rows) else 'n/a',
+             ' / '.join('%.1f kN (%s)' % (r['fastest_drop_kN'], label(r)) for r in rows if not np.isnan(r['drop_eps'])),
+             ' / '.join('%s (%s)' % (pct(r['gauge_err_before_drop'], 1), label(r)) for r in rows if not np.isnan(r['drop_eps']))))
     if gaps:
         P('The force in the specimen is smooth, whereas the gauge signal oscillates around it, with an amplitude '
           'that grows with the loading speed. An oscillating measured curve therefore does not mean that the '
@@ -986,6 +1100,14 @@ def write_report(study, rows, out, has_peeq=False):
     L.append('')
 
     # ------------------------------------------------------------ annexe
+    P('## Appendix – Specimen forces over the whole test')
+    P('$F_{in}$ and $F_{out}$ (exact section forces, filtered at %d kHz) from the loading start to the end of the '
+      'useful window (+ 15 %%), one panel per target rate. Dotted lines: 5, 10, 20 and 30 %% strain; red line: '
+      'sudden localisation in the neck (Table T7), if any. Equilibrium means that the two curves overlap.' % fc)
+    for s_ in specs:
+        P('![Forces over the whole test, %s](FA_forces_full_%s.png)' % (s_, s_))
+        P('*Figure A – %s: input and output specimen forces over the whole test.*' % s_)
+
     P('## Appendix – Control figures')
     P('One figure per simulation, unfiltered signals over the whole simulated time: bar gauges, specimen forces '
       'and gauge force (not shifted), $R$ and extensometer strain. Shaded: from the loading start to 30 % strain.')
@@ -1016,6 +1138,9 @@ def main():
         groups.append((spec, [(color[r['target_rate']], (r, c)) for r, c in data if r['specimen'] == spec]))
 
     fig_equilibrium(groups, out)
+    fig_equilibrium_mod(groups, out)
+    for spec, items in groups:
+        fig_forces_full(spec, items, out)
     for spec, items in groups:
         fig_equilibrium_onset(spec, items, out)
     for spec, items in groups:
