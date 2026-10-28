@@ -7,7 +7,7 @@
 1. Can quasi-static force equilibrium be achieved in the specimen at nominal strain rates of 100, 500 and 1000 s⁻¹?
 2. Which loading speeds are required to reach an engineering strain of 30 %?
 
-**Contents.** Summary · Background: the bench and the questions · Numerical model · Definitions and signal processing · Simulation campaign · Answer 1: force equilibrium · Answer 2: loading speeds · UT19 and UT40 compared · What the experiment will measure · Necking, localisation and fracture: how far the results are valid · Numerical quality and computing cost · Limitations · Conclusions and recommendations · Appendices A and B.
+**Contents.** Summary · Background: the bench and the questions · Numerical model · Definitions and signal processing · Simulation campaign · Answer 1: force equilibrium · Answer 2: loading speeds · UT19 and UT40 compared · What the experiment will measure · Necking, localisation and fracture: how far the results are valid · Numerical quality and computing cost · Limitations · Appendices A and B.
 
 ## Summary
 
@@ -104,7 +104,7 @@ Both specimens have the same toothed heads (three teeth on each side). On the UT
 >
 > *Source* – geometry files, placement of `build_bench.py`; lab journal, 23 Oct 2026.
 
-**Initial contact.** In the lab, the pusher is pulled very slightly before the shot so that the teeth of the specimen sit against the teeth of both pockets, without pre-load (confirmed by the supervisors on 22 Oct 2026). The model reproduces this: the clearances between the specimen teeth and the pockets were measured on the CAD files (OpenCascade, `scripts/pre/pocket_gaps.py`) and closed by translating the specimen and the output bar along the bar axis (`build_bench.py`, `CLOSE_GAPS = True`).
+**Initial contact.** In the lab, the pusher is pulled very slightly before the shot so that the teeth of the specimen sit against the teeth of both pockets, without pre-load. The model reproduces this: the clearances between the specimen teeth and the pockets were measured on the CAD files (OpenCascade, `scripts/pre/pocket_gaps.py`) and closed by translating the specimen and the output bar along the bar axis (`build_bench.py`, `CLOSE_GAPS = True`).
 
 **Table 5 – Clearances closed at the start.**
 
@@ -137,10 +137,10 @@ Both specimens have the same toothed heads (three teeth on each side). On the UT
 
 | Material | Wave speed $c$ | Density $\rho$ | $E = \rho c^2$ | Used for |
 |---|---|---|---|---|
-| Maraging steel | 4871 m/s (measured) | 8000 kg/m³ (assumed) | 189.8 GPa | bars, pusher |
-| Striker steel | 4720 m/s (measured) | 7850 kg/m³ (assumed) | 174.9 GPa | striker |
+| Maraging steel | 4871 m/s (lab measurement) | 8000 kg/m³ (assumed) | 189.8 GPa | bars, pusher |
+| Striker steel | 4720 m/s (lab measurement) | 7850 kg/m³ (assumed) | 174.9 GPa | striker |
 
-Wave speeds measured on the bench (Beerli et al. 2026, section 2.5); Poisson ratio 0.3. What matters for the waves is $c$ and the impedance $Z = \rho c A$: an error on the assumed density changes $Z$ in the same proportion.
+*Wave speed*: measured experimentally on the lab bench and reported by Beerli et al. (2026, section 2.5); it is an input of the model, not a result of the simulations. The density is not known and is assumed; the Young modulus given to Abaqus is then **computed** from both, $E = \rho c^2$, so that the simulated waves travel at the measured speed (the usual direction would be the opposite: $c$ from $E$ and $\rho$). Poisson ratio 0.3. What matters for the waves is $c$ and the impedance $Z = \rho c A$: an error on the assumed density changes $E$ and $Z$ in the same proportion, but not $c$.
 
 **Specimen: DP1000.** Von Mises yield surface, isotropic hardening, rate independent. The flow stress $k$ (true stress) is a function of the equivalent plastic strain $\varepsilon_p$, as identified by Beerli et al. (2026, eq. 10 and table 4) on quasi-static tensile tests:
 
@@ -328,16 +328,16 @@ The filter removes vibrations of a few microseconds that the experiment cannot r
 
 **Table 11 – Test conditions and strain reached.**
 
-| Specimen / target rate (s⁻¹) | Striker velocity | Incident stress | Achieved rate | Time to 30 % | Max strain |
-|---|---|---|---|---|---|
-| UT19 / 100 | 2.48 m/s | 47 MPa | 110 s⁻¹ (+10 %) | not reached | 23.3 % |
-| UT19 / 500 | 7.69 m/s | 146 MPa | 546 s⁻¹ (+9 %) | 0.60 ms | 30.0 % |
-| UT19 / 1000 | 14.20 m/s | 270 MPa | 1066 s⁻¹ (+7 %) | 0.32 ms | 30.1 % |
-| UT40 / 100 | 4.83 m/s | 92 MPa | 82 s⁻¹ (−18 %) | not reached | 16.9 % |
-| UT40 / 500 | 17.18 m/s | 326 MPa | 498 s⁻¹ (0 %) | 0.67 ms | 30.1 % |
-| UT40 / 1000 | 32.62 m/s | 620 MPa | 940 s⁻¹ (−6 %) | 0.36 ms | 30.1 % |
+| Specimen / target rate (s⁻¹) | Striker velocity | Achieved rate | Time to 30 % | Max strain |
+|---|---|---|---|---|
+| UT19 / 100 | 2.48 m/s | 110 s⁻¹ (+10 %) | not reached | 23.3 % |
+| UT19 / 500 | 7.69 m/s | 546 s⁻¹ (+9 %) | 0.60 ms | 30.0 % |
+| UT19 / 1000 | 14.20 m/s | 1066 s⁻¹ (+7 %) | 0.32 ms | 30.1 % |
+| UT40 / 100 | 4.83 m/s | 82 s⁻¹ (−18 %) | not reached | 16.9 % |
+| UT40 / 500 | 17.18 m/s | 498 s⁻¹ (0 %) | 0.67 ms | 30.1 % |
+| UT40 / 1000 | 32.62 m/s | 940 s⁻¹ (−6 %) | 0.36 ms | 30.1 % |
 
-*Incident stress*: stress of the incident wave in the input bar, $\rho c\,K V$ (elastic for maraging steel). *Achieved rate*: definition above, in brackets the deviation from the target. *Time to 30 %*: from the loading start. *Max strain*: 30 %, or less if the loading pulse ends before.
+*Achieved rate*: definition above, in brackets the deviation from the target. *Time to 30 %*: from the loading start. *Max strain*: 30 %, or less if the loading pulse ends before.
 
 ![Strain rate during the test](F4_strain_rate.png)
 
@@ -450,11 +450,33 @@ $L_{eff}$ is shorter than the parallel section (12.7 instead of 15 mm for the UT
 
 *Change*: relative to the velocities used in the reference simulations. These values are a better fit of the simulations, but they have not been checked by a simulation; they remain subject to the rate dependence of the real material (section *Limitations*).
 
+Figure 11 and Figure 12 are the corresponding charts: the striker velocity to set for a given strain rate, with the fitted constants.
+
+![UT19: striker velocity chart with the least-squares constants](G7_abacus_UT19.png)
+
+> **Figure 11 – UT19: striker velocity chart with the least-squares constants.**
+>
+> *Plotted* – the striker velocity against the strain rate. Solid line: the formula with the fitted constants ($L_{eff}$ = 12.0 mm, $F$ = 6.5 kN); dashed grey line: the formula used for the reference simulations; dots: the simulations used for the fit (striker velocity imposed, strain rate achieved); squares and labels: velocities read on the solid line for 100, 500 and 1000 s⁻¹. Shaded: 30 % strain not reachable with the 5 m striker.
+>
+> *Source* – least-squares fit of $2KV = \dot\varepsilon\,L_{eff} + 2F/\rho c A$ on the simulations of Table 16.
+>
+> *How to read it* – choose the strain rate on the horizontal axis and read the striker velocity on the solid line. The distance of the dots to the line shows the scatter of the simulations around the fit.
+
+![UT40: striker velocity chart with the least-squares constants](G7_abacus_UT40.png)
+
+> **Figure 12 – UT40: striker velocity chart with the least-squares constants.**
+>
+> *Plotted* – the striker velocity against the strain rate. Solid line: the formula with the fitted constants ($L_{eff}$ = 31.5 mm, $F$ = 9.5 kN); dashed grey line: the formula used for the reference simulations; dots: the simulations used for the fit (striker velocity imposed, strain rate achieved); squares and labels: velocities read on the solid line for 100, 500 and 1000 s⁻¹. Shaded: 30 % strain not reachable with the 5 m striker.
+>
+> *Source* – least-squares fit of $2KV = \dot\varepsilon\,L_{eff} + 2F/\rho c A$ on the simulations of Table 16.
+>
+> *How to read it* – choose the strain rate on the horizontal axis and read the striker velocity on the solid line. The distance of the dots to the line shows the scatter of the simulations around the fit.
+
 ### Limit for 30 % strain
 
 The 5 m striker gives a 2.12 ms loading pulse, so 30 % strain requires at least 0.30 / 2.12 ms ≈ 142 s⁻¹; the output bar (5.99 m) also limits the measurement window to 2.33 ms (Beerli et al. 2026). At 100 s⁻¹ the strain stops at 23.3 % (UT19, 110 s⁻¹) and 16.9 % (UT40, 82 s⁻¹). Reaching 30 % at these rates would need a loading of about 2.9 ms (UT19) and 3.9 ms (UT40), i.e. a striker of about 6.9 m and 9.2 m: longer than the measurement window, and for the UT40 longer than the 7.5 m launch tube.
 
-**Answer.** To reach 30 % engineering strain: about 7.7 m/s (500 s⁻¹) and 14.2 m/s (1000 s⁻¹) for the UT19; 17.2 m/s (500 s⁻¹) and 32.6 m/s (1000 s⁻¹) for the UT40. At 100 s⁻¹, 30 % is not reachable with the 5 m striker (above ≈ 142 s⁻¹ only). The maximum velocity of the launcher has to be checked for the UT40 at 1000 s⁻¹ (32.6 m/s; incident stress ≈ 620 MPa in the bars).
+**Answer.** To reach 30 % engineering strain: about 7.7 m/s (500 s⁻¹) and 14.2 m/s (1000 s⁻¹) for the UT19; 17.2 m/s (500 s⁻¹) and 32.6 m/s (1000 s⁻¹) for the UT40. At 100 s⁻¹, 30 % is not reachable with the 5 m striker (above ≈ 142 s⁻¹ only). The maximum velocity of the launcher has to be checked for the UT40 at 1000 s⁻¹ (32.6 m/s).
 
 ## UT19 and UT40 compared
 
@@ -462,7 +484,7 @@ The two specimens have the same heads and the same section-to-width ratio; they 
 
 ![UT19 and UT40 at the same target rate](G2_UT19_vs_UT40.png)
 
-> **Figure 11 – UT19 and UT40 at the same target rate.**
+> **Figure 13 – UT19 and UT40 at the same target rate.**
 >
 > *Plotted* – top row: engineering stress (mean of $F_{in}$ and $F_{out}$ divided by $A_0$) against the engineering strain; bottom row: $R_{mod}$; one column per target rate; blue UT19, orange UT40.
 >
@@ -480,17 +502,57 @@ The two specimens have the same heads and the same section-to-width ratio; they 
 
 Each cell: UT19 / UT40. *Time to max force*: from the loading start. *Force at 30 %*: mean of $F_{in}$ and $F_{out}$; for the UT40 at 500 s⁻¹ it is read after the sudden localisation and only indicative.
 
-**Why the UT40 is harder to equilibrate (interpretation).** Equilibrium needs the stress waves to cross the specimen several times while the force changes. In the elastic range the waves travel at $c_0 = \sqrt{E/\rho}$ = 4984 m/s and cross the parallel section in 3 µs (UT19) or 8 µs (UT40). Once the specimen yields, the changes of force travel at the plastic wave speed $c_p = \sqrt{h/\rho}$, with $h = dk/d\varepsilon_p$ the slope of the hardening law: $h$ = 9661 MPa and $c_p$ = 1109 m/s at 1 % plastic strain, 1046 MPa and 365 m/s at 5 %. One crossing of the parallel section then takes ≈ 14–41 µs for the UT19 and ≈ 36–110 µs for the UT40. The force maximum is reached ≈ 116 µs after the loading start at 1000 s⁻¹ (Table 17): about 3 to 8 plastic crossings for the UT19, but only 1.1 to 3.2 for the UT40. After the maximum force (Considère) the slope of the engineering stress–strain curve is negative, the neck concentrates the deformation, and the remaining force differences are no longer evened out. This is consistent with the simulations: the UT40 is in equilibrium at 100 s⁻¹ (894 µs to the force maximum) and only during an intermediate interval at 500 and 1000 s⁻¹.
+**Why the UT40 is harder to equilibrate (interpretation).** The reasoning has four steps.
 
-**Consequence for the tests.** The neck needs about the same elongation in both specimens, but it is averaged over a 30 mm extensometer instead of 12 mm: to reach 30 % engineering strain the neck of the UT40 must provide ≈ 9.0 mm of elongation against ≈ 3.6 mm for the UT19, and the force falls to ≈ 19 % of its maximum instead of ≈ 49 % (1000 s⁻¹, Table 17). The UT40 is therefore much closer to fracture at 30 % strain.
+*1. Equilibrium needs time.* When the pusher starts pulling, only the end of the specimen next to it feels the force at first. The information "the force has changed" travels along the specimen as a stress wave, is reflected at the other end and comes back. The two ends carry the same force only after the wave has crossed the specimen several times (a common rule of thumb in Hopkinson bar testing is three to four crossings). As long as the force keeps changing quickly compared with this crossing time, the two ends do not carry the same force.
+
+*2. In the plastic range the waves are slow.* The speed of a wave in a material is $\sqrt{\text{slope}/\rho}$, where the slope is that of the stress–strain curve. In the elastic range the slope is Young's modulus and the wave is fast. Once the specimen yields, the slope is only that of the hardening law, $h = dk/d\varepsilon_p$, which is much smaller and keeps decreasing:
+
+**Table 18 – Wave speed in the DP1000 and time to cross the parallel section.**
+
+| Range | Slope of the stress–strain curve | Wave speed | Crossing time, UT19 (15 mm) | Crossing time, UT40 (40 mm) |
+|---|---|---|---|---|
+| elastic | $E$ = 195 GPa | 4984 m/s | 3 µs | 8 µs |
+| plastic, 1 % plastic strain | $h$ = 9661 MPa | 1109 m/s | 14 µs | 36 µs |
+| plastic, 5 % plastic strain | $h$ = 1046 MPa | 365 m/s | 41 µs | 110 µs |
+
+Slope $h$ from the Swift–Voce law of the model; wave speed $c = \sqrt{\text{slope}/\rho}$, $\rho$ = 7850 kg/m³. At 5 % the specimen is close to its force maximum.
+
+*3. Compare with the time available.* The force rises from zero to its maximum in a given time (from the simulations). Dividing this time by the plastic crossing time gives how many times the wave can cross the specimen during the rise:
+
+**Table 19 – Number of plastic wave crossings before the force maximum.**
+
+| Target rate | UT19: time to max force | UT19: crossings | UT19: equilibrium | UT40: time to max force | UT40: crossings | UT40: equilibrium |
+|---|---|---|---|---|---|---|
+| 100 s⁻¹ | 744 µs | 18.1 to 55.0 | yes, from 0.2 % | 894 µs | 8.2 to 24.8 | yes, from 0.5 % |
+| 500 s⁻¹ | 169 µs | 4.1 to 12.5 | yes, from 0.2 % | 203 µs | 1.9 to 5.6 | partial, 2.4 % to 10.5 % |
+| 1000 s⁻¹ | 114 µs | 2.8 to 8.4 | yes, from 0.3 % | 116 µs | 1.1 to 3.2 | partial, 5.4 % to 8.9 % |
+
+*Crossings*: time to max force divided by the plastic crossing time of Table 18 (range: 5 % to 1 % plastic strain). *Equilibrium*: result of the simulations (Table 8).
+
+*4. Conclusion.* The UT40 is 2.7 times longer, so each crossing takes 2.7 times longer, while the force rises in about the same time as for the UT19. At 1000 s⁻¹ the wave crosses the UT19 several times before the force maximum, but the UT40 only once to three times: its two ends cannot even out their forces. At 100 s⁻¹ the rise is slow enough for both. After the force maximum the neck concentrates the deformation and the slope of the curve becomes negative: the force differences left at that point are no longer evened out. The number of crossings follows the same order as the simulated equilibrium in every case; this is an interpretation, not a separate proof.
+
+**Consequence: the UT40 gets much closer to fracture at 30 % strain.** The neck has about the same physical size in both specimens (a few millimetres, set by the width and the thickness). After the force maximum, almost all the elongation of the extensometer comes from the neck. The engineering strain is this elongation divided by the extensometer length, so for the same 30 % the neck must stretch much more in the UT40:
+
+**Table 20 – What 30 % engineering strain means for the neck.**
+
+|  | UT19 | UT40 |
+|---|---|---|
+| Extensometer length $L_0$ | 12 mm | 30 mm |
+| Elongation at 30 % ($0.3\,L_0$), almost all in the neck | ≈ 3.6 mm | ≈ 9.0 mm |
+| Force left at 30 %, 1000 s⁻¹ (fraction of the max force) | 49 % | 19 % |
+
+Force: mean of $F_{in}$ and $F_{out}$ at 30 % strain (Table 17).
+
+A neck stretched 2.5 times more is much thinner: the force left is less than half that of the UT19, and the material in the neck is much closer to fracture.
 
 ## What the experiment will measure
 
-In the experiment the specimen force is only known from the output bar gauge. Figure 12, Figure 13 and Figure 14 compare this signal, as it would be recorded, with the exact specimen force.
+In the experiment the specimen force is only known from the output bar gauge. Figure 14, Figure 15 and Figure 16 compare this signal, as it would be recorded, with the exact specimen force.
 
 ![UT19: specimen forces and output bar gauge](F2_forces_UT19.png)
 
-> **Figure 12 – UT19: specimen forces and output bar gauge.**
+> **Figure 14 – UT19: specimen forces and output bar gauge.**
 >
 > *Plotted* – axial force against the time from the loading start, one panel per target rate. Coloured solid line: $F_{in}$; coloured dashed line: $F_{out}$; black line: force read on the output bar gauge.
 >
@@ -500,17 +562,17 @@ In the experiment the specimen force is only known from the output bar gauge. Fi
 
 ![UT40: specimen forces and output bar gauge](F2_forces_UT40.png)
 
-> **Figure 13 – UT40: specimen forces and output bar gauge.**
+> **Figure 15 – UT40: specimen forces and output bar gauge.**
 >
-> *Plotted* – as Figure 12, for the UT40.
+> *Plotted* – as Figure 14, for the UT40.
 >
-> *Source* – as Figure 12.
+> *Source* – as Figure 14.
 >
 > *How to read it* – at 500 s⁻¹, after the sudden localisation, the forces at both ends and the gauge oscillate.
 
 ![Engineering stress–strain curves: true and measured](F3_stress_strain.png)
 
-> **Figure 14 – Engineering stress–strain curves: true and measured.**
+> **Figure 16 – Engineering stress–strain curves: true and measured.**
 >
 > *Plotted* – one panel per specimen (rows) and target rate (columns): engineering stress $F / A_0$ against the engineering strain. **Both curves come from the same simulation** and differ by where the force is taken. Thick grey line: true force in the specimen (cross-section, simulation only). Coloured line: force read by the virtual gauge on the output bar, 400 mm from the specimen, where the real gauge is: the curve the experiment will give.
 >
@@ -518,7 +580,7 @@ In the experiment the specimen force is only known from the output bar gauge. Fi
 >
 > *How to read it* – where the coloured line follows the grey one, the gauge measures the specimen correctly. The grey curves are the same at the three rates because the simulated material is rate independent.
 
-**Table 18 – Error of the output bar gauge.**
+**Table 21 – Error of the output bar gauge.**
 
 | Specimen / target rate (s⁻¹) | Max error after 5 % | Before a sudden localisation | Fastest force drop (10 µs) |
 |---|---|---|---|
@@ -537,7 +599,7 @@ Except after the sudden localisation of the UT40 at 500 s⁻¹, the gauge follow
 
 Before 22 Oct 2026 the specimen was centred in the pockets, with a clearance of 0.36 mm on each side. The same UT19 simulations (same striker velocities) gave a very different measurement:
 
-**Table 19 – UT19: specimen centred with clearances (study `taskI_20261013-1554`) and in contact (`taskI_20261022-1138`).**
+**Table 22 – UT19: specimen centred with clearances (study `taskI_20261013-1554`) and in contact (`taskI_20261022-1138`).**
 
 | Indicator | 100 s⁻¹ | 500 s⁻¹ | 1000 s⁻¹ |
 |---|---|---|---|
@@ -551,7 +613,7 @@ Each cell: centred → in contact. Same processing for both studies.
 
 ![UT19: effect of the initial contact](G3_contact_effect_UT19.png)
 
-> **Figure 15 – UT19: effect of the initial contact.**
+> **Figure 17 – UT19: effect of the initial contact.**
 >
 > *Plotted* – top row: centred specimen with clearances; middle row: specimen in contact; engineering stress from the true force (grey) and from the output gauge (colour) against strain. Bottom row: first 150 µs of loading, output-side specimen force, unfiltered, centred (grey) and in contact (colour).
 >
@@ -559,44 +621,15 @@ Each cell: centred → in contact. Same processing for both studies.
 >
 > *How to read it* – with clearances the measured curve oscillates around the true one, up to 1000 s⁻¹ where the error reaches 39 %; in contact the two curves coincide. Bottom: with clearances the force jumps, drops to zero and rebounds; in contact it rises smoothly.
 
-**What happened with the clearances** (probe study `diag_20261021-1626`, UT19 at 1000 s⁻¹): the specimen, pulled by the pusher, travelled ≈ 0.3 mm across the clearance of the output pocket before pulling on the output head, and **hit** it: a force spike of ≈ 15 kN, twice the force the specimen can carry, after which the output head rang at ≈ 40 kHz for ≈ 0.25 ms. The gauge recorded this ringing on top of the specimen force (Figure 16). At 1000 s⁻¹, 30 % strain is reached in 0.33 ms, before the ringing has died out.
+**What happened with the clearances** (probe study `diag_20261021-1626`, UT19 at 1000 s⁻¹): the specimen, pulled by the pusher, travelled ≈ 0.3 mm across the clearance of the output pocket before pulling on the output head, and **hit** it: a force spike of ≈ 15 kN, twice the force the specimen can carry, after which the output head rang at ≈ 40 kHz for ≈ 0.25 ms. The gauge recorded this ringing on top of the specimen force (Figure 18). At 1000 s⁻¹, 30 % strain is reached in 0.33 ms, before the ringing has died out.
 
 ![UT19 centred at 1000 s⁻¹: the specimen crosses the clearance and hits the output head](img/gap_impact_UT19_R1000.png)
 
-> **Figure 16 – UT19 centred at 1000 s⁻¹: the specimen crosses the clearance and hits the output head.**
+> **Figure 18 – UT19 centred at 1000 s⁻¹: the specimen crosses the clearance and hits the output head.**
 >
 > *Shown* – top: force in the specimen (grey) and in the output head (blue, moved back by its 8.5 µs of wave travel), first 120 µs, unfiltered; bottom: displacement of the output end of the specimen. Shaded: the specimen is pulled but the head does not feel anything yet.
 >
 > *Source* – probe study `diag_20261021-1626`; lab journal, 22 Oct 2026.
-
-### Where a measurement error comes from: force probes
-
-In the four simulations with force probes, the force through five slices of the output side (output head, tie, bar) was compared with the true specimen force, each signal moved back by its own wave travel time to the bar end (Figure 17, Table 20).
-
-**Table 20 – Max error after 5 % strain at each probe (% of the max force).**
-
-| Position | UT19 / 1000, centred (gaps) | UT19 / 1000, in contact | UT40 / 1000, first run (37.4 m/s) | UT40 / 1000, recalibrated (32.6 m/s) |
-|---|---|---|---|---|
-| output head, 14 mm above the tie | 37.5 % | 4.7 % | 73.0 % | 6.4 % |
-| output head, 4 mm above the tie | 35.3 % | 5.1 % | 72.3 % | 5.9 % |
-| bar, just below the tie | 37.2 % | 4.7 % | 73.1 % | 6.4 % |
-| bar, 100 mm from its end | 36.8 % | 4.9 % | 72.2 % | 6.3 % |
-| bar, 250 mm from its end | 43.0 % | 5.1 % | 70.3 % | 6.2 % |
-| gauge, 400 mm from the bar end | 37.5 % | 4.9 % | 68.1 % | 6.0 % |
-
-Same computation as `scripts/post/plot_probes.py`.
-
-![Error of the force along the output side](G5_probes_error.png)
-
-> **Figure 17 – Error of the force along the output side.**
->
-> *Plotted* – the largest error after 5 % strain (logarithmic scale) at each probe, against its distance from the pocket end of the output bar, one line per simulation. Shaded: the output head (55.7 mm, tied to the bar).
->
-> *Source* – probe forces and gauge, filtered at 100 kHz, each moved back by its wave travel time.
->
-> *How to read it* – a flat line means that the error is already there in the head and is only carried along the bar: it is created between the specimen and the head. Error ≈ 5 % everywhere: the measurement is good.
-
-In every case the error is the same at every position: it is created at the specimen–head interface, not by the tie or by the travel along the bar. The two large errors have the same mechanism, a force **step** that sets the head ringing: the impact after the clearance (UT19 centred) and the collapse of the neck (first UT40 run at 1000 s⁻¹, below). With the specimen in contact and no localisation, the error is 4.9 % (UT19) and 6.0 % (UT40) at every position.
 
 ### Why a sudden localisation makes the gauge wrong
 
@@ -622,9 +655,9 @@ $$
 dF = A\,d\sigma + \sigma\,dA = 0, \qquad \frac{dA}{A} = -d\varepsilon \quad\Rightarrow\quad \frac{d\sigma}{d\varepsilon} = \sigma
 $$
 
-The force is maximum when the slope of the hardening curve equals the stress itself. For the DP1000 law this happens at a true strain of 4.98 % (engineering strain 5.1 %), at a true stress of 1053 MPa and an engineering stress of 1002 MPa (Figure 18, left). The simulations reproduce it: the force maximum is reached between 5 and 7 % engineering strain (Table 8).
+The force is maximum when the slope of the hardening curve equals the stress itself. For the DP1000 law this happens at a true strain of 4.98 % (engineering strain 5.1 %), at a true stress of 1053 MPa and an engineering stress of 1002 MPa (Figure 19, left). The simulations reproduce it: the force maximum is reached between 5 and 7 % engineering strain (Table 8).
 
-**Why necking is an instability: the role of defects.** No specimen is perfectly uniform: somewhere a section is slightly weaker (cutting tolerance, such as the 0.02 mm taper of the UT40 drawing; a grain with an unfavourable orientation; a cluster of martensite; an inclusion; a scratch). Every section carries the same force, so the weaker one has a slightly higher stress and deforms slightly more. What happens next depends on which side of the force maximum the specimen is (Figure 18, right):
+**Why necking is an instability: the role of defects.** No specimen is perfectly uniform: somewhere a section is slightly weaker (cutting tolerance, such as the 0.02 mm taper of the UT40 drawing; a grain with an unfavourable orientation; a cluster of martensite; an inclusion; a scratch). Every section carries the same force, so the weaker one has a slightly higher stress and deforms slightly more. What happens next depends on which side of the force maximum the specimen is (Figure 19, right):
 
 |  | Before the force maximum | After the force maximum |
 |---|---|---|
@@ -636,7 +669,7 @@ Beyond the maximum the loop runs away: less area, higher stress, more strain, ev
 
 ![Necking of the DP1000: force maximum and instability](G6_necking.png)
 
-> **Figure 18 – Necking of the DP1000: force maximum and instability.**
+> **Figure 19 – Necking of the DP1000: force maximum and instability.**
 >
 > *Plotted* – left: flow stress $k$ (true stress) and hardening slope $dk/d\varepsilon_p$ of the DP1000 law against the true plastic strain, and engineering stress $k\,e^{-\varepsilon}$ against the engineering strain (dashed); circle: Considère point. Right: the feedback loop of necking.
 >
@@ -646,13 +679,13 @@ Beyond the maximum the loop runs away: less area, higher stress, more strain, ev
 
 **Two stages of necking in a sheet.** First a **diffuse neck**: the parallel section thins in width and thickness over a fairly long zone, from the force maximum on. Later a **localised neck**: the strain concentrates in a narrow band, about as wide as the sheet thickness, where the sheet thins mostly through its thickness. For a power hardening law $\sigma = K\varepsilon^n$ in uniaxial tension, the diffuse neck starts at $\varepsilon = n$ and the localised neck at $\varepsilon = 2n$ (Hill), along a band inclined by ≈ 55° to the loading direction in an isotropic sheet. As an order of magnitude for our law, twice the Considère strain is ≈ 10 % true strain. In the half model, the symmetry condition at mid-width forces the neck to stay symmetric: a single inclined band cannot form, only a symmetric pattern. This only matters once the neck localises.
 
-**Why the engineering curve after necking depends on the specimen.** The neck has about the same physical size in both specimens (it scales with the width and the thickness), but the engineering strain is its elongation divided by the extensometer length. To reach 30 % the neck must elongate by ≈ 3.6 mm over the 12 mm extensometer of the UT19, but by ≈ 9.0 mm over the 30 mm extensometer of the UT40: the UT40 neck becomes much thinner and its force falls much further (19 % at 30 % strain, 1000 s⁻¹, against 49 % for the UT19; Figure 11). After necking, the engineering stress–strain curve is therefore **no longer a property of the material**: it depends on the specimen geometry and on the extensometer.
+**Why the engineering curve after necking depends on the specimen.** The neck has about the same physical size in both specimens (it scales with the width and the thickness), but the engineering strain is its elongation divided by the extensometer length. To reach 30 % the neck must elongate by ≈ 3.6 mm over the 12 mm extensometer of the UT19, but by ≈ 9.0 mm over the 30 mm extensometer of the UT40: the UT40 neck becomes much thinner and its force falls much further (19 % at 30 % strain, 1000 s⁻¹, against 49 % for the UT19; Figure 13). After necking, the engineering stress–strain curve is therefore **no longer a property of the material**: it depends on the specimen geometry and on the extensometer.
 
 **Fracture of a real DP1000 sheet.** A real DP1000 breaks by ductile damage in the neck: (1) **nucleation** of micro-voids, mostly at the ferrite–martensite interfaces, because the hard martensite does not follow the deforming ferrite; (2) **growth** of the voids, driven by the triaxial stress state in the neck (the surrounding material restrains the thinning zone); (3) **coalescence** of the voids into a crack, often along a shear band. Its martensite makes DP1000 one of the least ductile dual-phase steels.
 
 **What the model cannot do: fracture.** The DP1000 model has neither voids nor a fracture criterion. A real sheet breaks in the neck; the simulated one keeps thinning until a few elements at the centre of the neck collapse. Once the strain is concentrated in a few elements, the result also depends on the element size (0.5 mm here): with a finer mesh the collapse would happen at a different strain. The results after that are a numerical consequence of the missing fracture model, not an effect of the test.
 
-**Table 21 – Stages of deformation of a DP1000 UT40 and validity of the model.**
+**Table 23 – Stages of deformation of a DP1000 UT40 and validity of the model.**
 
 | Stage | Engineering strain (order of magnitude) | Model |
 |---|---|---|
@@ -668,7 +701,7 @@ Fracture strain: Beerli et al. (2026), quasi-static, UT40 geometry; the other li
 
 At 0.44 ms after the loading start (18.2 % strain) both specimen forces drop within 10 µs (input side 8.2 → 4.3 kN, output side 8.6 → 5.4 kN, unfiltered), then reload with strong oscillations, while the extensometer keeps stretching to 30 %. Three explanations were checked in Abaqus/Viewer on the field outputs around this instant (frames 79, 81 and 83: 1.686, 1.728 and 1.771 ms of simulated time; lab journal, 27 Oct 2026):
 
-**Table 22 – Three explanations of the force drop, and their check.**
+**Table 24 – Three explanations of the force drop, and their check.**
 
 | Explanation | Check in Abaqus/Viewer | Result |
 |---|---|---|
@@ -678,7 +711,7 @@ At 0.44 ms after the loading start (18.2 % strain) both specimen forces drop wit
 
 ![Relative displacement across a loaded tooth flank](img/ecart_dents_UT40_R0500.png)
 
-> **Figure 19 – Relative displacement across a loaded tooth flank.**
+> **Figure 20 – Relative displacement across a loaded tooth flank.**
 >
 > *Shown* – axial displacement U2 of a specimen node minus that of the facing pusher node, against time, UT40 at 500 s⁻¹ (one point per field frame). Shaded: the force drop. While loaded the specimen node lags by 8–9 µm (elastic compression of the teeth); during the drop the difference changes by ≈ 10 µm only.
 >
@@ -688,7 +721,7 @@ U3 (out of the sheet plane) at the three frames:
 
 ![UT40 / 500: out-of-plane displacement U3, frame 79 (1.686 ms)](img/U3_frame79.png)
 
-> **Figure 20 – UT40 / 500: out-of-plane displacement U3, frame 79 (1.686 ms).**
+> **Figure 21 – UT40 / 500: out-of-plane displacement U3, frame 79 (1.686 ms).**
 >
 > *Shown* – contour of U3 on the specimen and the pusher head, side view. Heads and pusher at U3 ≈ 0 (green); non-zero values only in the neck.
 >
@@ -696,7 +729,7 @@ U3 (out of the sheet plane) at the three frames:
 
 ![UT40 / 500: out-of-plane displacement U3, frame 81 (1.728 ms)](img/U3_frame81.png)
 
-> **Figure 21 – UT40 / 500: out-of-plane displacement U3, frame 81 (1.728 ms).**
+> **Figure 22 – UT40 / 500: out-of-plane displacement U3, frame 81 (1.728 ms).**
 >
 > *Shown* – contour of U3 on the specimen and the pusher head, side view. Heads and pusher at U3 ≈ 0 (green); non-zero values only in the neck.
 >
@@ -704,7 +737,7 @@ U3 (out of the sheet plane) at the three frames:
 
 ![UT40 / 500: out-of-plane displacement U3, frame 83 (1.771 ms)](img/U3_frame83.png)
 
-> **Figure 22 – UT40 / 500: out-of-plane displacement U3, frame 83 (1.771 ms).**
+> **Figure 23 – UT40 / 500: out-of-plane displacement U3, frame 83 (1.771 ms).**
 >
 > *Shown* – contour of U3 on the specimen and the pusher head, side view. Heads and pusher at U3 ≈ 0 (green); non-zero values only in the neck.
 >
@@ -714,7 +747,7 @@ PEEQ at the three frames (the colour scale changes from one frame to the next):
 
 ![UT40 / 500: equivalent plastic strain, frame 79 (1.686 ms)](img/PEEQ_frame79.png)
 
-> **Figure 23 – UT40 / 500: equivalent plastic strain, frame 79 (1.686 ms).**
+> **Figure 24 – UT40 / 500: equivalent plastic strain, frame 79 (1.686 ms).**
 >
 > *Shown* – contour of PEEQ, view from the top (half model, symmetry plane on the left): max 1.15, spread over a few mm of the parallel section.
 >
@@ -722,7 +755,7 @@ PEEQ at the three frames (the colour scale changes from one frame to the next):
 
 ![UT40 / 500: equivalent plastic strain, frame 81 (1.728 ms)](img/PEEQ_frame81.png)
 
-> **Figure 24 – UT40 / 500: equivalent plastic strain, frame 81 (1.728 ms).**
+> **Figure 25 – UT40 / 500: equivalent plastic strain, frame 81 (1.728 ms).**
 >
 > *Shown* – contour of PEEQ, view from the top (half model, symmetry plane on the left): max 9.19 at one spot at the centre of the neck, on the symmetry plane.
 >
@@ -730,7 +763,7 @@ PEEQ at the three frames (the colour scale changes from one frame to the next):
 
 ![UT40 / 500: equivalent plastic strain, frame 83 (1.771 ms)](img/PEEQ_frame83.png)
 
-> **Figure 25 – UT40 / 500: equivalent plastic strain, frame 83 (1.771 ms).**
+> **Figure 26 – UT40 / 500: equivalent plastic strain, frame 83 (1.771 ms).**
 >
 > *Shown* – contour of PEEQ, view from the top (half model, symmetry plane on the left): max 11.7, same spot.
 >
@@ -738,56 +771,11 @@ PEEQ at the three frames (the colour scale changes from one frame to the next):
 
 **Conclusion.** In ≈ 40 µs the deformation concentrates in a few elements at the centre of the neck, which thin out almost completely (PEEQ ≈ 9, a true strain of 900 %). The section loses its load-carrying capacity at that point, the specimen unloads elastically on both sides, then reloads and oscillates. A real DP1000 sheet would have broken long before.
 
-### The first UT40 run at 1000 s⁻¹: localisation outside the extensometer
-
-In the first UT40 study the striker velocity for 1000 s⁻¹ was estimated too high (37.39 m/s instead of 32.62 m/s after recalibration). The extensometer strain rose to ≈ 11 % in ≈ 0.2 ms and then stopped (12.6 % at the end), while the forces collapsed (sudden localisation at 11.8 % strain). The extensometer node on the pusher side stopped and even moved back (Figure 26, right): the material inside the extensometer was unloading, so the deformation continued **between the extensometer and the pusher head**. Abaqus/Viewer confirmed that the neck formed at the pusher-side end of the parallel section (Figure 27). With the recalibrated velocity and the same (slightly tapered) geometry, the strain stays inside the extensometer and reaches 30 %. Up to ≈ 0.2 ms both runs are almost identical (Figure 26); the localisation at the pulled end is therefore attributed to the higher pulling speed of the first run (pusher-side node up to ≈ 30 m/s), not to the 0.02 mm taper, which is the same in both runs.
-
-![UT40 at 1000 s⁻¹: first run and recalibrated run](G4_first_UT40_R1000.png)
-
-> **Figure 26 – UT40 at 1000 s⁻¹: first run and recalibrated run.**
->
-> *Plotted* – against the time from the loading start: extensometer strain (left), input-side specimen force (middle), velocity of the two extensometer nodes (right; solid: pusher side, dashed: output side). Grey: first run; green: recalibrated run; red line: sudden localisation of the first run.
->
-> *Source* – studies `taskI_20261023-1140` and `taskI_20261023-1518`, filtered at 100 kHz.
->
-> *How to read it* – in the first run the pusher-side node stops and moves back at the localisation, and the strain stops at ≈ 12 %; in the recalibrated run both nodes keep moving apart.
-
-![First UT40 run at 1000 s⁻¹: plastic strain at the end](img/UT40_R1000_PEEQ_last_frame.png)
-
-> **Figure 27 – First UT40 run at 1000 s⁻¹: plastic strain at the end.**
->
-> *Shown* – PEEQ at the last frame (1.834 ms), side view, pusher head at the top. The neck (red) is at the pusher-side end of the parallel section, just below the pusher head, outside the extensometer.
->
-> *Source* – Abaqus/Viewer, `taskI_20261023-1140/UT40_R1000_00.odb`; lab journal, 23 Oct 2026.
-
-### When does a real DP1000 specimen break?
-
-Beerli et al. (2026, section 4.1.1, fig. 7a) report an engineering strain to fracture of **11 %** for DP1000 in quasi-static uniaxial tension (0.001 s⁻¹) on the 40 × 10 mm UT specimen, i.e. the UT40 geometry, the lowest of the five DP steels of the paper. At high strain rates the elongation to fracture of DP1000 does not decrease (section 4.2.1), but no value is given. The paper's fracture model (Hosford–Coulomb with a neural-network rate dependence) has no published parameters. For the UT19 the engineering strain to fracture is larger, since the neck is a larger part of a shorter extensometer; no value is available.
-
-**Table 23 – Validity of each reference simulation.**
-
-| Specimen / target rate (s⁻¹) | Max strain | Sudden localisation | Beyond 11 % (DP1000 fracture, UT40)? |
-|---|---|---|---|
-| UT19 / 100 | 23.3 % | none | no value for this geometry |
-| UT19 / 500 | 30.0 % | none | no value for this geometry |
-| UT19 / 1000 | 30.1 % | none | no value for this geometry |
-| UT40 / 100 | 16.9 % | none | yes, from 1.62 ms |
-| UT40 / 500 | 30.1 % | at 18.2 % (0.44 ms) | yes, from 0.31 ms |
-| UT40 / 1000 | 30.1 % | none | yes, from 0.18 ms |
-
-*Sudden localisation*: definition above; time from the loading start.
-
-**Consequences for Task I.**
-
-- The equilibrium and gauge indicators are meaningful only before fracture. After a sudden localisation they describe a numerical artefact.
-- For a DP1000 UT40, the question "which loading speed reaches 30 % strain?" has to be put together with fracture: with a quasi-static elongation to fracture of 11 %, 30 % engineering strain is very likely not reachable, whatever the loading speed. The speeds of Answer 2 remain valid for a more ductile material with similar strength.
-- Even if the results are cut at 11 %, the conclusion of Answer 1 does not change: the UT40 is in equilibrium at 100 s⁻¹, but at 500 and 1000 s⁻¹ only from 2.4 % to 10.5 % and from 5.4 % to 8.9 % strain, i.e. not until fracture.
-
 ## Numerical quality and computing cost
 
 These checks do not answer the Task I questions: they verify that the simulations can be trusted.
 
-**Table 24 – Numerical checks.**
+**Table 25 – Numerical checks.**
 
 | Specimen / target rate (s⁻¹) | Incident strain / theory | Kinetic energy / ½mV² | Energy drift | Hourglass / internal |
 |---|---|---|---|---|
@@ -803,7 +791,7 @@ These checks do not answer the Task I questions: they verify that the simulation
 - **Energy drift** – does the calculation create or lose energy? Largest variation of the total energy balance of Abaqus (`ETOTAL`) during the run, relative to the initial kinetic energy; below ≈ 1 %, contacts, ties and time integration create no artificial energy.
 - **Hourglass / internal** – does the mesh deform in a non-physical way? Energy absorbed by the artificial stiffness against the zero-energy modes of the reduced-integration hexahedra (`ALLAE`), relative to the deformation energy (`ALLIE`) at the end; usual limit 5 %.
 
-**Table 25 – Computing cost (Euler, 8 cores per simulation).**
+**Table 26 – Computing cost (Euler, 8 cores per simulation).**
 
 | Specimen / target rate (s⁻¹) | Simulated time | Increments | Final stable time increment | Wall time |
 |---|---|---|---|---|
@@ -828,36 +816,13 @@ From the `.sta` file of each run. The stable time increment falls when the neck 
 - **Half model**: the symmetry at mid-width forces a symmetric neck; a single inclined localised band cannot form (relevant only once the neck localises).
 - **UT40 drawing**: slight taper of the parallel section and teeth 0.10 mm thicker than on the UT19, as in the cutting file; to be confirmed on real specimens.
 
-## Conclusions and recommendations
-
-**Answer 1 – Force equilibrium.**
-
-- **UT19**: quasi-static force equilibrium is reached from the very start of loading and maintained up to 30 % strain at 100, 500 and 1000 s⁻¹ ($\lvert R\rvert$ < 5 %, $\lvert R_{mod}\rvert$ < 4 % over the whole window).
-- **UT40**: equilibrium at 100 s⁻¹ (from 0.5 % strain); at 500 and 1000 s⁻¹ only during the hardening phase and the beginning of necking (2.4 % to 10.5 % and 5.4 % to 8.9 % strain).
-- The short specimen should be preferred for dynamic tests at 500 and 1000 s⁻¹.
-
-**Answer 2 – Loading speeds.**
-
-**Table 26 – Striker velocities for the experiments (5 m striker).**
-
-| Specimen | 100 s⁻¹ | 500 s⁻¹ | 1000 s⁻¹ |
-|---|---|---|---|
-| UT19 | 2.48 m/s → 23 % max | 7.69 m/s → 30 % in 0.60 ms | 14.20 m/s → 30 % in 0.32 ms |
-| UT40 | 4.83 m/s → 17 % max | 17.18 m/s → 30 % in 0.67 ms | 32.62 m/s → 30 % in 0.36 ms |
-
-Velocities of the reference simulations (rate-independent material). Refined values: Table 16.
-
-- 30 % strain cannot be reached below ≈ 142 s⁻¹ with the 5 m striker.
-- For DP1000, 30 % engineering strain is beyond the fracture strain of the UT40 (≈ 11 %).
-- **For the tests**: bring the specimen teeth into contact with both pockets before the shot (as done in the lab); otherwise the gauge measures the impact of the specimen on the output head.
-
 ## Appendix A – Specimen forces over the whole test
 
 $F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the loading start to the end of the useful window (+ 15 %), one panel per target rate. Dotted lines: 5, 10, 20 and 30 % strain; red line: sudden localisation, if any. Equilibrium means that the two curves overlap.
 
 ![UT19: input and output specimen forces over the whole test](FA_forces_full_UT19.png)
 
-> **Figure 28 – UT19: input and output specimen forces over the whole test.**
+> **Figure 27 – UT19: input and output specimen forces over the whole test.**
 >
 > *Plotted* – $F_{in}$ (coloured) and $F_{out}$ (black dashed) against the time from the loading start, one panel per target rate.
 >
@@ -867,7 +832,7 @@ $F_{in}$ and $F_{out}$ (exact section forces, filtered at 100 kHz) from the load
 
 ![UT40: input and output specimen forces over the whole test](FA_forces_full_UT40.png)
 
-> **Figure 29 – UT40: input and output specimen forces over the whole test.**
+> **Figure 28 – UT40: input and output specimen forces over the whole test.**
 >
 > *Plotted* – $F_{in}$ (coloured) and $F_{out}$ (black dashed) against the time from the loading start, one panel per target rate.
 >

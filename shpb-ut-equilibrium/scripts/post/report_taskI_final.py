@@ -55,7 +55,6 @@ JOURNAL_IMG = [
     'journal/figures/2026-10-22/gap_impact_UT19_R1000.png',
     'journal/figures/2026-10-23/UT40_vs_UT19_outline.png',
     'journal/figures/2026-10-23/UT40_pocket_contact.png',
-    'journal/figures/2026-10-23/UT40_R1000_PEEQ_last_frame.png',
     'journal/figures/2026-10-27/ecart_dents_UT40_R0500.png',
     'journal/figures/2026-10-27/U3_frame79.png',
     'journal/figures/2026-10-27/U3_frame81.png',
@@ -375,6 +374,40 @@ def fig_necking(out):
     return cs
 
 
+def fig_abacus(spec, pts, L_mm, F_N, out):
+    """Abaque de la vitesse du striker avec les constantes des moindres carres (une figure par eprouvette)."""
+    fig, axs = rt.new_axes(1, w=5.6, h=3.6)
+    ax = axs[0]
+    rr = np.linspace(20, 1300, 200)
+    rate_min = rt.EPS_TARGET / (rt.PULSE_MS * 1e-3)
+    vfit = [v_formula(x, L_mm, F_N) for x in rr]
+    vcur = [make_run.striker_velocity(spec, x) for x in rr]
+    ax.plot(rr, vfit, color='#2a78d6', lw=1.8, label='least-squares fit (L$_{eff}$ = %.1f mm, F = %.1f kN)'
+            % (L_mm, F_N / 1e3))
+    ax.plot(rr, vcur, color=rt.INK2, lw=1.0, ls='--', label='formula of the reference simulations')
+    seen = set()
+    for x, v, src in pts:
+        mk = 'o' if src == 'reference study' else 'D'
+        ax.plot(x, v, mk, ms=6, color='#eb6834' if src == 'reference study' else '#9a9994', mec='white', mew=1.0,
+                label=('simulations, ' + src) if src not in seen else None)
+        seen.add(src)
+    ytop = 1.12 * max(max(vfit), max(v for _, v, _ in pts))
+    for x in (100, 500, 1000):
+        v = v_formula(x, L_mm, F_N)
+        ax.plot(x, v, 's', ms=6, mfc='white', mec='#2a78d6', mew=1.4)
+        ax.annotate('%d s$^{-1}$: %.2f m/s' % (x, v), (x, v), xytext=(8, -14), textcoords='offset points',
+                    fontsize=7.5, color='#2a78d6')
+    ax.axvspan(0, rate_min, color=rt.BAND, zorder=0)
+    ax.text(rate_min * 0.5, 0.97 * ytop, '30 %\nnot\nreachable', ha='center', va='top', color=rt.INK2, fontsize=7.5)
+    ax.set_xlim(0, 1300)
+    ax.set_ylim(0, ytop)
+    ax.set_xlabel('strain rate (s$^{-1}$)')
+    ax.set_ylabel('striker velocity (m/s)')
+    ax.set_title('%s: striker velocity chart (least-squares constants)' % spec, loc='left', fontsize=9.5)
+    ax.legend(loc='upper left', bbox_to_anchor=(0.13, 1.0), fontsize=7)
+    rt.save(fig, out, 'G7_abacus_%s' % spec)
+
+
 def fig_probes(prb, out):
     """Erreur max (apres 5 %) a chaque sonde, en fonction de la distance au bout de la barre de sortie."""
     fig, axs = rt.new_axes(1, w=6.4, h=3.3)
@@ -490,8 +523,7 @@ def write(ref, centred, first, prb, out, cs):
     P('**Contents.** Summary · Background: the bench and the questions · Numerical model · Definitions and '
       'signal processing · Simulation campaign · Answer 1: force equilibrium · Answer 2: loading speeds · UT19 '
       'and UT40 compared · What the experiment will measure · Necking, localisation and fracture: how far the '
-      'results are valid · Numerical quality and computing cost · Limitations · Conclusions and recommendations · '
-      'Appendices A and B.')
+      'results are valid · Numerical quality and computing cost · Limitations · Appendices A and B.')
 
     # ------------------------------------------------------------------ resume
     D.H(2, 'Summary')
@@ -632,8 +664,7 @@ def write(ref, centred, first, prb, out, cs):
           'output bar, is placed 25 mm further down.',
           'geometry files, placement of `build_bench.py`; lab journal, 23 Oct 2026.')
     P('**Initial contact.** In the lab, the pusher is pulled very slightly before the shot so that the teeth of '
-      'the specimen sit against the teeth of both pockets, without pre-load (confirmed by the supervisors on '
-      '22 Oct 2026). The model reproduces this: the clearances between the specimen teeth and the pockets were '
+      'the specimen sit against the teeth of both pockets, without pre-load. The model reproduces this: the clearances between the specimen teeth and the pockets were '
       'measured on the CAD files (OpenCascade, `scripts/pre/pocket_gaps.py`) and closed by translating the '
       'specimen and the output bar along the bar axis (`build_bench.py`, `CLOSE_GAPS = True`).')
     D.tab('gaps', 'Clearances closed at the start',
@@ -658,11 +689,15 @@ def write(ref, centred, first, prb, out, cs):
     D.H(3, 'Materials')
     D.tab('mat', 'Elastic parts',
           ['Material', 'Wave speed $c$', 'Density $\\rho$', '$E = \\rho c^2$', 'Used for'],
-          [['Maraging steel', '4871 m/s (measured)', '8000 kg/m³ (assumed)', '189.8 GPa', 'bars, pusher'],
-           ['Striker steel', '4720 m/s (measured)', '7850 kg/m³ (assumed)', '174.9 GPa', 'striker']],
-          'Wave speeds measured on the bench (Beerli et al. 2026, section 2.5); Poisson ratio 0.3. What matters '
-          'for the waves is $c$ and the impedance $Z = \\rho c A$: an error on the assumed density changes $Z$ '
-          'in the same proportion.')
+          [['Maraging steel', '4871 m/s (lab measurement)', '8000 kg/m³ (assumed)', '189.8 GPa', 'bars, pusher'],
+           ['Striker steel', '4720 m/s (lab measurement)', '7850 kg/m³ (assumed)', '174.9 GPa', 'striker']],
+          '*Wave speed*: measured experimentally on the lab bench and reported by Beerli et al. (2026, section '
+          '2.5); it is an input of the model, not a result of the simulations. The density is not known and is '
+          'assumed; the Young modulus given to Abaqus is then **computed** from both, $E = \\rho c^2$, so that '
+          'the simulated waves travel at the measured speed (the usual direction would be the opposite: $c$ from '
+          '$E$ and $\\rho$). Poisson ratio 0.3. What matters for the waves is $c$ and the impedance '
+          '$Z = \\rho c A$: an error on the assumed density changes $E$ and $Z$ in the same proportion, but not '
+          '$c$.')
     P('**Specimen: DP1000.** Von Mises yield surface, isotropic hardening, rate independent. The flow stress $k$ '
       '(true stress) is a function of the equivalent plastic strain $\\varepsilon_p$, as identified by Beerli et '
       'al. (2026, eq. 10 and table 4) on quasi-static tensile tests:')
@@ -848,13 +883,12 @@ def write(ref, centred, first, prb, out, cs):
     D.H(2, 'Answer 2 – Loading speeds for 30 % strain')
     D.H(3, 'Results')
     D.tab('cond', 'Test conditions and strain reached',
-          ['Specimen / target rate (s⁻¹)', 'Striker velocity', 'Incident stress', 'Achieved rate', 'Time to 30 %', 'Max strain'],
-          [[label(r), '%.2f m/s' % r['v_striker'], '%.0f MPa' % (RHO_C_BAR * K * r['v_striker'] / 1e6),
+          ['Specimen / target rate (s⁻¹)', 'Striker velocity', 'Achieved rate', 'Time to 30 %', 'Max strain'],
+          [[label(r), '%.2f m/s' % r['v_striker'],
             '%.0f s⁻¹ (%s)' % (r['achieved_rate'], sgn(r['achieved_rate'] / r['target_rate'] - 1)),
             ('%.2f ms' % r['time_to_30_ms']) if r['reached_30'] else 'not reached', pct(r['eps_max'], 1)]
            for r in rows],
-          '*Incident stress*: stress of the incident wave in the input bar, $\\rho c\\,K V$ (elastic for '
-          'maraging steel). *Achieved rate*: definition above, in brackets the deviation from the target. *Time '
+          '*Achieved rate*: definition above, in brackets the deviation from the target. *Time '
           'to 30 %*: from the loading start. *Max strain*: 30 %, or less if the loading pulse ends before.')
     D.fig('rate', 'F4_strain_rate.png', 'Strain rate during the test',
           'the strain rate (logarithmic scale) against the engineering strain, one panel per specimen; dotted '
@@ -918,6 +952,22 @@ def write(ref, centred, first, prb, out, cs):
           '*Change*: relative to the velocities used in the reference simulations. These values are a better '
           'fit of the simulations, but they have not been checked by a simulation; they remain subject to the '
           'rate dependence of the real material (section *Limitations*).')
+    P('%s and %s are the corresponding charts: the striker velocity to set for a given strain rate, with the '
+      'fitted constants.' % (F('abacus_UT19'), F('abacus_UT40')))
+    pts_src = {'UT19': [(r['achieved_rate'], r['v_striker'], 'reference study') for r in u19],
+               'UT40': [(r['achieved_rate'], r['v_striker'], 'reference study') for r in u40] +
+                       [(by_f[k]['achieved_rate'], by_f[k]['v_striker'], 'first UT40 study') for k in (100, 500)]}
+    for s_, L_, F_ in (('UT19', L19, F19), ('UT40', L40, F40)):
+        fig_abacus(s_, pts_src[s_], L_, F_, out)
+        D.fig('abacus_%s' % s_, 'G7_abacus_%s.png' % s_, '%s: striker velocity chart with the least-squares constants' % s_,
+              'the striker velocity against the strain rate. Solid line: the formula with the fitted constants '
+              '($L_{eff}$ = %.1f mm, $F$ = %.1f kN); dashed grey line: the formula used for the reference '
+              'simulations; dots: the simulations used for the fit (striker velocity imposed, strain rate '
+              'achieved); squares and labels: velocities read on the solid line for 100, 500 and 1000 s⁻¹. '
+              'Shaded: 30 %% strain not reachable with the 5 m striker.' % (L_, F_ / 1e3),
+              'least-squares fit of $2KV = \\dot\\varepsilon\\,L_{eff} + 2F/\\rho c A$ on the simulations of %s.' % T('refit'),
+              'choose the strain rate on the horizontal axis and read the striker velocity on the solid line. The '
+              'distance of the dots to the line shows the scatter of the simulations around the fit.')
     D.H(3, 'Limit for 30 % strain')
     r100 = by[('UT40', 100)][0]
     t40, l40 = rt.needed_striker(r100)
@@ -932,10 +982,9 @@ def write(ref, centred, first, prb, out, cs):
     P('**Answer.** To reach 30 %% engineering strain: about %.1f m/s (500 s⁻¹) and %.1f m/s (1000 s⁻¹) for the '
       'UT19; %.1f m/s (500 s⁻¹) and %.1f m/s (1000 s⁻¹) for the UT40. At 100 s⁻¹, 30 %% is not reachable with the '
       '5 m striker (above ≈ %.0f s⁻¹ only). The maximum velocity of the launcher has to be checked for the UT40 '
-      'at 1000 s⁻¹ (%.1f m/s; incident stress ≈ %.0f MPa in the bars).'
+      'at 1000 s⁻¹ (%.1f m/s).'
       % (by[('UT19', 500)][0]['v_striker'], by[('UT19', 1000)][0]['v_striker'], by[('UT40', 500)][0]['v_striker'],
-         by[('UT40', 1000)][0]['v_striker'], rate_min, by[('UT40', 1000)][0]['v_striker'],
-         RHO_C_BAR * K * by[('UT40', 1000)][0]['v_striker'] / 1e6))
+         by[('UT40', 1000)][0]['v_striker'], rate_min, by[('UT40', 1000)][0]['v_striker']))
 
     # ------------------------------------------------------------------ comparaison
     D.H(2, 'UT19 and UT40 compared')
@@ -965,29 +1014,60 @@ def write(ref, centred, first, prb, out, cs):
     cp5, h5 = plastic_wave_speed(0.05)
     cp1, h1 = plastic_wave_speed(0.01)
     c0 = np.sqrt(SV['E'] * 1e6 / SV['rho'])
-    P('**Why the UT40 is harder to equilibrate (interpretation).** Equilibrium needs the stress waves to cross '
-      'the specimen several times while the force changes. In the elastic range the waves travel at '
-      '$c_0 = \\sqrt{E/\\rho}$ = %.0f m/s and cross the parallel section in %.0f µs (UT19) or %.0f µs (UT40). '
-      'Once the specimen yields, the changes of force travel at the plastic wave speed $c_p = \\sqrt{h/\\rho}$, '
-      'with $h = dk/d\\varepsilon_p$ the slope of the hardening law: $h$ = %.0f MPa and $c_p$ = %.0f m/s at '
-      '1 %% plastic strain, %.0f MPa and %.0f m/s at 5 %%. One crossing of the parallel section then takes '
-      '≈ %.0f–%.0f µs for the UT19 and ≈ %.0f–%.0f µs for the UT40. The force maximum is reached ≈ %.0f µs '
-      'after the loading start at 1000 s⁻¹ (%s): about %.0f to %.0f plastic crossings for the UT19, but only '
-      '%.1f to %.1f for the UT40. After the maximum force (Considère) the slope of the engineering stress–strain '
-      'curve is negative, the neck concentrates the deformation, and the remaining force differences are no '
-      'longer evened out. This is consistent with the simulations: the UT40 is in equilibrium at 100 s⁻¹ '
-      '(%.0f µs to the force maximum) and only during an intermediate interval at 500 and 1000 s⁻¹.'
-      % (c0, 15e-3 / c0 * 1e6, 40e-3 / c0 * 1e6, h1, cp1, h5, cp5, 15e-3 / cp1 * 1e6, 15e-3 / cp5 * 1e6,
-         40e-3 / cp1 * 1e6, 40e-3 / cp5 * 1e6, 1e6 * t_fmax(by[('UT40', 1000)]), T('cmp'),
-         t_fmax(by[('UT19', 1000)]) / (15e-3 / cp5), t_fmax(by[('UT19', 1000)]) / (15e-3 / cp1),
-         t_fmax(by[('UT40', 1000)]) / (40e-3 / cp5), t_fmax(by[('UT40', 1000)]) / (40e-3 / cp1),
-         1e6 * t_fmax(by[('UT40', 100)])))
-    P('**Consequence for the tests.** The neck needs about the same elongation in both specimens, but it is '
-      'averaged over a 30 mm extensometer instead of 12 mm: to reach 30 %% engineering strain the neck of the '
-      'UT40 must provide ≈ %.1f mm of elongation against ≈ %.1f mm for the UT19, and the force falls to '
-      '≈ %s of its maximum instead of ≈ %s (1000 s⁻¹, %s). The UT40 is therefore much closer to fracture at 30 %% strain.'
-      % (0.3 * L0['UT40'], 0.3 * L0['UT19'], pct(force_at(by[('UT40', 1000)], 0.3), 0),
-         pct(force_at(by[('UT19', 1000)], 0.3), 0), T('cmp')))
+    P('**Why the UT40 is harder to equilibrate (interpretation).** The reasoning has four steps.')
+    P('*1. Equilibrium needs time.* When the pusher starts pulling, only the end of the specimen next to it feels '
+      'the force at first. The information "the force has changed" travels along the specimen as a stress wave, '
+      'is reflected at the other end and comes back. The two ends carry the same force only after the wave has '
+      'crossed the specimen several times (a common rule of thumb in Hopkinson bar testing is three to four '
+      'crossings). As long as the force keeps changing quickly compared with this crossing time, the two ends do '
+      'not carry the same force.')
+    P('*2. In the plastic range the waves are slow.* The speed of a wave in a material is $\\sqrt{\\text{slope}/'
+      '\\rho}$, where the slope is that of the stress–strain curve. In the elastic range the slope is Young\'s '
+      'modulus and the wave is fast. Once the specimen yields, the slope is only that of the hardening law, '
+      '$h = dk/d\\varepsilon_p$, which is much smaller and keeps decreasing:')
+    D.tab('waves', 'Wave speed in the DP1000 and time to cross the parallel section',
+          ['Range', 'Slope of the stress–strain curve', 'Wave speed', 'Crossing time, UT19 (15 mm)', 'Crossing time, UT40 (40 mm)'],
+          [['elastic', '$E$ = %.0f GPa' % (SV['E'] / 1e3), '%.0f m/s' % c0, '%.0f µs' % (15e-3 / c0 * 1e6), '%.0f µs' % (40e-3 / c0 * 1e6)],
+           ['plastic, 1 % plastic strain', '$h$ = %.0f MPa' % h1, '%.0f m/s' % cp1, '%.0f µs' % (15e-3 / cp1 * 1e6), '%.0f µs' % (40e-3 / cp1 * 1e6)],
+           ['plastic, 5 % plastic strain', '$h$ = %.0f MPa' % h5, '%.0f m/s' % cp5, '%.0f µs' % (15e-3 / cp5 * 1e6), '%.0f µs' % (40e-3 / cp5 * 1e6)]],
+          'Slope $h$ from the Swift–Voce law of the model; wave speed $c = \\sqrt{\\text{slope}/\\rho}$, '
+          '$\\rho$ = 7850 kg/m³. At 5 % the specimen is close to its force maximum.')
+    rows_tr = []
+    for k in (100, 500, 1000):
+        t19, t40 = t_fmax(by[('UT19', k)]), t_fmax(by[('UT40', k)])
+        rows_tr.append(['%d s⁻¹' % k, '%.0f µs' % (1e6 * t19), '%.1f to %.1f' % (t19 / (15e-3 / cp5), t19 / (15e-3 / cp1)),
+                        eq_short(by[('UT19', k)][0]), '%.0f µs' % (1e6 * t40),
+                        '%.1f to %.1f' % (t40 / (40e-3 / cp5), t40 / (40e-3 / cp1)), eq_short(by[('UT40', k)][0])])
+    P('*3. Compare with the time available.* The force rises from zero to its maximum in a given time (from the '
+      'simulations). Dividing this time by the plastic crossing time gives how many times the wave can cross '
+      'the specimen during the rise:')
+    D.tab('crossings', 'Number of plastic wave crossings before the force maximum',
+          ['Target rate', 'UT19: time to max force', 'UT19: crossings', 'UT19: equilibrium', 'UT40: time to max force',
+           'UT40: crossings', 'UT40: equilibrium'],
+          rows_tr,
+          '*Crossings*: time to max force divided by the plastic crossing time of %s (range: 5 %% to 1 %% plastic '
+          'strain). *Equilibrium*: result of the simulations (%s).' % (T('waves'), T('eq')))
+    P('*4. Conclusion.* The UT40 is 2.7 times longer, so each crossing takes 2.7 times longer, while the force '
+      'rises in about the same time as for the UT19. At 1000 s⁻¹ the wave crosses the UT19 several times before '
+      'the force maximum, but the UT40 only once to three times: its two ends cannot even out their forces. At '
+      '100 s⁻¹ the rise is slow enough for both. After the force maximum the neck concentrates the deformation '
+      'and the slope of the curve becomes negative: the force differences left at that point are no longer '
+      'evened out. The number of crossings follows the same order as the simulated equilibrium in every case; '
+      'this is an interpretation, not a separate proof.')
+    P('**Consequence: the UT40 gets much closer to fracture at 30 % strain.** The neck has about the same '
+      'physical size in both specimens (a few millimetres, set by the width and the thickness). After the force '
+      'maximum, almost all the elongation of the extensometer comes from the neck. The engineering strain is '
+      'this elongation divided by the extensometer length, so for the same 30 % the neck must stretch much more '
+      'in the UT40:')
+    D.tab('neck', 'What 30 % engineering strain means for the neck',
+          ['', 'UT19', 'UT40'],
+          [['Extensometer length $L_0$', '%.0f mm' % L0['UT19'], '%.0f mm' % L0['UT40']],
+           ['Elongation at 30 % ($0.3\\,L_0$), almost all in the neck', '≈ %.1f mm' % (0.3 * L0['UT19']), '≈ %.1f mm' % (0.3 * L0['UT40'])],
+           ['Force left at 30 %, 1000 s⁻¹ (fraction of the max force)', pct(force_at(by[('UT19', 1000)], 0.3), 0),
+            pct(force_at(by[('UT40', 1000)], 0.3), 0)]],
+          'Force: mean of $F_{in}$ and $F_{out}$ at 30 %% strain (%s).' % T('cmp'))
+    P('A neck stretched 2.5 times more is much thinner: the force left is less than half that of the UT19, and '
+      'the material in the neck is much closer to fracture.')
 
     # ------------------------------------------------------------------ mesure
     D.H(2, 'What the experiment will measure')
@@ -1052,31 +1132,6 @@ def write(ref, centred, first, prb, out, cs):
           'travel), first 120 µs, unfiltered; bottom: displacement of the output end of the specimen. Shaded: the '
           'specimen is pulled but the head does not feel anything yet.',
           'probe study `diag_20261021-1626`; lab journal, 22 Oct 2026.')
-    D.H(3, 'Where a measurement error comes from: force probes')
-    P('In the four simulations with force probes, the force through five slices of the output side (output '
-      'head, tie, bar) was compared with the true specimen force, each signal moved back by its own wave travel '
-      'time to the bar end (%s, %s).' % (F('probes'), T('probes')))
-    keys = ['HEAD_MID', 'HEAD_TIE', 'BAR_TIE', 'BAR_100', 'BAR_250', 'GAUGE_OUT']
-    names = {'HEAD_MID': 'output head, 14 mm above the tie', 'HEAD_TIE': 'output head, 4 mm above the tie',
-             'BAR_TIE': 'bar, just below the tie', 'BAR_100': 'bar, 100 mm from its end',
-             'BAR_250': 'bar, 250 mm from its end', 'GAUGE_OUT': 'gauge, 400 mm from the bar end'}
-    D.tab('probes', 'Max error after 5 % strain at each probe (% of the max force)',
-          ['Position'] + [n for n, _ in prb],
-          [[names[k]] + [pct(res[k][1], 1) if k in res else '–' for _, res in prb] for k in keys],
-          'Same computation as `scripts/post/plot_probes.py`.')
-    D.fig('probes', 'G5_probes_error.png', 'Error of the force along the output side',
-          'the largest error after 5 % strain (logarithmic scale) at each probe, against its distance from the '
-          'pocket end of the output bar, one line per simulation. Shaded: the output head (55.7 mm, tied to the '
-          'bar).',
-          'probe forces and gauge, filtered at 100 kHz, each moved back by its wave travel time.',
-          'a flat line means that the error is already there in the head and is only carried along the bar: it '
-          'is created between the specimen and the head. Error ≈ 5 % everywhere: the measurement is good.')
-    P('In every case the error is the same at every position: it is created at the specimen–head interface, '
-      'not by the tie or by the travel along the bar. The two large errors have the same mechanism, a force '
-      '**step** that sets the head ringing: the impact after the clearance (UT19 centred) and the collapse of '
-      'the neck (first UT40 run at 1000 s⁻¹, below). With the specimen in contact and no localisation, the '
-      'error is %s (UT19) and %s (UT40) at every position.'
-      % (pct(prb[1][1]['GAUGE_OUT'][1], 1), pct(prb[3][1]['GAUGE_OUT'][1], 1)))
     D.H(3, 'Why a sudden localisation makes the gauge wrong')
     P('The gauge does not measure the specimen: it measures the wave in the output bar, 400 mm away, after the '
       'force has gone through the specimen head, the pocket and the output head, and it is moved back in time '
@@ -1219,61 +1274,6 @@ def write(ref, centred, first, prb, out, cs):
       'thin out almost completely (PEEQ ≈ 9, a true strain of 900 %). The section loses its load-carrying '
       'capacity at that point, the specimen unloads elastically on both sides, then reloads and oscillates. '
       'A real DP1000 sheet would have broken long before.')
-    D.H(3, 'The first UT40 run at 1000 s⁻¹: localisation outside the extensometer')
-    rf = by_f[1000]
-    P('In the first UT40 study the striker velocity for 1000 s⁻¹ was estimated too high (%.2f m/s instead of '
-      '%.2f m/s after recalibration). The extensometer strain rose to ≈ 11 %% in ≈ 0.2 ms and then stopped (%s '
-      'at the end), while the forces collapsed (sudden localisation at %s strain). The extensometer node on the '
-      'pusher side stopped and even moved back (%s, right): the material inside the extensometer was unloading, '
-      'so the deformation continued **between the extensometer and the pusher head**. Abaqus/Viewer confirmed '
-      'that the neck formed at the pusher-side end of the parallel section (%s). With the recalibrated velocity '
-      'and the same (slightly tapered) geometry, the strain stays inside the extensometer and reaches 30 %%. Up to '
-      '≈ 0.2 ms both runs are almost identical (%s); the localisation at the pulled end is therefore attributed '
-      'to the higher pulling speed of the first run (pusher-side node up to ≈ 30 m/s), not to the 0.02 mm taper, '
-      'which is the same in both runs.'
-      % (rf['v_striker'], by[('UT40', 1000)][0]['v_striker'], pct(rf['eps_max'], 1), pct(rf['drop_eps'], 1),
-         F('first'), F('peeq1000'), F('first')))
-    D.fig('first', 'G4_first_UT40_R1000.png', 'UT40 at 1000 s⁻¹: first run and recalibrated run',
-          'against the time from the loading start: extensometer strain (left), input-side specimen force '
-          '(middle), velocity of the two extensometer nodes (right; solid: pusher side, dashed: output side). '
-          'Grey: first run; green: recalibrated run; red line: sudden localisation of the first run.',
-          'studies `%s` and `%s`, filtered at 100 kHz.' % (FIRST_UT40, REF['UT40']),
-          'in the first run the pusher-side node stops and moves back at the localisation, and the strain '
-          'stops at ≈ 12 %; in the recalibrated run both nodes keep moving apart.')
-    D.img('peeq1000', 'img/UT40_R1000_PEEQ_last_frame.png', 'First UT40 run at 1000 s⁻¹: plastic strain at the end',
-          'PEEQ at the last frame (1.834 ms), side view, pusher head at the top. The neck (red) is at the '
-          'pusher-side end of the parallel section, just below the pusher head, outside the extensometer.',
-          'Abaqus/Viewer, `%s/UT40_R1000_00.odb`; lab journal, 23 Oct 2026.' % FIRST_UT40)
-    D.H(3, 'When does a real DP1000 specimen break?')
-    P('Beerli et al. (2026, section 4.1.1, fig. 7a) report an engineering strain to fracture of **%s** for DP1000 '
-      'in quasi-static uniaxial tension (0.001 s⁻¹) on the 40 × 10 mm UT specimen, i.e. the UT40 geometry, the '
-      'lowest of the five DP steels of the paper. At high strain rates the elongation to fracture of DP1000 does '
-      'not decrease (section 4.2.1), but no value is given. The paper\'s fracture model (Hosford–Coulomb with a '
-      'neural-network rate dependence) has no published parameters. For the UT19 the engineering strain to '
-      'fracture is larger, since the neck is a larger part of a shorter extensometer; no value is available.'
-      % pct(rt.DP1000_UT_FRACTURE_EPS, 0))
-    D.tab('valid', 'Validity of each reference simulation',
-          ['Specimen / target rate (s⁻¹)', 'Max strain', 'Sudden localisation', 'Beyond 11 % (DP1000 fracture, UT40)?'],
-          [[label(r), pct(r['eps_max'], 1),
-            ('at %s (%.2f ms)' % (pct(r['drop_eps'], 1), r['drop_t_ms'])) if not np.isnan(r['drop_eps']) else 'none',
-            ('yes, from %.2f ms' % t_at(by[(r['specimen'], int(r['target_rate']))], rt.DP1000_UT_FRACTURE_EPS))
-            if r['specimen'] == 'UT40' and r['eps_max'] > rt.DP1000_UT_FRACTURE_EPS else
-            ('no value for this geometry' if r['specimen'] == 'UT19' else 'no')] for r in rows],
-          '*Sudden localisation*: definition above; time from the loading start.')
-    P('**Consequences for Task I.**')
-    D.bullets([
-        'The equilibrium and gauge indicators are meaningful only before fracture. After a sudden localisation '
-        'they describe a numerical artefact.',
-        'For a DP1000 UT40, the question "which loading speed reaches 30 % strain?" has to be put together with '
-        'fracture: with a quasi-static elongation to fracture of 11 %, 30 % engineering strain is very likely '
-        'not reachable, whatever the loading speed. The speeds of Answer 2 remain valid for a more ductile '
-        'material with similar strength.',
-        'Even if the results are cut at 11 %%, the conclusion of Answer 1 does not change: the UT40 is in '
-        'equilibrium at 100 s⁻¹, but at 500 and 1000 s⁻¹ only from %s to %s and from %s to %s strain, i.e. '
-        'not until fracture.' % (pct(r5['eq_from'], 1), pct(r5['eq_to'], 1), pct(r10['eq_from'], 1),
-                                 pct(r10['eq_to'], 1)),
-    ])
-
     # ------------------------------------------------------------------ qualite numerique
     D.H(2, 'Numerical quality and computing cost')
     P('These checks do not answer the Task I questions: they verify that the simulations can be trusted.')
@@ -1322,34 +1322,6 @@ def write(ref, centred, first, prb, out, cs):
         'cannot form (relevant only once the neck localises).',
         '**UT40 drawing**: slight taper of the parallel section and teeth 0.10 mm thicker than on the UT19, as '
         'in the cutting file; to be confirmed on real specimens.',
-    ])
-
-    # ------------------------------------------------------------------ conclusions
-    D.H(2, 'Conclusions and recommendations')
-    P('**Answer 1 – Force equilibrium.**')
-    D.bullets([
-        '**UT19**: quasi-static force equilibrium is reached from the very start of loading and maintained up to '
-        '30 %% strain at 100, 500 and 1000 s⁻¹ ($\\lvert R\\rvert$ < 5 %%, $\\lvert R_{mod}\\rvert$ < %s over the '
-        'whole window).' % pct(max(r['Rmod_max_all'] for r in u19), 0),
-        '**UT40**: equilibrium at 100 s⁻¹ (from %s strain); at 500 and 1000 s⁻¹ only during the hardening phase '
-        'and the beginning of necking (%s to %s and %s to %s strain).'
-        % (pct(by[('UT40', 100)][0]['eps_eq'], 1), pct(r5['eq_from'], 1), pct(r5['eq_to'], 1),
-           pct(r10['eq_from'], 1), pct(r10['eq_to'], 1)),
-        'The short specimen should be preferred for dynamic tests at 500 and 1000 s⁻¹.',
-    ])
-    P('**Answer 2 – Loading speeds.**')
-    D.tab('reco', 'Striker velocities for the experiments (5 m striker)',
-          ['Specimen', '100 s⁻¹', '500 s⁻¹', '1000 s⁻¹'],
-          [[s] + [('%.2f m/s → %s max' % (by[(s, k)][0]['v_striker'], pct(by[(s, k)][0]['eps_max'], 0)))
-                  if not by[(s, k)][0]['reached_30'] else
-                  '%.2f m/s → 30 %% in %.2f ms' % (by[(s, k)][0]['v_striker'], by[(s, k)][0]['time_to_30_ms'])
-                  for k in (100, 500, 1000)] for s in ('UT19', 'UT40')],
-          'Velocities of the reference simulations (rate-independent material). Refined values: %s.' % T('refit'))
-    D.bullets([
-        '30 %% strain cannot be reached below ≈ %.0f s⁻¹ with the 5 m striker.' % rate_min,
-        'For DP1000, 30 % engineering strain is beyond the fracture strain of the UT40 (≈ 11 %).',
-        '**For the tests**: bring the specimen teeth into contact with both pockets before the shot (as done in '
-        'the lab); otherwise the gauge measures the impact of the specimen on the output head.',
     ])
 
     # ------------------------------------------------------------------ annexes
@@ -1479,9 +1451,7 @@ def main():
     fig_test_window(groups, OUT)
     fig_compare_specimens(ref, OUT)
     fig_contact_effect(centred, [rc for rc in ref if rc[0]['specimen'] == 'UT19'], OUT)
-    fig_first_ut40(first, ref, OUT)
     prb = [(name, probe_errors(st, case)) for st, case, name in PROBE_RUNS]
-    fig_probes(prb, OUT)
     cs = fig_necking(OUT)
 
     # images copiees (journal, sondes, figures de controle)
