@@ -99,6 +99,32 @@ py cutting-sheets/scripts/extract_library.py cutting-sheets/input/<plan>.dxf <no
    +Y ; les disques gardent leur orientation) et écrite comme un bloc DXF.
 3. **Contrôle de forme** : toutes les éprouvettes d'un même type doivent être identiques, au code près.
 
+## 3. Placer automatiquement et produire le plan
+
+```bash
+py cutting-sheets/scripts/nest.py cutting-sheets/library/CT_600x500_v20260901 --sheet 500x600 --anneal 120 --name ETH_600x500mm_1_SHEET_v20261029_CT
+```
+
+| Option | Sens |
+|---|---|
+| `--sheet LxH` | taille de la tôle en mm, H selon le sens de laminage |
+| `--gap` | écart entre pièces (5 mm par défaut) |
+| `--margin` | marge au bord de la tôle (5 mm par défaut) |
+| `--res` | pas de la grille de placement (0,5 mm) |
+| `--anneal N` | N itérations de recuit simulé, environ 10 s chacune ; 0 = pas de recuit |
+| `--types UT NT` | ne placer que certains types |
+
+Ce que fait le script :
+1. Chaque éprouvette garde **l'angle qu'elle a dans le plan d'origine, ou cet angle + 180°** : pas de miroir.
+2. Les collisions sont testées sur une grille conservative : l'écart réel est toujours ≥ `--gap`.
+3. Placement « en bas à gauche », tôle par tôle. Plusieurs ordres de départ sont essayés, puis le recuit simulé
+   améliore l'ordre.
+4. Le plan est écrit en DXF : blocs de la bibliothèque, géométrie exacte, mm, calques `Q3_NORMAL` / `Q4_MEDIUM` /
+   `Q5_HIGH`.
+5. Il est vérifié par `check_sheet.py`, plus un contrôle du type et de l'angle au laminage de chaque éprouvette.
+
+Sorties dans `output/<nom>/` : `<nom>.dxf`, `placement.csv`, `check/report.md`, `check/preview.png`.
+
 ## Résultats
 
 Résultats du 29/10/2026 :
@@ -108,3 +134,4 @@ Résultats du 29/10/2026 :
 | Modèles 2025 (`300x300`, `450x400`, `600x500`, `ShearEDM`) | contours fermés, pas de doublon ; écarts ≥ 4 / 2,7 / 3 / 10 mm |
 | `…v20260901_CT_bardcode` (plan de travail) | **pas prêt** : 3 contours ouverts + 2 fragments isolés, unités non définies, écarts jusqu’à 1,7 mm (pointes de dents face à face) |
 | Bibliothèque `CT_600x500_v20260901` | 63 éprouvettes, 9 types, toutes fermées après réparation, formes identiques par type |
+| **Plan généré `ETH_600x500mm_1_SHEET_v20261029_CT`** | **63 éprouvettes sur 1 tôle de 500 × 600 mm** (au lieu de 2), écart mini 5,25 mm, marge mini 5,1 mm, tous les contrôles OK |
