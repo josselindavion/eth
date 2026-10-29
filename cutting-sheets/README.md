@@ -17,26 +17,36 @@ Relevées sur les plans reçus le 29/10/2026 (`input/`).
 | Sens de laminage | axe +Y du dessin | l'angle de chaque éprouvette est compté depuis +Y |
 | Coin chanfreiné | un coin à 45° sur chaque pièce | repère d'orientation et de face |
 | Code à encoches | « peigne » bleu ≈ 13 × 3 mm dans le bord d'une tête | **un code par orientation et par répétition** (ex. « 45°, n° 2 »), partagé par l'UT, la NT20, la NT6.67 et le trou central de même orientation, qu'on distingue par leur forme |
-| *Mikrosteg* | pas dans le DXF, seulement sur la notice (carrés rouges) | micro-attache, « exactement au milieu » d'un côté sans importance |
+| *Mikrosteg* | pas dans le DXF (confirmé par les encadrants), seulement sur la notice (carrés rouges) | micro-attache, « exactement au milieu » d'un côté sans importance |
 | Textes | seulement pour information | « bitte nicht gravieren » : à ne pas graver |
 
 **C'est la couleur qui fait foi, pas le calque** : selon les fichiers, les calques s'appellent `3` / `4` / `5` ou
 `Normal_Quality` / `Medium_Quality` / `High_Quality`, et beaucoup de traits sont sur le calque `0` avec une couleur
 forcée.
 
+## Règles des encadrants (29/10/2026)
+
+| Règle | Valeur |
+|---|---|
+| Écart minimal entre pièces | **5 mm** |
+| Marge au bord de la tôle | 5 mm (valeur provisoire, non précisée) |
+| *Mikrosteg* | pas dans le DXF |
+| Miroir d'une éprouvette | **interdit** : seuls l'angle d'origine et son demi-tour (+180°) sont permis |
+
 ## Contenu du dossier
 
 | Dossier | Contenu |
 |---|---|
 | `input/` | plans reçus : 4 modèles de 2025 (`.dxf` + notice `.pptx` / `.pdf`) et le plan de travail `ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` |
-| `scripts/` | `sheetlib.py` (lecture commune), `check_sheet.py` (vérification), `extract_library.py` (bibliothèque) |
+| `scripts/` | `sheetlib.py` (lecture commune), `check_sheet.py` (vérification), `extract_library.py` (bibliothèque), `nest.py` (placement automatique et plan DXF) |
+| `output/<plan>/` | plans générés : `<plan>.dxf`, `placement.csv`, `check/` (rapport de vérification du plan généré) |
 | `reports/<plan>/` | rapport de vérification de chaque plan : `report.md`, `preview.png`, `issues.png`, `pieces.csv` |
 | `library/<nom>/` | bibliothèque d'éprouvettes extraite d'un plan : `specimens.dxf`, `index.csv`, `types.png`, `README.md`, `repaired_source.dxf` |
 
 ## Installation (PC du labo, une fois)
 
 ```bash
-py -m pip install ezdxf shapely matplotlib
+py -m pip install ezdxf shapely matplotlib scipy
 ```
 
 ## 1. Vérifier un plan
@@ -46,9 +56,12 @@ cd ~/Documents/eth
 py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf
 ```
 
-Options : `--min-gap 3` (écart minimal entre pièces, sinon ERREUR), `--warn-gap 5` (signalé en dessous),
-`--min-margin 5` (marge au bord de la tôle). **Ces seuils sont provisoires** : à confirmer avec l'atelier. Les modèles
-de 2025 ont en général 5 mm entre pièces (minimum constaté : 2,7 mm).
+Options :
+- `--min-gap 5` : écart minimal entre pièces, ERREUR en dessous (règle des encadrants) ;
+- `--warn-gap 5` : écart en dessous duquel on signale ;
+- `--min-margin 5` : marge au bord de la tôle (provisoire).
+
+Pour comparaison, les modèles de 2025 ont en général 5 mm entre pièces, mais descendent jusqu'à 2,7 mm.
 
 | Contrôle | ERREUR si | AVERTISSEMENT si |
 |---|---|---|
