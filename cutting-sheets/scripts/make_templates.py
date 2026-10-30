@@ -17,8 +17,7 @@ Pour chaque type d'eprouvette :
     2. le gabarit = ses traits, SANS les 19 traits du code ni le trait Q3 qui suit le code (sa longueur depend du
        code : le code fait 12 ou 13 mm) ; on garde la position du code et le point ou ce trait se termine ;
     3. repere du gabarit : centre du rectangle englobant minimal a l'origine, code en haut (+Y) ;
-       angle de l'eprouvette = direction du code depuis le sens de laminage (+Y) ;
-    4. Mikrosteg (pour la notice seulement) : milieu du plus long trait droit Q3 du contour, loin du code.
+       angle de l'eprouvette = direction du code depuis le sens de laminage (+Y).
 
 Validation : CHAQUE eprouvette de la source est regeneree a partir du gabarit et de son code lu (angle, index),
 puis comparee a l'originale : traits du code (ecart max) et contour complet. Pour un catalogue, on verifie aussi que
@@ -76,13 +75,13 @@ def family(kind):
 class Template:
     """Gabarit d'un type : entites (repere du gabarit), position du code, fin du trait qui suit le code."""
 
-    def __init__(self, kind, alias, ents, code_origin=None, tail_end_x=None, tail_color=3, mikrosteg=None,
+    def __init__(self, kind, alias, ents, code_origin=None, tail_end_x=None, tail_color=3,
                  L=0.0, W=0.0, holes=0, depth=nc.DEPTH, source='', aliases=None, angles=None):
         self.kind, self.alias, self.ents = kind, alias, ents         # ents : liste (entite ezdxf, couleur)
         self.aliases = aliases or [alias]                            # noms acceptes dans la commande
         self.angles = angles or []                                   # angles presents dans le catalogue (info)
         self.code_origin, self.tail_end_x, self.tail_color = code_origin, tail_end_x, tail_color
-        self.mikrosteg, self.L, self.W, self.holes, self.depth, self.source = mikrosteg, L, W, holes, depth, source
+        self.L, self.W, self.holes, self.depth, self.source = L, W, holes, depth, source
 
     @property
     def has_code(self):
@@ -146,29 +145,7 @@ def build_template(p, alias, kind=None):
     if code:
         T.code_origin = (round(origin[0], 4), round(origin[1], 4))
         T.tail_end_x = round(T.tail_end_x, 4)
-    T.mikrosteg = mikrosteg_point(T)
     return T
-
-
-def mikrosteg_point(T):
-    """Milieu du plus long trait droit Q3 du contour exterieur, a plus de 3 mm du code ; sinon milieu du plus long
-    arc Q3. Proposition a confirmer : la notice du labo dit seulement "au milieu d'un cote sans importance"."""
-    outer = template_polygon(T, closed=True).exterior
-    zone = None
-    if T.has_code:
-        ox, oy = T.code_origin
-        zone = LineString([(ox, oy), (T.tail_end_x, oy)]).buffer(3.0 + T.depth)
-    best = None
-    for e, c in T.ents:
-        if c != 3:
-            continue
-        ln = LineString(flatten(e))
-        if outer.distance(ln) > 0.02 or ln.length < 3.0 or (zone is not None and zone.intersects(ln)):
-            continue
-        rank = (e.dxftype() == 'LINE', round(ln.length, 2))
-        if best is None or rank > best[0]:
-            best = (rank, ln.interpolate(0.5, normalized=True))
-    return (round(best[1].x, 3), round(best[1].y, 3)) if best else None
 
 
 def flatten(e):
@@ -214,7 +191,7 @@ def template_polygon(T, a_digit=None, index=None, closed=False):
 # ECRITURE / LECTURE
 # ============================================================
 FIELDS = ['type', 'alias', 'aliases', 'catalogue_angles', 'block', 'has_code', 'code_x0', 'code_y0', 'code_depth', 'tail_end_x', 'tail_color',
-          'mikrosteg_x', 'mikrosteg_y', 'L_mm', 'W_mm', 'holes', 'source_piece']
+          'L_mm', 'W_mm', 'holes', 'source_piece']
 
 
 def write_templates(out, temps):
@@ -235,7 +212,6 @@ def write_templates(out, temps):
                      'code_x0': T.code_origin[0] if T.has_code else '', 'code_y0': T.code_origin[1] if T.has_code else '',
                      'code_depth': T.depth if T.has_code else '', 'tail_end_x': T.tail_end_x if T.has_code else '',
                      'tail_color': T.tail_color if T.has_code else '',
-                     'mikrosteg_x': T.mikrosteg[0] if T.mikrosteg else '', 'mikrosteg_y': T.mikrosteg[1] if T.mikrosteg else '',
                      'L_mm': round(T.L, 2), 'W_mm': round(T.W, 2), 'holes': T.holes, 'source_piece': T.source})
     x = 0.0
     msp = doc.modelspace()
@@ -260,7 +236,6 @@ def load_templates(tdir):
             T = Template(r['type'], r['alias'], ents,
                          (float(r['code_x0']), float(r['code_y0'])) if has else None,
                          float(r['tail_end_x']) if has else None, int(r['tail_color']) if has else 3,
-                         (float(r['mikrosteg_x']), float(r['mikrosteg_y'])) if r['mikrosteg_x'] else None,
                          float(r['L_mm']), float(r['W_mm']), int(r['holes']),
                          float(r['code_depth']) if has else nc.DEPTH, r['source_piece'],
                          aliases=(r.get('aliases') or r['alias']).split(';'),
@@ -313,13 +288,11 @@ def fig_templates(temps, path):
             for a, b, c in T.code_prims(0, 1):
                 ax.plot([a[0], b[0]], [a[1], b[1]], color=ACI_RGB[c], lw=0.7)
             ax.plot(*T.code_origin, 'o', ms=3, color='#d97706')
-        if T.mikrosteg:
-            ax.plot(*T.mikrosteg, 's', ms=5, color='red')
         ax.set_aspect('equal')
         ax.axis('off')
         ax.set_title('%s\n(%s)' % (T.alias, T.kind), fontsize=6.5)
     fig.suptitle('Templates in their own frame (code up = +Y), shown with code "angle 0°, index 1". '
-                 'Orange dot: code origin. Red square: proposed Mikrosteg.', fontsize=8)
+                 'Orange dot: code origin.', fontsize=8)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
@@ -401,14 +374,13 @@ def write_readme(out, lib, name, temps, rows):
          '`make_plan.py` for each specimen ordered.%s' % (
              ' Types are the block families of the catalogue (block name without its number); the model of each '
              'type is its block `_00`.' if catalogue else ''), '',
-         '| Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) | '
-         'Mikrosteg (proposed, mm) |', '|---|---|---|---|---|---|---|']
+         '| Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) |',
+         '|---|---|---|---|---|---|']
     for T in temps:
-        L.append('| %s | %s | %.1f × %.1f | %d | %s | %s | %s |' % (
+        L.append('| %s | %s | %.1f × %.1f | %d | %s | %s |' % (
             T.kind, ', '.join('`%s`' % a for a in T.aliases), T.L, T.W, T.holes,
             ', '.join('%g°' % a for a in T.angles) or '–',
-            '(%.3f, %.3f)' % T.code_origin if T.has_code else 'no code',
-            '(%.1f, %.1f)' % T.mikrosteg if T.mikrosteg else '–'))
+            '(%.3f, %.3f)' % T.code_origin if T.has_code else 'no code'))
     L += ['', 'Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a '
           'specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. '
           'For discs with two holes, the holes are perpendicular to that direction (angle 90° = holes along the '

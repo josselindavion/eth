@@ -9,7 +9,7 @@ Regles (encadrants, 29/10/2026) :
     - ecart minimal entre pieces : 5 mm (--gap) ; marge au bord de la tole : 5 mm (--margin, provisoire) ;
     - orientation imposee par le sens de laminage : chaque eprouvette garde l'angle qu'elle a dans le plan d'origine
       de la bibliotheque, ou cet angle + 180 deg (demi-tour) ; pas de miroir ;
-    - pas de Mikrosteg dans le DXF.
+    - pas de Mikrosteg dans le DXF (geres par l'atelier).
 
 Moteur :
     1. chaque eprouvette est rasterisee sur une grille (--res, mm) de facon conservative : une case est "occupee" des

@@ -39,7 +39,7 @@
 
 ## Files
 
-- `ETH_300x300mm_SHEET_v20261030_exemple.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`, no Mikrosteg).
-- `notice.pdf`: one page per sheet (specimen numbers, proposed Mikrosteg in red, qualities, rolling direction) and the specimen list.
+- `ETH_300x300mm_SHEET_v20261030_exemple.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`).
+- `notice.pdf`: one page per sheet (specimen numbers, qualities, rolling direction) and the specimen list.
 - `registry.csv`: one line per specimen: number, sheet, type, angle, notch code (angle digit, index), position, specimen ID (when the batch and geometry codes are given in the order).
 - `placement.csv`, `specimens.dxf`: blocks and their insertion; `check/`: report of `check_sheet.py`.

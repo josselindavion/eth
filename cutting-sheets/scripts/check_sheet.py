@@ -13,7 +13,7 @@ Sorties dans cutting-sheets/runs/reports/<plan>/ (ignore par git), ou reports/<p
 
 Controles (ERROR = bloquant, WARNING = a verifier, INFO) : voir CHECKS ci-dessous et README.md.
 Ecart minimal entre pieces : 5 mm (regle donnee par les encadrants le 29/10/2026). Marge au bord : 5 mm,
-valeur provisoire (non precisee). Pas de Mikrosteg dans le DXF (ils restent sur la notice).
+valeur provisoire (non precisee). Pas de Mikrosteg dans le DXF (geres par l'atelier).
 """
 import argparse
 import collections

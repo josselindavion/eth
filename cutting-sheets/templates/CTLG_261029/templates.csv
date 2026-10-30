@@ -1,12 +1,12 @@
-type,alias,aliases,catalogue_angles,block,has_code,code_x0,code_y0,code_depth,tail_end_x,tail_color,mikrosteg_x,mikrosteg_y,L_mm,W_mm,holes,source_piece
-CTLG_CHCH,CHCH,CHCH;CH,0;45;90,T__CTLG_CHCH,1,-6.0,52.944,3.0,9.5,3,0.0,-52.944,105.89,30.0,1,block CTLG_CHCH_00 of specimen_templates_261029_barcoded.dxf
-CTLG_NT06,NT06,NT06;NT6.67,0;45;90,T__CTLG_NT06,1,-6.0,52.9435,3.0,9.5,3,0.0,-52.944,105.89,30.0,0,block CTLG_NT06_00 of specimen_templates_261029_barcoded.dxf
-CTLG_NT20,NT20,NT20,0;45;90,T__CTLG_NT20,1,-6.0,52.9435,3.0,9.5,3,0.0,-52.944,105.89,30.0,0,block CTLG_NT20_00 of specimen_templates_261029_barcoded.dxf
-CTLG_UTUT,UTUT,UTUT;UT,0;15;30;45;60;75;90,T__CTLG_UTUT,1,-6.0,52.944,3.0,9.5,3,0.0,-52.944,105.89,30.0,0,block CTLG_UTUT_00 of specimen_templates_261029_barcoded.dxf
-CTST_SHHD,SHHD,SHHD,0;45;90;135,T__CTST_SHHD,1,-6.0,40.394,3.0,9.5,3,0.0,-40.394,80.79,30.0,0,block CTST_SHHD_00 of specimen_templates_261029_barcoded.dxf
-CTST_SHLD,SHLD,SHLD,0;45;90;135,T__CTST_SHLD,1,-6.0,40.394,3.0,9.5,3,0.0,-40.394,80.79,30.0,0,block CTST_SHLD_00 of specimen_templates_261029_barcoded.dxf
-CTST_SHMD,SHMD,SHMD,0;45;90;135,T__CTST_SHMD,1,-6.0,40.394,3.0,9.5,3,0.0,-40.394,80.79,30.0,0,block CTST_SHMD_00 of specimen_templates_261029_barcoded.dxf
-CTST_UTST,UTST,UTST,0;15;30;45;60;75;90,T__CTST_UTST,1,-6.0,40.3935,3.0,9.5,3,0.0,-40.394,80.79,30.0,0,block CTST_UTST_00 of specimen_templates_261029_barcoded.dxf
-MNAK_FULL,MNAK_FULL,MNAK_FULL;DISC0,0;45;90,T__MNAK_FULL,1,-7.0005,27.0,3.0,10.9475,3,-0.111,-27.0,59.97,54.0,0,block MNAK_FULL_00 of specimen_templates_261029_barcoded.dxf
-MNAK_HOLE,MNAK_HOLE,MNAK_HOLE;DISC2,0;45;90,T__MNAK_HOLE,1,-7.0005,27.0,3.0,10.9475,3,-0.111,-27.0,59.97,54.0,2,block MNAK_HOLE_00 of specimen_templates_261029_barcoded.dxf
-TENS_FULL,TENS_FULL,TENS_FULL;STRIP,,T__TENS_FULL,0,,,,,,15.0,-0.0,140.0,30.0,0,block TENS_FULL of specimen_templates_261029_barcoded.dxf
+type,alias,aliases,catalogue_angles,block,has_code,code_x0,code_y0,code_depth,tail_end_x,tail_color,L_mm,W_mm,holes,source_piece
+CTLG_CHCH,CHCH,CHCH;CH,0;45;90,T__CTLG_CHCH,1,-6.0,52.944,3.0,9.5,3,105.89,30.0,1,block CTLG_CHCH_00 of specimen_templates_261029_barcoded.dxf
+CTLG_NT06,NT06,NT06;NT6.67,0;45;90,T__CTLG_NT06,1,-6.0,52.9435,3.0,9.5,3,105.89,30.0,0,block CTLG_NT06_00 of specimen_templates_261029_barcoded.dxf
+CTLG_NT20,NT20,NT20,0;45;90,T__CTLG_NT20,1,-6.0,52.9435,3.0,9.5,3,105.89,30.0,0,block CTLG_NT20_00 of specimen_templates_261029_barcoded.dxf
+CTLG_UTUT,UTUT,UTUT;UT,0;15;30;45;60;75;90,T__CTLG_UTUT,1,-6.0,52.944,3.0,9.5,3,105.89,30.0,0,block CTLG_UTUT_00 of specimen_templates_261029_barcoded.dxf
+CTST_SHHD,SHHD,SHHD,0;45;90;135,T__CTST_SHHD,1,-6.0,40.394,3.0,9.5,3,80.79,30.0,0,block CTST_SHHD_00 of specimen_templates_261029_barcoded.dxf
+CTST_SHLD,SHLD,SHLD,0;45;90;135,T__CTST_SHLD,1,-6.0,40.394,3.0,9.5,3,80.79,30.0,0,block CTST_SHLD_00 of specimen_templates_261029_barcoded.dxf
+CTST_SHMD,SHMD,SHMD,0;45;90;135,T__CTST_SHMD,1,-6.0,40.394,3.0,9.5,3,80.79,30.0,0,block CTST_SHMD_00 of specimen_templates_261029_barcoded.dxf
+CTST_UTST,UTST,UTST,0;15;30;45;60;75;90,T__CTST_UTST,1,-6.0,40.3935,3.0,9.5,3,80.79,30.0,0,block CTST_UTST_00 of specimen_templates_261029_barcoded.dxf
+MNAK_FULL,MNAK_FULL,MNAK_FULL;DISC0,0;45;90,T__MNAK_FULL,1,-7.0005,27.0,3.0,10.9475,3,59.97,54.0,0,block MNAK_FULL_00 of specimen_templates_261029_barcoded.dxf
+MNAK_HOLE,MNAK_HOLE,MNAK_HOLE;DISC2,0;45;90,T__MNAK_HOLE,1,-7.0005,27.0,3.0,10.9475,3,59.97,54.0,2,block MNAK_HOLE_00 of specimen_templates_261029_barcoded.dxf
+TENS_FULL,TENS_FULL,TENS_FULL;STRIP,,T__TENS_FULL,0,,,,,,140.0,30.0,0,block TENS_FULL of specimen_templates_261029_barcoded.dxf

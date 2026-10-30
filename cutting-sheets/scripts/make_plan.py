@@ -11,11 +11,11 @@ Etapes :
     2. une eprouvette = gabarit sans code (templates/<nom>/) + son code a encoches (notchcode.py) ;
        angle = direction de la tete qui porte le code depuis le sens de laminage (+Y), sens trigonometrique ;
     3. placement automatique (nest.py) : angle impose ou demi-tour (+180 deg), pas de miroir, ecart et marge ;
-    4. plan DXF (mm, calques Q3_NORMAL / Q4_MEDIUM / Q5_HIGH, pas de Mikrosteg) ;
+    4. plan DXF (mm, calques Q3_NORMAL / Q4_MEDIUM / Q5_HIGH) ;
     5. verifications : check_sheet.py (contours, ecarts, marges...) puis RELECTURE DU CODE de chaque eprouvette dans
        le DXF final (angle, index, direction) et comparaison a la commande ;
-    6. registre des eprouvettes (registry.csv) et notice pour l'atelier (notice.pdf : plan numerote, Mikrosteg en
-       rouge, qualites, sens de laminage).
+    6. registre des eprouvettes (registry.csv) et notice pour l'atelier (notice.pdf : plan numerote, qualites,
+       sens de laminage).
 
 Sorties dans cutting-sheets/runs/<nom>/ (dossier IGNORE par git : on peut relancer sans creer de conflit), ou dans
 cutting-sheets/output/<nom>/ (suivi par git) avec --final, pour un plan a garder ou a envoyer a l'atelier :
@@ -35,7 +35,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt                       # noqa: E402
 from matplotlib.backends.backend_pdf import PdfPages  # noqa: E402
-from matplotlib.patches import FancyArrow, Rectangle  # noqa: E402
+from matplotlib.patches import FancyArrow           # noqa: E402
 import yaml                                           # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -279,11 +279,6 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 ax.text(cx, cy + (0.18 * T.L if T.L / max(T.W, 1) > 1.25 and T.holes else 0), str(r['n']),
                         ha='center', va='center', fontsize=7, color='#333333', zorder=6,
                         bbox=dict(boxstyle='round,pad=0.15', fc='white', ec='none', alpha=0.8))
-                if T.mikrosteg:
-                    a = math.radians(r['rotation_deg'])
-                    mx = cx + T.mikrosteg[0] * math.cos(a) - T.mikrosteg[1] * math.sin(a)
-                    my = cy + T.mikrosteg[0] * math.sin(a) + T.mikrosteg[1] * math.cos(a)
-                    ax.add_patch(Rectangle((mx - 2.5, my - 2.5), 5, 5, color='red', lw=0, zorder=5))
             ax.set_xlim(-10, W + 10)
             ax.set_ylim(-10, H + 10)
             ax.set_aspect('equal')
@@ -305,17 +300,14 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 lg.plot([0.02, 0.18], [y, y], color=ACI_RGB[c], lw=2)
                 lg.text(0.22, y, t, color=ACI_RGB[c], fontsize=7.5, va='center')
                 y -= 0.05
-            lg.add_patch(Rectangle((0.06, y - 0.012), 0.08, 0.024, color='red'))
-            lg.text(0.22, y, 'Mikrosteg –\nbitte genau mittig', color='red', fontsize=7.5, va='center')
-            y -= 0.08
+            y -= 0.03
             lg.text(0.02, y, 'Numbers: specimen no.\n(see list). Only for\ninformation, bitte\nnicht gravieren.',
                     fontsize=7, va='top', color='#555555')
             lg.text(0.02, 0.13, '%s\n\nsheet %d / %d\n\n%s' % (cfg['nom'].replace('_SHEET', '_\nSHEET'), k + 1,
                                                                 n_sheets, today),
                     fontsize=7, va='top', bbox=dict(boxstyle='square', fc='white', ec='black', lw=0.6))
             fig.suptitle('EDM cutting sheet %d / %d – %s' % (k + 1, n_sheets, cfg['nom']), fontsize=10, y=0.96)
-            fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  margin ≥ %g mm  ·  '
-                     'no Mikrosteg in the DXF' % (os.path.basename(dxf_path), cfg['ecart'], cfg['marge']),
+            fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  margin ≥ %g mm' % (os.path.basename(dxf_path), cfg['ecart'], cfg['marge']),
                      fontsize=7, color='#444444', va='top')
             pdf.savefig(fig)
             plt.close(fig)
@@ -449,9 +441,9 @@ def write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg):
         L += [''] + ['- ' + b for b in bad]
     L += ['', '![Plan](check/preview.png)', '',
           '## Files', '',
-          '- `%s.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`, no Mikrosteg).'
+          '- `%s.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`).'
           % cfg['nom'],
-          '- `notice.pdf`: one page per sheet (specimen numbers, proposed Mikrosteg in red, qualities, rolling '
+          '- `notice.pdf`: one page per sheet (specimen numbers, qualities, rolling '
           'direction) and the specimen list.',
           '- `registry.csv`: one line per specimen: number, sheet, type, angle, notch code (angle digit, index), '
           'position, specimen ID (when the batch and geometry codes are given in the order).',

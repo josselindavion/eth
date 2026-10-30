@@ -104,7 +104,7 @@ Relevées sur les plans reçus le 29/10/2026 (`input/`).
 | Sens de laminage | axe +Y du dessin | l'angle de chaque éprouvette est compté depuis +Y |
 | Coin chanfreiné | un coin à 45° sur chaque pièce | repère d'orientation et de face |
 | Code à encoches | « peigne » bleu de 12–13 × 3 mm dans le bord d'une tête | code-barres « 2 parmi 5 » : les 5 encoches donnent un **numéro** (0–9), les 4 pleins l'**angle au laminage** (chiffre × 15°, 0–135°). Voir ci-dessous |
-| *Mikrosteg* | pas dans le DXF (confirmé par les encadrants), seulement sur la notice (carrés rouges) | micro-attache, « exactement au milieu » d'un côté sans importance |
+| *Mikrosteg* | pas dans le DXF, pas sur la notice : gérés par l'atelier | micro-attache qui retient la pièce dans la tôle |
 | Textes | seulement pour information | « bitte nicht gravieren » : à ne pas graver |
 
 ### Le code à encoches (décodé le 30/10/2026, vérifié sur tous les plans, confirmé par le document du labo)
@@ -144,7 +144,7 @@ forcée.
 |---|---|
 | Écart minimal entre pièces | **5 mm** |
 | Marge au bord de la tôle | 5 mm (valeur provisoire, non précisée) |
-| *Mikrosteg* | pas dans le DXF |
+| *Mikrosteg* | pas gérés par l'outil (ni DXF, ni notice) : c'est l'atelier qui s'en occupe |
 | Miroir d'une éprouvette | **interdit** : seuls l'angle d'origine et son demi-tour (+180°) sont permis |
 
 ## Contenu du dossier
@@ -279,9 +279,6 @@ Le gabarit garde la position de départ du code (−6,000 ; 52,944 mm sur les ba
 **Validation automatique :** chaque éprouvette de la source est reconstruite à partir de son gabarit et du code lu
 dessus, puis comparée à l'originale (`validation.csv`). Pour le catalogue, le code lu doit aussi être le numéro du
 bloc (`_21` = angle 2 × 15° = 30°, index 1).
-
-**Mikrosteg :** la position proposée est le milieu du plus long côté droit Q3, loin du code. Elle apparaît seulement
-sur la notice, à faire confirmer.
 
 ## 5. Vérifications faites par `make_plan.py` sur le DXF final
 

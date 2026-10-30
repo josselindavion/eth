@@ -50,13 +50,13 @@
 | Gap between pieces | OK | smallest gap 5.25 mm; 0 pair(s) below 5.0 mm, 0 more below 5.0 mm |
 | Margin to sheet edge | OK | smallest margin 5.1 mm (limit 5.0 mm) |
 | ID codes | OK | 60 of 60 specimens carry a notch code; 31 distinct codes; 11 code(s) shared only by specimens of different types (distinguishable by their shape) |
-| Notch codes / angles | OK | 63 of 63 specimens: code read in the DXF = code ordered, direction = angle ordered |
+| Specimens vs order | OK | 63 of 63 specimens: outline = template, code read in the DXF = code ordered, direction = angle ordered |
 
 ![Plan](check/preview.png)
 
 ## Files
 
-- `ETH_600x500mm_SHEET_v20261030_CT.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`, no Mikrosteg).
-- `notice.pdf`: one page per sheet (specimen numbers, proposed Mikrosteg in red, qualities, rolling direction) and the specimen list.
+- `ETH_600x500mm_SHEET_v20261030_CT.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`).
+- `notice.pdf`: one page per sheet (specimen numbers, qualities, rolling direction) and the specimen list.
 - `registry.csv`: one line per specimen: number, sheet, type, angle, notch code (angle digit, index), position, specimen ID (when the batch and geometry codes are given in the order).
 - `placement.csv`, `specimens.dxf`: blocks and their insertion; `check/`: report of `check_sheet.py`.

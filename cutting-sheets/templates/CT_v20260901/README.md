@@ -4,32 +4,32 @@
 
 One template per specimen type, **without notch code**. The code (angle + index) is added by `make_plan.py` for each specimen ordered.
 
-| Type | Alias (order file) | Size (mm) | Holes | Code origin (mm) | End of the line after the code (mm) | Mikrosteg (proposed, mm) |
-|---|---|---|---|---|---|---|
-| CH_D4.8_L106 | `CH` | 105.9 × 30.0 | 1 | (-6.000, 52.944) | 9.500 | (0.0, -52.9) |
-| DISC_0H | `DISC0` | 60.0 × 54.0 | 0 | (-7.000, 27.000) | 10.947 | (-0.1, -27.0) |
-| DISC_2H | `DISC2` | 60.0 × 54.0 | 2 | (-6.998, 27.001) | 10.951 | (-0.1, -27.0) |
-| NT_R20.00_L106 | `NT20` | 105.9 × 30.0 | 0 | (-6.000, 52.944) | 9.500 | (0.0, -52.9) |
-| NT_R6.67_L106 | `NT6.67` | 105.9 × 30.0 | 0 | (-6.000, 52.944) | 9.500 | (-0.0, -52.9) |
-| STRIP_140x30 | `STRIP` | 140.0 × 30.0 | 0 | no code | – | (15.0, 0.0) |
-| UT_L106 | `UT` | 105.9 × 30.0 | 0 | (-6.000, 52.944) | 9.500 | (-0.0, -52.9) |
+| Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) |
+|---|---|---|---|---|---|
+| CH_D4.8_L106 | `CH` | 105.9 × 30.0 | 1 | 0°, 45°, 90° | (-6.000, 52.944) |
+| DISC_0H | `DISC0` | 60.0 × 54.0 | 0 | 0° | (-7.000, 27.000) |
+| DISC_2H | `DISC2` | 60.0 × 54.0 | 2 | 0°, 45°, 90° | (-6.998, 27.001) |
+| NT_R20.00_L106 | `NT20` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) |
+| NT_R6.67_L106 | `NT6.67` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) |
+| STRIP_140x30 | `STRIP` | 140.0 × 30.0 | 0 | – | no code |
+| UT_L106 | `UT` | 105.9 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 52.944) |
 
-Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. For `DISC2` the two holes are perpendicular to that direction (angle 90° = holes along the rolling direction).
+Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. For discs with two holes, the holes are perpendicular to that direction (angle 90° = holes along the rolling direction).
 
 ![Templates](templates.png)
 
 ## Validation
 
-Every specimen of the source drawing was rebuilt from its template and the code read on it, then compared with the original.
+Every specimen of the source was rebuilt from its template and the code read on it, then compared with the original.
 
-| Type | Specimens | Codes read (angle / index) | Code lines: max deviation (mm) | Outline: max deviation (mm) | Outline: max area difference (mm²) |
+| Type | Specimens | Indices | Code = block number | Code lines: max deviation (mm) | Outline: max deviation (mm) |
 |---|---|---|---|---|---|
-| CH_D4.8_L106 | 9 | 0°/1, 0°/2, 0°/3, 45°/1, 45°/2, 45°/3, 90°/1, 90°/2, 90°/3 | 0.0092 | 0.0161 | 1.2188 |
-| DISC_0H | 3 | 0°/1, 0°/2, 0°/3 | 0.0005 | 0.0009 | 0.0605 |
-| DISC_2H | 9 | 0°/1, 0°/2, 0°/3, 45°/1, 45°/2, 45°/3, 90°/1, 90°/2, 90°/3 | 0.0029 | 0.0038 | 0.2868 |
-| NT_R20.00_L106 | 9 | 0°/1, 0°/2, 0°/3, 45°/1, 45°/2, 45°/3, 90°/1, 90°/2, 90°/3 | 0.0092 | 0.0161 | 1.2308 |
-| NT_R6.67_L106 | 9 | 0°/1, 0°/2, 0°/3, 45°/1, 45°/2, 45°/3, 90°/1, 90°/2, 90°/3 | 0.0092 | 0.0158 | 1.2417 |
-| STRIP_140x30 | 3 | – | – | 0.0000 | 0.0000 |
-| UT_L106 | 21 | 0°/1, 0°/2, 0°/3, 15°/1, 15°/2, 15°/3, 30°/1, 30°/2, 30°/3, 45°/1, 45°/2, 45°/3, 60°/1, 60°/2, 60°/3, 75°/1, 75°/2, 75°/3, 90°/1, 90°/2, 90°/3 | 0.0097 | 0.0133 | 1.3029 |
+| CH_D4.8_L106 | 9 | 1–3 | – | 0.0092 | 0.0161 |
+| DISC_0H | 3 | 1–3 | – | 0.0005 | 0.0009 |
+| DISC_2H | 9 | 1–3 | – | 0.0029 | 0.0038 |
+| NT_R20.00_L106 | 9 | 1–3 | – | 0.0092 | 0.0161 |
+| NT_R6.67_L106 | 9 | 1–3 | – | 0.0092 | 0.0158 |
+| STRIP_140x30 | 3 | – | – | – | 0.0000 |
+| UT_L106 | 21 | 1–3 | – | 0.0097 | 0.0133 |
 
 Details per specimen: `validation.csv`.

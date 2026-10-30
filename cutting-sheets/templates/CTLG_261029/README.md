@@ -4,19 +4,19 @@
 
 One template per specimen type, **without notch code**. The code (angle + index) is added by `make_plan.py` for each specimen ordered. Types are the block families of the catalogue (block name without its number); the model of each type is its block `_00`.
 
-| Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) | Mikrosteg (proposed, mm) |
-|---|---|---|---|---|---|---|
-| CTLG_CHCH | `CHCH`, `CH` | 105.9 × 30.0 | 1 | 0°, 45°, 90° | (-6.000, 52.944) | (0.0, -52.9) |
-| CTLG_NT06 | `NT06`, `NT6.67` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) | (0.0, -52.9) |
-| CTLG_NT20 | `NT20` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) | (0.0, -52.9) |
-| CTLG_UTUT | `UTUT`, `UT` | 105.9 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 52.944) | (0.0, -52.9) |
-| CTST_SHHD | `SHHD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) | (0.0, -40.4) |
-| CTST_SHLD | `SHLD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) | (0.0, -40.4) |
-| CTST_SHMD | `SHMD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) | (0.0, -40.4) |
-| CTST_UTST | `UTST` | 80.8 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 40.394) | (0.0, -40.4) |
-| MNAK_FULL | `MNAK_FULL`, `DISC0` | 60.0 × 54.0 | 0 | 0°, 45°, 90° | (-7.000, 27.000) | (-0.1, -27.0) |
-| MNAK_HOLE | `MNAK_HOLE`, `DISC2` | 60.0 × 54.0 | 2 | 0°, 45°, 90° | (-7.000, 27.000) | (-0.1, -27.0) |
-| TENS_FULL | `TENS_FULL`, `STRIP` | 140.0 × 30.0 | 0 | – | no code | (15.0, -0.0) |
+| Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) |
+|---|---|---|---|---|---|
+| CTLG_CHCH | `CHCH`, `CH` | 105.9 × 30.0 | 1 | 0°, 45°, 90° | (-6.000, 52.944) |
+| CTLG_NT06 | `NT06`, `NT6.67` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) |
+| CTLG_NT20 | `NT20` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) |
+| CTLG_UTUT | `UTUT`, `UT` | 105.9 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 52.944) |
+| CTST_SHHD | `SHHD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) |
+| CTST_SHLD | `SHLD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) |
+| CTST_SHMD | `SHMD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) |
+| CTST_UTST | `UTST` | 80.8 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 40.394) |
+| MNAK_FULL | `MNAK_FULL`, `DISC0` | 60.0 × 54.0 | 0 | 0°, 45°, 90° | (-7.000, 27.000) |
+| MNAK_HOLE | `MNAK_HOLE`, `DISC2` | 60.0 × 54.0 | 2 | 0°, 45°, 90° | (-7.000, 27.000) |
+| TENS_FULL | `TENS_FULL`, `STRIP` | 140.0 × 30.0 | 0 | – | no code |
 
 Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. For discs with two holes, the holes are perpendicular to that direction (angle 90° = holes along the rolling direction).
 
