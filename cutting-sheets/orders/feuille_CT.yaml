@@ -1,0 +1,35 @@
+# Vraie feuille : programme CT (plan du labo input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf),
+# avec les gabarits du catalogue du labo. Memes eprouvettes et memes codes que ce plan (index 1, 2, 3).
+# Lancer :  py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
+
+nom: ETH_600x500mm_SHEET_v20261030_CT
+gabarits: templates/CTLG_261029
+tole: 500x600          # largeur x hauteur en mm ; la hauteur est le sens de laminage
+ecart: 5
+marge: 5
+recuit: 30            # iterations de recuit par coeur (~2 s chacune) : quelques mm de gagnes ; 0 = rapide
+coeurs: auto
+
+eprouvettes:
+  - {type: UTUT,      angle: 0,  nombre: 3, premier_index: 1}
+  - {type: UTUT,      angle: 15, nombre: 3, premier_index: 1}
+  - {type: UTUT,      angle: 30, nombre: 3, premier_index: 1}
+  - {type: UTUT,      angle: 45, nombre: 3, premier_index: 1}
+  - {type: UTUT,      angle: 60, nombre: 3, premier_index: 1}
+  - {type: UTUT,      angle: 75, nombre: 3, premier_index: 1}
+  - {type: UTUT,      angle: 90, nombre: 3, premier_index: 1}
+  - {type: NT20,      angle: 0,  nombre: 3, premier_index: 1}
+  - {type: NT20,      angle: 45, nombre: 3, premier_index: 1}
+  - {type: NT20,      angle: 90, nombre: 3, premier_index: 1}
+  - {type: NT06,      angle: 0,  nombre: 3, premier_index: 1}
+  - {type: NT06,      angle: 45, nombre: 3, premier_index: 1}
+  - {type: NT06,      angle: 90, nombre: 3, premier_index: 1}
+  - {type: CHCH,      angle: 0,  nombre: 3, premier_index: 1}
+  - {type: CHCH,      angle: 45, nombre: 3, premier_index: 1}
+  - {type: CHCH,      angle: 90, nombre: 3, premier_index: 1}
+  - {type: MNAK_FULL, angle: 0,  nombre: 3, premier_index: 1}
+  - {type: MNAK_HOLE, angle: 90, nombre: 3, premier_index: 1}   # trous dans le sens de laminage
+  - {type: MNAK_HOLE, angle: 45, nombre: 3, premier_index: 1}   # trous a 45 deg du laminage
+  - {type: MNAK_HOLE, angle: 0,  nombre: 3, premier_index: 1}   # trous a 90 deg du laminage
+  - {type: TENS_FULL, angle: 0,  nombre: 2}
+  - {type: TENS_FULL, angle: 90, nombre: 1}

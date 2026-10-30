@@ -166,7 +166,7 @@ def make_items(specs):
         if T.kind not in polys:
             polys[T.kind] = mt.template_polygon(T, closed=True)        # contour sans encoches : conservatif
         row = {'block': s['block'], 'type': T.kind, 'orientation_to_RD_deg': '%g' % sl.fold_rd(s['angle']),
-               'axis_angle_in_source_deg': s['angle'], 'rotation_deg': s['angle'], 'shape_key': T.kind}
+               'rotation_deg': s['angle'], 'shape_key': T.kind}
         it = nest.Item(row, polys[T.kind])
         it.spec = s
         items.append(it)

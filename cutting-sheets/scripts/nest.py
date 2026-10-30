@@ -1,59 +1,39 @@
 # -*- coding: utf-8 -*-
 """
-nest.py -- Placement automatique des eprouvettes d'une bibliotheque sur des toles, puis plan DXF pour l'atelier.
-
-Lancement (Python 3 + ezdxf, shapely, matplotlib, scipy), depuis la racine du repo :
-    py cutting-sheets/scripts/nest.py cutting-sheets/library/CT_600x500_v20260901 --sheet 500x600 --name CT_500x600
+nest.py -- Moteur de placement automatique des eprouvettes sur des toles (utilise par make_plan.py).
 
 Regles (encadrants, 29/10/2026) :
-    - ecart minimal entre pieces : 5 mm (--gap) ; marge au bord de la tole : 5 mm (--margin, provisoire) ;
-    - orientation imposee par le sens de laminage : chaque eprouvette garde l'angle qu'elle a dans le plan d'origine
-      de la bibliotheque, ou cet angle + 180 deg (demi-tour) ; pas de miroir ;
+    - ecart minimal entre pieces : 5 mm ; marge au bord de la tole : 5 mm (provisoire) ;
+    - orientation imposee par le sens de laminage : chaque eprouvette est posee a l'angle commande, ou a cet angle
+      + 180 deg (demi-tour) ; pas de miroir ;
     - pas de Mikrosteg dans le DXF (geres par l'atelier).
 
 Moteur :
-    1. chaque eprouvette est rasterisee sur une grille (--res, mm) de facon conservative : une case est "occupee" des
+    1. chaque eprouvette est rasterisee sur une grille (0,5 mm) de facon conservative : une case est "occupee" des
        qu'un point de la piece la touche ; les pieces deja posees occupent toutes les cases a moins de `gap` d'elles ;
        une position est libre si aucune case de la piece ne tombe sur une case occupee : l'ecart reel est donc
        toujours >= gap (au prix d'au plus une demi-diagonale de case en plus) ;
-    2. toutes les positions libres d'une piece sont trouvees d'un coup par correlation FFT (scipy) ;
+    2. les positions libres d'une piece sont trouvees par correlation FFT (scipy), seulement dans les lignes utiles ;
     3. placement "en bas a gauche" : la position libre la plus basse, puis la plus a gauche, sur la premiere tole ou
        la piece tient (les deux demi-tours sont essayes) ; une nouvelle tole est ouverte si besoin ;
-    4. plusieurs ordres de placement de depart, puis recuit simule sur l'ordre (--anneal N iterations) ;
+    4. plusieurs ordres de placement de depart, puis recuit simule sur l'ordre, plusieurs recuits en parallele ;
        critere : nombre de toles, puis hauteur occupee sur la derniere tole, puis somme des hauteurs ;
-    5. le meilleur placement est recalcule a la resolution fine (--final-res), ecrit en DXF (blocs de la
-       bibliotheque, geometrie exacte, mm), puis verifie par check_sheet.py.
-
-Sorties dans cutting-sheets/runs/<name>/ (ignore par git), ou output/<name>/ avec --final : <name>.dxf,
-placement.csv, check/ (rapport de verification).
+    5. le plan est ecrit en DXF (blocs, geometrie exacte, mm) ; make_plan.py le verifie ensuite.
 """
-import argparse
 import collections
 import copy
-import csv
 import math
 import multiprocessing
 import os
 import random
-import sys
 import time
 
 import ezdxf
-from ezdxf import path as dpath
 import numpy as np
 from matplotlib.path import Path as MplPath
 from scipy.signal import fftconvolve
 from shapely import affinity
-from shapely.geometry import LineString
-from shapely.ops import polygonize, unary_union
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-import check_sheet                      # noqa: E402
-import sheetlib as sl                   # noqa: E402
-
-OUT_ROOT = os.path.abspath(os.path.join(HERE, '..', 'output'))     # --final : suivi par git
-RUNS_ROOT = os.path.abspath(os.path.join(HERE, '..', 'runs'))      # defaut : ignore par git
 SHEET_SPACING = 40.0                    # mm entre deux toles dans le DXF (comme les plans du labo)
 
 
@@ -68,51 +48,11 @@ class Item:
         self.kind = row['type']
         self.orient = row['orientation_to_RD_deg']
         self.poly = poly
-        if row.get('rotation_deg') not in (None, ''):          # angle impose (make_plan.py)
-            base = float(row['rotation_deg'])
-        else:
-            base = 0.0 if self.kind.startswith('DISC') else float(row['axis_angle_in_source_deg'])
-        self.angles = (base, (base + 180.0) % 360.0)
+        base = float(row['rotation_deg'])                      # angle commande
+        self.angles = (base, (base + 180.0) % 360.0)           # ou demi-tour ; jamais de miroir
         # pieces de meme contour (meme gabarit, codes differents) : un seul masque de placement
         self.shape_key = row.get('shape_key') or self.block
         self.area = poly.area
-
-
-def block_polygon(doc, name):
-    """Contour exterieur d'un bloc (extremites fusionnees a sheetlib.JOIN_TOL pres)."""
-    from shapely.geometry import Polygon
-    verts = []
-
-    def snap(p):
-        for q in verts:
-            if abs(q[0] - p[0]) <= sl.JOIN_TOL and abs(q[1] - p[1]) <= sl.JOIN_TOL:
-                return q
-        verts.append(p)
-        return p
-    lines = []
-    for e in doc.blocks.get(name):
-        try:
-            pts = [(round(v.x, 3), round(v.y, 3)) for v in dpath.make_path(e).flattening(0.01)]
-        except Exception:
-            continue
-        if len(pts) > 1:
-            pts[0], pts[-1] = snap(pts[0]), snap(pts[-1])
-            lines.append(LineString(pts))
-    polys = sorted(polygonize(unary_union(lines)), key=lambda p: -p.area)
-    if not polys:
-        raise SystemExit('Bloc %s : contour non ferme' % name)
-    return Polygon(polys[0].exterior)
-
-
-def load_library(libdir, types=None):
-    doc = ezdxf.readfile(os.path.join(libdir, 'specimens.dxf'))
-    items = []
-    with open(os.path.join(libdir, 'index.csv')) as f:
-        for row in csv.DictReader(f):
-            if types and not any(row['type'].startswith(t) for t in types):
-                continue
-            items.append(Item(row, block_polygon(doc, row['block'])))
-    return doc, items
 
 
 # ============================================================
@@ -181,19 +121,6 @@ class Raster:
             win = sheet.occ[a0:a1, b0:b1]
             np.maximum(win, sub[a0 - R0:a1 - R0, b0 - C0:b1 - C0], out=win)
             sheet.top_row = max(sheet.top_row, a1)
-
-    def blocked_by(self, poly, shape):
-        """Cases interdites autour d'une piece posee : centre a moins de gap + demi-diagonale."""
-        g = poly.buffer(self.gap + self.hd, join_style=1)
-        b = g.bounds
-        c0 = max(0, int(math.floor(b[0] / self.res)))
-        r0 = max(0, int(math.floor(b[1] / self.res)))
-        c1 = min(shape[1], int(math.ceil(b[2] / self.res)) + 1)
-        r1 = min(shape[0], int(math.ceil(b[3] / self.res)) + 1)
-        if c1 <= c0 or r1 <= r0:
-            return None
-        sub = self._cells(g, c0 * self.res, r0 * self.res, c1 - c0, r1 - r0)
-        return (r0, r1, c0, c1), sub
 
 
 class Sheet:
@@ -426,91 +353,3 @@ def write_dxf(path, sheets, libdoc, W, H):
     doc.saveas(path)
     return rows
 
-
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('library')
-    ap.add_argument('--sheet', default='500x600', help='largeur x hauteur de la tole en mm (hauteur = sens de laminage)')
-    ap.add_argument('--gap', type=float, default=5.0)
-    ap.add_argument('--margin', type=float, default=5.0)
-    ap.add_argument('--res', type=float, default=0.5, help='resolution de la grille de placement (mm)')
-    ap.add_argument('--anneal', type=int, default=0, help='iterations de recuit simule (0 = aucune)')
-    ap.add_argument('--max-sheets', type=int, default=20)
-    ap.add_argument('--types', nargs='*', help='ne placer que ces types (prefixes, ex. UT NT CH)')
-    ap.add_argument('--name', default=None)
-    ap.add_argument('--seed', type=int, default=1)
-    ap.add_argument('--procs', type=int, default=None, help='recuits en parallele (defaut : coeurs du PC - 1)')
-    ap.add_argument('--final', action='store_true', help='ecrire dans output/ (suivi par git) au lieu de runs/')
-    args = ap.parse_args()
-    W, H = (float(v) for v in args.sheet.lower().split('x'))
-    name = args.name or '%s_%gx%g' % (os.path.basename(args.library.rstrip('/\\')), W, H)
-    out = os.path.join(OUT_ROOT if args.final else RUNS_ROOT, name)
-    os.makedirs(out, exist_ok=True)
-    libdoc, items = load_library(args.library, args.types)
-    print('%d eprouvettes a placer sur des toles de %g x %g mm (ecart %g mm, marge %g mm)'
-          % (len(items), W, H, args.gap, args.margin))
-
-    t0 = time.time()
-    raster = Raster(items, args.res, args.gap)
-    orders = initial_orders(items)
-    scores = score_orders(orders, items, raster, W, H, args.margin, args.max_sheets, args.procs)
-    results = {}
-    for nm, order in orders.items():
-        results[nm] = (scores[nm], order)
-        print('   ordre %-7s : %s tole(s), hauteur derniere tole %s mm' % (nm, *scores[nm][:2]))
-    best_name = min(results, key=lambda k: results[k][0])
-    best_s, best_order = results[best_name]
-    print('   (%.1f s par placement complet)' % ((time.time() - t0) / len(results)))
-    if args.anneal:
-        print('Recuit simule (%d iterations) depuis l\'ordre "%s"' % (args.anneal, best_name))
-        best_order, best_s = anneal_parallel(best_order, items, raster, W, H, args.margin, args.max_sheets, args.anneal,
-                                             args.seed, args.procs)
-    sheets = place_all(best_order, items, raster, W, H, args.margin, args.max_sheets)
-    fs = score(sheets)
-    print('Placement final : %d tole(s), hauteur derniere tole %.1f mm' % fs[:2])
-    for k, s in enumerate(sheets):
-        print('   tole %d : %d pieces, hauteur occupee %.1f mm, surface utilisee %.0f %%'
-              % (k + 1, len(s.placed), s.top(), 100 * sum(p[4].area for p in s.placed) / (W * H)))
-
-    dxf = os.path.join(out, '%s.dxf' % name)
-    rows = write_dxf(dxf, sheets, libdoc, W, H)
-    with open(os.path.join(out, 'placement.csv'), 'w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        w.writeheader()
-        w.writerows(rows)
-    # verification exacte (sans grille)
-    R = check_sheet.analyse(dxf, args.gap, args.gap, args.margin)
-    check_sheet.write_outputs(R, os.path.join(out, 'check'),
-                              argparse.Namespace(min_gap=args.gap, warn_gap=args.gap, min_margin=args.margin))
-    for c in R['checks']:
-        print('   %-24s %-8s %s' % c)
-    # controle d'orientation : chaque piece du DXF a-t-elle le type et l'orientation / laminage de son bloc ?
-    bad = orientation_check(R, rows, items)
-    print('   %-24s %-8s %s' % ('Orientation / RD', 'OK' if not bad else 'ERROR',
-                                '%d of %d specimens keep their type and their angle to the rolling direction'
-                                % (len(rows) - len(bad), len(rows))))
-    for b in bad:
-        print('      ' + b)
-    print('Plan : %s' % dxf)
-
-
-def orientation_check(R, rows, items):
-    from shapely.geometry import Point
-    by = {it.block: it for it in items}
-    bad = []
-    for r in rows:
-        pt = Point(r['insert_x_mm'], r['insert_y_mm'])          # le centre canonique (0, 0) tombe sur l'insertion
-        p = min(R['pieces'], key=lambda q: Point(q.center).distance(pt))
-        it = by[r['block']]
-        if it.kind.startswith('DISC'):
-            ok = p.kind == it.kind
-        else:
-            ok = p.kind == it.kind and abs(sl.fold_rd(p.axis_deg) - float(it.orient)) < 0.5
-        if not ok:
-            bad.append('%s : place en %s a %.1f deg du laminage (attendu %s a %s deg)'
-                       % (r['block'], p.kind, sl.fold_rd(p.axis_deg), it.kind, it.orient))
-    return bad
-
-
-if __name__ == '__main__':
-    main()

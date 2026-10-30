@@ -1,27 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-make_templates.py -- Gabarits d'eprouvettes SANS code, a partir du catalogue du labo (ou d'un plan).
+make_templates.py -- Gabarits d'eprouvettes SANS code, a partir du catalogue du labo.
 
-Lancement (depuis la racine du repo) :
+Lancement (depuis la racine du repo ; une fois par nouveau catalogue) :
     py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf CTLG_261029
-    py cutting-sheets/scripts/make_templates.py cutting-sheets/library/CT_600x500_v20260901 CT_v20260901   (ancien)
 
-Deux sources possibles :
-    - CATALOGUE du labo (fichier .dxf) : un bloc par eprouvette, nomme <famille>_<nn> (ex. CTLG_UTUT_21) ; le type
-      est le NOM DU BLOC (famille), rien n'est deduit de la forme ; le modele de chaque famille est le bloc _00 ;
-    - bibliotheque extraite d'un plan sans noms (dossier, extract_library.py) : le type est reconnu d'apres la forme
-      (sheetlib.classify) ; utilise pour le plan CT avant l'arrivee du catalogue.
+Le catalogue a un bloc par eprouvette, nomme <famille>_<nn> (ex. CTLG_UTUT_21 : angle 2 x 15 = 30 deg, index 1).
+Le type d'une eprouvette est le NOM DE SA FAMILLE (lu dans le fichier) ; le modele de chaque famille est son bloc _00.
 
 Pour chaque type d'eprouvette :
-    1. une eprouvette du plan (repare) sert de modele ; son code est lu (notchcode.read_piece) ;
+    1. le bloc _00 sert de modele ; son code est lu (notchcode.read_piece) ;
     2. le gabarit = ses traits, SANS les 19 traits du code ni le trait Q3 qui suit le code (sa longueur depend du
        code : le code fait 12 ou 13 mm) ; on garde la position du code et le point ou ce trait se termine ;
     3. repere du gabarit : centre du rectangle englobant minimal a l'origine, code en haut (+Y) ;
        angle de l'eprouvette = direction du code depuis le sens de laminage (+Y).
 
-Validation : CHAQUE eprouvette de la source est regeneree a partir du gabarit et de son code lu (angle, index),
-puis comparee a l'originale : traits du code (ecart max) et contour complet. Pour un catalogue, on verifie aussi que
-le code lu est le numero du bloc (CTLG_UTUT_21 -> angle 2 x 15 = 30 deg, index 1).
+Validation : CHAQUE eprouvette du catalogue est regeneree a partir du gabarit et de son code lu (angle, index),
+puis comparee a l'originale : traits du code (ecart max) et contour complet ; le code lu doit aussi etre le numero
+du bloc (CTLG_UTUT_21 -> angle 2 x 15 = 30 deg, index 1).
 
 Sorties dans cutting-sheets/templates/<nom>/ : templates.dxf (un bloc T__<type> par type), templates.csv,
 validation.csv, templates.png, README.md.
@@ -40,7 +36,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt          # noqa: E402
 from shapely import affinity             # noqa: E402
-from shapely.geometry import LineString, Point, Polygon   # noqa: E402
+from shapely.geometry import LineString, Polygon   # noqa: E402
 from shapely.ops import polygonize, unary_union          # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,21 +48,12 @@ ROOT = os.path.abspath(os.path.join(HERE, '..', 'templates'))
 LAYERS = {3: 'Q3_NORMAL', 4: 'Q4_MEDIUM', 5: 'Q5_HIGH'}
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#444444'}
 # noms courts utilisables dans le fichier de commande
-ALIASES = {'UT_L106': 'UT', 'NT_R20.00_L106': 'NT20', 'NT_R6.67_L106': 'NT6.67', 'CH_D4.8_L106': 'CH',
-           'DISC_0H': 'DISC0', 'DISC_2H': 'DISC2', 'STRIP_140x30': 'STRIP'}
-
-
 # catalogue du labo : famille (nom de bloc sans _nn) -> noms utilisables dans la commande (le premier est affiche)
 CATALOGUE_ALIASES = {
     'CTLG_UTUT': ['UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'], 'CTLG_CHCH': ['CHCH', 'CH'],
     'CTST_UTST': ['UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
     'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP']}
 BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')
-
-
-def family(kind):
-    """Les disques a 2 trous (00 / 45 / 90) sont un seul gabarit tourne : DISC_2H."""
-    return 'DISC_2H' if kind.startswith('DISC_2H') else kind
 
 
 # ============================================================
@@ -113,7 +100,7 @@ def apply(m, pt):
     return (v.x, v.y)
 
 
-def build_template(p, alias, kind=None):
+def build_template(p, alias, kind):
     code = nc.read_piece(p)
     m, ang, c = piece_transform(p, code)
     code_ids = set(id(s) for s in p.code['segs']) if code else set()
@@ -140,7 +127,7 @@ def build_template(p, alias, kind=None):
         e = s.entity.copy()
         e.transform(m)
         ents.append((e, s.color))
-    T = Template(kind or family(p.kind), alias, ents, origin, tail_end[0] if tail else None, tail.color if tail else 3,
+    T = Template(kind, alias, ents, origin, tail_end[0] if tail else None, tail.color if tail else 3,
                  L=p.L, W=p.W, holes=len(p.poly.interiors), depth=code['depth_mm'] if code else nc.DEPTH)
     if code:
         T.code_origin = (round(origin[0], 4), round(origin[1], 4))
@@ -304,33 +291,23 @@ def main():
     lib, name = sys.argv[1], sys.argv[2]
     out = os.path.join(ROOT, name)
     os.makedirs(out, exist_ok=True)
-    catalogue = os.path.isfile(lib) and lib.lower().endswith('.dxf')
-    d = sl.Drawing(lib if catalogue else os.path.join(lib, 'repaired_source.dxf'))
-    pcs = sl.pieces(d)
+    if not lib.lower().endswith('.dxf'):
+        sys.exit('Il faut le fichier .dxf du catalogue du labo.')
+    pcs = sl.pieces(sl.Drawing(lib))
     by = collections.defaultdict(list)
-    for p in pcs:
-        if catalogue:                          # type = nom du bloc (famille), numero = code attendu
-            src = collections.Counter(s.source for s in p.segs).most_common(1)[0][0]
-            m = BLOCK_RE.match(src)
-            p.block, p.block_num = src, (int(m.group(2)) if m else None)
-            by[m.group(1) if m else src].append(p)
-        else:                                  # plan sans noms : type d'apres la forme
-            p.block, p.block_num = '', None
-            by[family(p.kind)].append(p)
+    for p in pcs:                              # type = nom du bloc (famille), numero = code attendu
+        src = collections.Counter(s.source for s in p.segs).most_common(1)[0][0]
+        m = BLOCK_RE.match(src)
+        p.block, p.block_num = src, (int(m.group(2)) if m else None)
+        by[m.group(1) if m else src].append(p)
     temps = []
     for kind in sorted(by):
-        if catalogue:
-            group = sorted(by[kind], key=lambda q: (q.block_num is None, q.block_num))
-            model = group[0]                   # bloc _00 (angle 0, index 0)
-            al = CATALOGUE_ALIASES.get(kind) or [kind.split('_', 1)[1] if '_' in kind else kind]
-            T = build_template(model, al[0], kind)
-            T.aliases = al
-            T.source = 'block %s of %s' % (model.block, os.path.basename(lib))
-        else:
-            group = sorted(by[kind], key=lambda q: (-q.center[1], q.center[0]))
-            model = next((q for q in group if q.code), group[0])
-            T = build_template(model, ALIASES.get(kind, kind))
-            T.source = 'piece at (%.1f, %.1f) of %s' % (model.center[0], model.center[1], os.path.basename(lib.rstrip('/\\')))
+        group = sorted(by[kind], key=lambda q: (q.block_num is None, q.block_num))
+        model = group[0]                       # bloc _00 (angle 0, index 0)
+        al = CATALOGUE_ALIASES.get(kind) or [kind.split('_', 1)[1] if '_' in kind else kind]
+        T = build_template(model, al[0], kind)
+        T.aliases = al
+        T.source = 'block %s of %s' % (model.block, os.path.basename(lib))
         codes = [nc.read_piece(q) for q in group if q.code]
         T.angles = sorted(set(c['angle_deg'] for c in codes))
         temps.append((T, group))
@@ -360,13 +337,13 @@ def main():
         odev = max(r['outline_max_dev_mm'] for r in rr)
         nb = sum(1 for r in rr if r.get('code_is_block_number') == 'yes')
         print('  %-11s %-9s %3d pieces  code : ecart max %.4f mm%s   contour : ecart max %.4f mm, difference max %.4f mm2'
-              % (T.kind, T.alias, len(rr), dev, ('  (= no de bloc : %d/%d)' % (nb, len(rr))) if catalogue else '',
+              % (T.kind, T.alias, len(rr), dev, '  (= no de bloc : %d/%d)' % (nb, len(rr)),
                  odev, dif))
     print('Gabarits : %s' % out)
 
 
 def write_readme(out, lib, name, temps, rows):
-    catalogue = lib.lower().endswith('.dxf')
+    catalogue = True
     L = ['# Specimen templates `%s`' % name, '',
          '*Generated by `cutting-sheets/scripts/make_templates.py` from %s `%s`.*'
          % ('the lab catalogue' if catalogue else 'the library', os.path.basename(lib.rstrip('/\\'))), '',
