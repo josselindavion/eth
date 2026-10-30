@@ -20,7 +20,15 @@ Relevées sur les plans reçus le 29/10/2026 (`input/`).
 | *Mikrosteg* | pas dans le DXF (confirmé par les encadrants), seulement sur la notice (carrés rouges) | micro-attache, « exactement au milieu » d'un côté sans importance |
 | Textes | seulement pour information | « bitte nicht gravieren » : à ne pas graver |
 
-### Le code à encoches (décodé le 30/10/2026, vérifié sur tous les plans)
+### Le code à encoches (décodé le 30/10/2026, vérifié sur tous les plans, confirmé par le document du labo)
+
+C'est un code-barres **« Interleaved 2 of 5 »** de 14 mm, qui porte deux chiffres :
+- les pleins (« black bars ») donnent l'**angle** ;
+- les encoches (« white bars ») donnent l'**index**.
+
+La dernière barre noire est implicite : c'est le bord de la tête. On ne voit donc que 9 éléments, soit 12 ou 13 mm.
+L'identifiant complet de l'éprouvette (lot, géométrie, angle, index…) n'est pas découpé ; il sert au QR code du
+labo.
 
 Lecture : code en haut, dessin vu de dessus, de gauche à droite. Le coin chanfreiné est alors à gauche ; s'il est à
 droite, on regarde l'autre face.
