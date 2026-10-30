@@ -47,7 +47,7 @@ import notchcode as nc                                # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
 BASE = os.path.abspath(os.path.join(HERE, '..'))       # dossier cutting-sheets
-DEFAULT_TEMPLATES = os.path.join(BASE, 'templates', 'CT_v20260901')
+DEFAULT_TEMPLATES = os.path.join(BASE, 'templates', 'CTLG_261029')     # catalogue du labo
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#222222'}
 
 
@@ -105,6 +105,10 @@ def expand(cfg, temps):
             errors.append('%s : type inconnu ; types disponibles : %s'
                           % (where, ', '.join(sorted(set(t.alias for t in temps.values())))))
             continue
+        if T.has_code and T.angles and float(line['angle']) not in T.angles:
+            cfg.setdefault('avertissements', []).append(
+                '%s : %s a %g deg n\'existe pas dans le catalogue (angles du catalogue : %s) ; il est quand meme genere'
+                % (where, T.alias, float(line['angle']), ', '.join('%g' % a for a in T.angles)))
         ang = float(line['angle'])
         n = int(line.get('nombre', 1))
         if not 0 <= ang < 180:
@@ -115,12 +119,12 @@ def expand(cfg, temps):
             errors.append('%s : angle %g deg non codable (codables : 0, 15, ..., 135 deg)' % (where, ang))
             continue
         key = (T.kind, ang)
-        idx = int(line['premier_index']) if 'premier_index' in line else nxt.get(key, 1)
+        idx = int(line['premier_index']) if 'premier_index' in line else nxt.get(key, 0)     # 0-9, comme le catalogue
         for j in range(n):
             i = idx + j
             if T.has_code and not 0 <= i <= 9:
-                errors.append('%s : index %d impossible (un seul chiffre, 0-9) ; maximum 9 eprouvettes par type et '
-                              'par angle si on commence a 1' % (where, i))
+                errors.append('%s : index %d impossible (un seul chiffre, 0-9) ; maximum 10 eprouvettes par type et '
+                              'par angle' % (where, i))
                 break
             if (T.kind, ang, i) in used:
                 errors.append('%s : %s a %g deg index %d deja commande (%s) : deux eprouvettes auraient le meme code'
@@ -177,17 +181,29 @@ def make_items(specs):
 # VERIFICATION DU CODE DANS LE DXF FINAL
 # ============================================================
 def code_check(R, rows, specs_by_block):
+    """Chaque eprouvette du DXF final, relue sans rien supposer : son contour doit etre celui du gabarit (avec son
+    code) tourne de l'angle de pose, son code lu doit etre celui commande, et la direction du code l'angle commande."""
+    from shapely import affinity
     from shapely.geometry import Point
-    bad = []
+    bad, cache = [], {}
     for r in rows:
         s = specs_by_block[r['block']]
         T = s['T']
         pt = Point(r['insert_x_mm'], r['insert_y_mm'])
         p = min(R['pieces'], key=lambda q: Point(q.center).distance(pt))
-        fam = mt.family(p.kind)
         msg = []
-        if fam != T.kind:
-            msg.append('type lu %s' % p.kind)
+        key = (T.kind, s['a_digit'], s['index'])
+        if key not in cache:
+            cache[key] = mt.template_polygon(T, s['a_digit'], s['index']) if T.has_code else mt.template_polygon(T)
+        want = affinity.translate(affinity.rotate(cache[key], r['rotation_deg'], origin=(0, 0)),
+                                  r['insert_x_mm'], r['insert_y_mm'])
+        if len(want.interiors) != len(p.poly.interiors):
+            msg.append('%d trou(s) au lieu de %d' % (len(p.poly.interiors), len(want.interiors)))
+        else:
+            rings = lambda g: [g.exterior] + list(g.interiors)                    # noqa: E731
+            dev = max(min(a.hausdorff_distance(b) for b in rings(p.poly)) for a in rings(want))
+            if dev > 0.02:
+                msg.append('contour different du gabarit (ecart %.3f mm)' % dev)
         if T.has_code:
             try:
                 c = nc.read_piece(p)
@@ -203,19 +219,10 @@ def code_check(R, rows, specs_by_block):
                 if min(d, 180.0 - d) > 0.5:
                     msg.append('direction %.1f deg' % c['direction_deg'])
                 r['code_read'] = '%d%d' % (c['angle_digit'], c['index'])
-            if T.kind == 'DISC_2H':
-                want = 'DISC_2H_%02d' % (int(round(sl.fold_rd(s['angle'] + 90.0) / 15.0)) * 15)
-                if p.kind != want:
-                    msg.append('trous : %s au lieu de %s' % (p.kind, want))
-        else:
-            d = sl.fold_rd(p.axis_deg) - sl.fold_rd(s['angle'])
-            if abs(d) > 0.5:
-                msg.append('axe a %.1f deg du laminage' % sl.fold_rd(p.axis_deg))
         r['piece'] = p
         if msg:
             bad.append('%s : %s' % (r['block'], ', '.join(msg)))
     return bad
-
 
 # ============================================================
 # REGISTRE
@@ -352,6 +359,8 @@ def run(order_path, anneal=None, procs=None, final=False):
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
         idx = [s['index'] for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
         print('   %-7s %5g deg  x %d   index %s' % (alias, ang, grp, ', '.join(map(str, idx))))
+    for w in cfg.get('avertissements', []):
+        print('   AVERTISSEMENT ' + w)
     specs_by_block = {s['block']: s for s in specs}
     libdoc = build_specimens(specs, os.path.join(out, 'specimens.dxf'))
     items = make_items(specs)
@@ -388,9 +397,9 @@ def run(order_path, anneal=None, procs=None, final=False):
     check_sheet.write_outputs(R, os.path.join(out, 'check'), argparse.Namespace(
         min_gap=cfg['ecart'], warn_gap=cfg['ecart'], min_margin=cfg['marge']))
     bad = code_check(R, rows, specs_by_block)
-    checks = list(R['checks']) + [('Notch codes / angles', 'OK' if not bad else 'ERROR',
-                                   '%d of %d specimens: code read in the DXF = code ordered, direction = angle ordered'
-                                   % (len(rows) - len(bad), len(rows)))]
+    checks = list(R['checks']) + [('Specimens vs order', 'OK' if not bad else 'ERROR',
+                                   '%d of %d specimens: outline = template, code read in the DXF = code ordered, '
+                                   'direction = angle ordered' % (len(rows) - len(bad), len(rows)))]
     print('Verification du plan :')
     for c in checks:
         print('   %-24s %-8s %s' % c)

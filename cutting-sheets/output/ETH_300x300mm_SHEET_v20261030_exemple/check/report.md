@@ -12,26 +12,27 @@
 | Sheets | OK | 1 sheet frame(s): 300 × 300 mm |
 | Closed contours | OK | all cutting contours are closed |
 | Duplicate lines | OK | none |
-| Colours = EDM quality | OK | cutting lines use only colours 3 / 4 / 5 (Q3 / Q4 / Q5): {3: 780, 4: 176, 5: 274} |
+| Colours = EDM quality | OK | cutting lines use only colours 3 / 4 / 5 (Q3 / Q4 / Q5): {3: 924, 4: 170, 5: 370} |
 | Overlaps | OK | none |
-| Gap between pieces | OK | smallest gap 5.43 mm; 0 pair(s) below 5.0 mm, 0 more below 5.0 mm |
+| Gap between pieces | OK | smallest gap 5.49 mm; 0 pair(s) below 5.0 mm, 0 more below 5.0 mm |
 | Margin to sheet edge | OK | smallest margin 5.1 mm (limit 5.0 mm) |
-| ID codes | OK | 12 of 12 specimens carry a notch code; 12 distinct codes |
+| ID codes | OK | 14 of 14 specimens carry a notch code; 14 distinct codes |
 
 ## Specimens found
 
 | Type (provisional name) | Orientation to rolling direction × number | Total |
 |---|---|---|
-| CH_D4.8_L106 | 0° × 2 | 2 |
 | DISC_2H_00 | × 2 | 2 |
+| NT_R2.00_L81 | 0° × 2 | 2 |
 | NT_R20.00_L106 | 45° × 3 | 3 |
 | UT_L106 | 30° × 5 | 5 |
+| UT_L81 | 45° × 2 | 2 |
 
 *Type names are derived from the geometry: UT = uniaxial tension, NT_R = notched tension with notch radius R, CH_D = central hole of diameter D, DISC_nH = disc with n holes (2H_xx: axis of the holes at xx° to the rolling direction), STRIP / BLANK = rectangle without a gauge section (BLANK: with a notch code); L = length in mm. Orientation: angle between the specimen axis and the rolling direction (drawing +Y), folded into 0–90° (orthotropic sheet). Per-piece list: `pieces.csv`.*
 
 | Sheet | Size | Pieces | Area used | Smallest margin |
 |---|---|---|---|---|
-| 1 | 300 × 300 mm | 12 | 25 % | 5.1 mm |
+| 1 | 300 × 300 mm | 14 | 27 % | 5.1 mm |
 
 ![Preview](preview.png)
 

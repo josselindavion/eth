@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-make_templates.py -- Gabarits d'eprouvettes SANS code, a partir d'une bibliotheque extraite d'un plan.
+make_templates.py -- Gabarits d'eprouvettes SANS code, a partir du catalogue du labo (ou d'un plan).
 
 Lancement (depuis la racine du repo) :
-    py cutting-sheets/scripts/make_templates.py cutting-sheets/library/CT_600x500_v20260901 CT_v20260901
+    py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf CTLG_261029
+    py cutting-sheets/scripts/make_templates.py cutting-sheets/library/CT_600x500_v20260901 CT_v20260901   (ancien)
+
+Deux sources possibles :
+    - CATALOGUE du labo (fichier .dxf) : un bloc par eprouvette, nomme <famille>_<nn> (ex. CTLG_UTUT_21) ; le type
+      est le NOM DU BLOC (famille), rien n'est deduit de la forme ; le modele de chaque famille est le bloc _00 ;
+    - bibliotheque extraite d'un plan sans noms (dossier, extract_library.py) : le type est reconnu d'apres la forme
+      (sheetlib.classify) ; utilise pour le plan CT avant l'arrivee du catalogue.
 
 Pour chaque type d'eprouvette :
     1. une eprouvette du plan (repare) sert de modele ; son code est lu (notchcode.read_piece) ;
@@ -13,8 +20,9 @@ Pour chaque type d'eprouvette :
        angle de l'eprouvette = direction du code depuis le sens de laminage (+Y) ;
     4. Mikrosteg (pour la notice seulement) : milieu du plus long trait droit Q3 du contour, loin du code.
 
-Validation : CHAQUE eprouvette codee du plan est regeneree a partir du gabarit et de son code lu (angle, index),
-puis comparee a l'originale : traits du code (ecart max) et contour complet (surface de difference).
+Validation : CHAQUE eprouvette de la source est regeneree a partir du gabarit et de son code lu (angle, index),
+puis comparee a l'originale : traits du code (ecart max) et contour complet. Pour un catalogue, on verifie aussi que
+le code lu est le numero du bloc (CTLG_UTUT_21 -> angle 2 x 15 = 30 deg, index 1).
 
 Sorties dans cutting-sheets/templates/<nom>/ : templates.dxf (un bloc T__<type> par type), templates.csv,
 validation.csv, templates.png, README.md.
@@ -23,6 +31,7 @@ import collections
 import csv
 import math
 import os
+import re
 import sys
 
 import ezdxf
@@ -48,6 +57,14 @@ ALIASES = {'UT_L106': 'UT', 'NT_R20.00_L106': 'NT20', 'NT_R6.67_L106': 'NT6.67',
            'DISC_0H': 'DISC0', 'DISC_2H': 'DISC2', 'STRIP_140x30': 'STRIP'}
 
 
+# catalogue du labo : famille (nom de bloc sans _nn) -> noms utilisables dans la commande (le premier est affiche)
+CATALOGUE_ALIASES = {
+    'CTLG_UTUT': ['UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'], 'CTLG_CHCH': ['CHCH', 'CH'],
+    'CTST_UTST': ['UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
+    'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP']}
+BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')
+
+
 def family(kind):
     """Les disques a 2 trous (00 / 45 / 90) sont un seul gabarit tourne : DISC_2H."""
     return 'DISC_2H' if kind.startswith('DISC_2H') else kind
@@ -60,8 +77,10 @@ class Template:
     """Gabarit d'un type : entites (repere du gabarit), position du code, fin du trait qui suit le code."""
 
     def __init__(self, kind, alias, ents, code_origin=None, tail_end_x=None, tail_color=3, mikrosteg=None,
-                 L=0.0, W=0.0, holes=0, depth=nc.DEPTH, source=''):
+                 L=0.0, W=0.0, holes=0, depth=nc.DEPTH, source='', aliases=None, angles=None):
         self.kind, self.alias, self.ents = kind, alias, ents         # ents : liste (entite ezdxf, couleur)
+        self.aliases = aliases or [alias]                            # noms acceptes dans la commande
+        self.angles = angles or []                                   # angles presents dans le catalogue (info)
         self.code_origin, self.tail_end_x, self.tail_color = code_origin, tail_end_x, tail_color
         self.mikrosteg, self.L, self.W, self.holes, self.depth, self.source = mikrosteg, L, W, holes, depth, source
 
@@ -95,7 +114,7 @@ def apply(m, pt):
     return (v.x, v.y)
 
 
-def build_template(p, alias):
+def build_template(p, alias, kind=None):
     code = nc.read_piece(p)
     m, ang, c = piece_transform(p, code)
     code_ids = set(id(s) for s in p.code['segs']) if code else set()
@@ -122,7 +141,7 @@ def build_template(p, alias):
         e = s.entity.copy()
         e.transform(m)
         ents.append((e, s.color))
-    T = Template(family(p.kind), alias, ents, origin, tail_end[0] if tail else None, tail.color if tail else 3,
+    T = Template(kind or family(p.kind), alias, ents, origin, tail_end[0] if tail else None, tail.color if tail else 3,
                  L=p.L, W=p.W, holes=len(p.poly.interiors), depth=code['depth_mm'] if code else nc.DEPTH)
     if code:
         T.code_origin = (round(origin[0], 4), round(origin[1], 4))
@@ -194,7 +213,7 @@ def template_polygon(T, a_digit=None, index=None, closed=False):
 # ============================================================
 # ECRITURE / LECTURE
 # ============================================================
-FIELDS = ['type', 'alias', 'block', 'has_code', 'code_x0', 'code_y0', 'code_depth', 'tail_end_x', 'tail_color',
+FIELDS = ['type', 'alias', 'aliases', 'catalogue_angles', 'block', 'has_code', 'code_x0', 'code_y0', 'code_depth', 'tail_end_x', 'tail_color',
           'mikrosteg_x', 'mikrosteg_y', 'L_mm', 'W_mm', 'holes', 'source_piece']
 
 
@@ -210,7 +229,9 @@ def write_templates(out, temps):
             x = e.copy()
             x.dxf.layer, x.dxf.color = LAYERS.get(c, '0'), c
             blk.add_foreign_entity(x, copy=False)
-        rows.append({'type': T.kind, 'alias': T.alias, 'block': 'T__' + T.kind, 'has_code': int(T.has_code),
+        rows.append({'type': T.kind, 'alias': T.alias, 'aliases': ';'.join(T.aliases),
+                     'catalogue_angles': ';'.join('%g' % a for a in T.angles),
+                     'block': 'T__' + T.kind, 'has_code': int(T.has_code),
                      'code_x0': T.code_origin[0] if T.has_code else '', 'code_y0': T.code_origin[1] if T.has_code else '',
                      'code_depth': T.depth if T.has_code else '', 'tail_end_x': T.tail_end_x if T.has_code else '',
                      'tail_color': T.tail_color if T.has_code else '',
@@ -241,9 +262,13 @@ def load_templates(tdir):
                          float(r['tail_end_x']) if has else None, int(r['tail_color']) if has else 3,
                          (float(r['mikrosteg_x']), float(r['mikrosteg_y'])) if r['mikrosteg_x'] else None,
                          float(r['L_mm']), float(r['W_mm']), int(r['holes']),
-                         float(r['code_depth']) if has else nc.DEPTH, r['source_piece'])
+                         float(r['code_depth']) if has else nc.DEPTH, r['source_piece'],
+                         aliases=(r.get('aliases') or r['alias']).split(';'),
+                         angles=[float(a) for a in (r.get('catalogue_angles') or '').split(';') if a])
             out[T.kind] = T
-            out[T.alias.upper()] = T
+            out[T.kind.upper()] = T
+            for a in T.aliases:
+                out[a.upper()] = T
     return out
 
 
@@ -292,7 +317,7 @@ def fig_templates(temps, path):
             ax.plot(*T.mikrosteg, 's', ms=5, color='red')
         ax.set_aspect('equal')
         ax.axis('off')
-        ax.set_title('%s\n(%s)' % (T.alias, T.kind), fontsize=7)
+        ax.set_title('%s\n(%s)' % (T.alias, T.kind), fontsize=6.5)
     fig.suptitle('Templates in their own frame (code up = +Y), shown with code "angle 0°, index 1". '
                  'Orange dot: code origin. Red square: proposed Mikrosteg.', fontsize=8)
     fig.tight_layout()
@@ -306,17 +331,35 @@ def main():
     lib, name = sys.argv[1], sys.argv[2]
     out = os.path.join(ROOT, name)
     os.makedirs(out, exist_ok=True)
-    d = sl.Drawing(os.path.join(lib, 'repaired_source.dxf'))
+    catalogue = os.path.isfile(lib) and lib.lower().endswith('.dxf')
+    d = sl.Drawing(lib if catalogue else os.path.join(lib, 'repaired_source.dxf'))
     pcs = sl.pieces(d)
     by = collections.defaultdict(list)
     for p in pcs:
-        by[family(p.kind)].append(p)
+        if catalogue:                          # type = nom du bloc (famille), numero = code attendu
+            src = collections.Counter(s.source for s in p.segs).most_common(1)[0][0]
+            m = BLOCK_RE.match(src)
+            p.block, p.block_num = src, (int(m.group(2)) if m else None)
+            by[m.group(1) if m else src].append(p)
+        else:                                  # plan sans noms : type d'apres la forme
+            p.block, p.block_num = '', None
+            by[family(p.kind)].append(p)
     temps = []
     for kind in sorted(by):
-        group = sorted(by[kind], key=lambda q: (-q.center[1], q.center[0]))
-        model = next((q for q in group if q.code), group[0])
-        T = build_template(model, ALIASES.get(kind, kind))
-        T.source = 'piece at (%.1f, %.1f) of %s' % (model.center[0], model.center[1], os.path.basename(lib.rstrip('/\\')))
+        if catalogue:
+            group = sorted(by[kind], key=lambda q: (q.block_num is None, q.block_num))
+            model = group[0]                   # bloc _00 (angle 0, index 0)
+            al = CATALOGUE_ALIASES.get(kind) or [kind.split('_', 1)[1] if '_' in kind else kind]
+            T = build_template(model, al[0], kind)
+            T.aliases = al
+            T.source = 'block %s of %s' % (model.block, os.path.basename(lib))
+        else:
+            group = sorted(by[kind], key=lambda q: (-q.center[1], q.center[0]))
+            model = next((q for q in group if q.code), group[0])
+            T = build_template(model, ALIASES.get(kind, kind))
+            T.source = 'piece at (%.1f, %.1f) of %s' % (model.center[0], model.center[1], os.path.basename(lib.rstrip('/\\')))
+        codes = [nc.read_piece(q) for q in group if q.code]
+        T.angles = sorted(set(c['angle_deg'] for c in codes))
         temps.append((T, group))
     write_templates(out, [T for T, _ in temps])
     # relecture depuis le disque : la validation porte sur les gabarits ecrits
@@ -326,9 +369,11 @@ def main():
         T = loaded[T0.kind]
         for q in group:
             r = validate(T, q)
-            rows.append(dict(type=T.kind, x_mm=round(q.center[0], 2), y_mm=round(q.center[1], 2), **r))
-    keys = ['type', 'x_mm', 'y_mm', 'direction_deg', 'angle_deg', 'index', 'n_code_lines', 'code_max_dev_mm',
-            'outline_diff_mm2', 'outline_max_dev_mm']
+            if q.block_num is not None and r['angle_deg'] != '':
+                r['code_is_block_number'] = 'yes' if (int(r['angle_deg'] // 15), r['index']) == divmod(q.block_num, 10) else 'NO'
+            rows.append(dict(type=T.kind, block=q.block, x_mm=round(q.center[0], 2), y_mm=round(q.center[1], 2), **r))
+    keys = ['type', 'block', 'x_mm', 'y_mm', 'direction_deg', 'angle_deg', 'index', 'code_is_block_number',
+            'n_code_lines', 'code_max_dev_mm', 'outline_diff_mm2', 'outline_max_dev_mm']
     with open(os.path.join(out, 'validation.csv'), 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=keys)
         w.writeheader()
@@ -340,39 +385,49 @@ def main():
         dev = max((r['code_max_dev_mm'] or 0) for r in rr)
         dif = max(r['outline_diff_mm2'] for r in rr)
         odev = max(r['outline_max_dev_mm'] for r in rr)
-        print('  %-16s %-7s %2d pieces  code : ecart max %.4f mm   contour : ecart max %.4f mm, difference max %.4f mm2'
-              % (T.kind, T.alias, len(rr), dev, odev, dif))
+        nb = sum(1 for r in rr if r.get('code_is_block_number') == 'yes')
+        print('  %-11s %-9s %3d pieces  code : ecart max %.4f mm%s   contour : ecart max %.4f mm, difference max %.4f mm2'
+              % (T.kind, T.alias, len(rr), dev, ('  (= no de bloc : %d/%d)' % (nb, len(rr))) if catalogue else '',
+                 odev, dif))
     print('Gabarits : %s' % out)
 
 
 def write_readme(out, lib, name, temps, rows):
+    catalogue = lib.lower().endswith('.dxf')
     L = ['# Specimen templates `%s`' % name, '',
-         '*Generated by `cutting-sheets/scripts/make_templates.py` from the library `%s`.*'
-         % os.path.basename(lib.rstrip('/\\')), '',
+         '*Generated by `cutting-sheets/scripts/make_templates.py` from %s `%s`.*'
+         % ('the lab catalogue' if catalogue else 'the library', os.path.basename(lib.rstrip('/\\'))), '',
          'One template per specimen type, **without notch code**. The code (angle + index) is added by '
-         '`make_plan.py` for each specimen ordered.', '',
-         '| Type | Alias (order file) | Size (mm) | Holes | Code origin (mm) | End of the line after the code (mm) | '
+         '`make_plan.py` for each specimen ordered.%s' % (
+             ' Types are the block families of the catalogue (block name without its number); the model of each '
+             'type is its block `_00`.' if catalogue else ''), '',
+         '| Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) | '
          'Mikrosteg (proposed, mm) |', '|---|---|---|---|---|---|---|']
     for T in temps:
-        L.append('| %s | `%s` | %.1f × %.1f | %d | %s | %s | %s |' % (
-            T.kind, T.alias, T.L, T.W, T.holes, '(%.3f, %.3f)' % T.code_origin if T.has_code else 'no code',
-            '%.3f' % T.tail_end_x if T.has_code else '–', '(%.1f, %.1f)' % T.mikrosteg if T.mikrosteg else '–'))
+        L.append('| %s | %s | %.1f × %.1f | %d | %s | %s | %s |' % (
+            T.kind, ', '.join('`%s`' % a for a in T.aliases), T.L, T.W, T.holes,
+            ', '.join('%g°' % a for a in T.angles) or '–',
+            '(%.3f, %.3f)' % T.code_origin if T.has_code else 'no code',
+            '(%.1f, %.1f)' % T.mikrosteg if T.mikrosteg else '–'))
     L += ['', 'Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a '
           'specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. '
-          'For `DISC2` the two holes are perpendicular to that direction (angle 90° = holes along the rolling '
-          'direction).', '', '![Templates](templates.png)', '',
+          'For discs with two holes, the holes are perpendicular to that direction (angle 90° = holes along the '
+          'rolling direction).', '', '![Templates](templates.png)', '',
           '## Validation', '',
-          'Every specimen of the source drawing was rebuilt from its template and the code read on it, then compared '
-          'with the original.', '',
-          '| Type | Specimens | Codes read (angle / index) | Code lines: max deviation (mm) | Outline: max deviation (mm) | Outline: max area difference (mm²) |',
-          '|---|---|---|---|---|---|']
+          'Every specimen of the source was rebuilt from its template and the code read on it, then compared with the '
+          'original.%s' % (' For the catalogue, the code read must also be the block number (block `_21` = angle '
+                           '2 × 15° = 30°, index 1).' if catalogue else ''), '',
+          '| Type | Specimens | Indices | Code = block number | Code lines: max deviation (mm) | '
+          'Outline: max deviation (mm) |', '|---|---|---|---|---|---|']
     for T in temps:
         rr = [r for r in rows if r['type'] == T.kind]
-        codes = sorted(set('%g°/%s' % (r['angle_deg'], r['index']) for r in rr if r['angle_deg'] != ''))
-        L.append('| %s | %d | %s | %s | %.4f | %.4f |' % (
-            T.kind, len(rr), ', '.join(codes) or '–',
+        idx = sorted(set(r['index'] for r in rr if r['index'] != ''))
+        nb = sum(1 for r in rr if r.get('code_is_block_number') == 'yes')
+        L.append('| %s | %d | %s | %s | %s | %.4f |' % (
+            T.kind, len(rr), '%d–%d' % (idx[0], idx[-1]) if idx else '–',
+            ('%d / %d' % (nb, len(rr))) if catalogue and T.has_code else '–',
             '%.4f' % max(r['code_max_dev_mm'] for r in rr) if T.has_code else '–',
-            max(r['outline_max_dev_mm'] for r in rr), max(r['outline_diff_mm2'] for r in rr)))
+            max(r['outline_max_dev_mm'] for r in rr)))
     L += ['', 'Details per specimen: `validation.csv`.']
     with open(os.path.join(out, 'README.md'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(L) + '\n')

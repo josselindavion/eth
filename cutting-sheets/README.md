@@ -11,7 +11,7 @@ pour l'atelier, plus la notice qui l'accompagne.
    nom: ETH_300x300mm_SHEET_v20261030_UT30
    tole: 300x300
    eprouvettes:
-     - {type: UT,   angle: 30, nombre: 5}
+     - {type: UTUT, angle: 30, nombre: 5}
      - {type: NT20, angle: 45, nombre: 3}
    ```
 
@@ -33,7 +33,7 @@ pour l'atelier, plus la notice qui l'accompagne.
 | Champ de la commande | Sens | Défaut |
 |---|---|---|
 | `nom` | nom du plan, du dossier de sortie et du DXF | nom du fichier |
-| `gabarits` | dossier des gabarits sans code | `templates/CT_v20260901` |
+| `gabarits` | dossier des gabarits sans code | `templates/CTLG_261029` (catalogue du labo) |
 | `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
 | `ecart`, `marge` | écart entre pièces et marge au bord (mm) | 5, 5 |
 | `recuit` | itérations de recuit simulé par cœur (0 = rapide ; 50–150 pour gagner de la place, environ 2 s chacune pour 63 éprouvettes) | 0 |
@@ -41,22 +41,29 @@ pour l'atelier, plus la notice qui l'accompagne.
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet du registre | – |
 | `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
 
-| Type | Éprouvette |
-|---|---|
-| `UT` | traction uniaxiale |
-| `NT20` / `NT6.67` | traction entaillée, rayon 20 / 6,67 mm |
-| `CH` | trou central Ø 4,8 mm |
-| `DISC0` | disque sans trou |
-| `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) |
-| `STRIP` | bande 140 × 30 mm sans code |
+Types disponibles = familles du **catalogue du labo** (`input/specimen_templates_261029_barcoded.dxf`) :
+
+| Type (nom du labo) | Raccourci | Éprouvette | Angles présents dans le catalogue |
+|---|---|---|---|
+| `UTUT` | `UT` | traction uniaxiale, 106 mm | 0–90° par 15° |
+| `NT20` / `NT06` | `NT6.67` pour NT06 | traction entaillée, rayon 20 / 6,67 mm, 106 mm | 0, 45, 90° |
+| `CHCH` | `CH` | trou central Ø 4,8 mm, 106 mm | 0, 45, 90° |
+| `UTST` | – | traction uniaxiale **courte**, 81 mm | 0–90° par 15° |
+| `SHLD` / `SHMD` / `SHHD` | – | cisaillement **court**, 81 mm ; même contour, seul le coin à côté du code change | 0, 45, 90, 135° |
+| `MNAK_FULL` | `DISC0` | disque sans trou | 0, 45, 90° |
+| `MNAK_HOLE` | `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) | 0, 45, 90° |
+| `TENS_FULL` | `STRIP` | bande 140 × 30 mm sans code | – |
+
+Un angle absent du catalogue (ex. NT20 à 30°) est quand même généré, avec un **avertissement**.
 
 **L'angle** est celui de la tête qui porte le code, compté depuis le sens de laminage (+Y), dans le sens
 trigonométrique. On peut demander 0° à 135° par pas de 15° ; c'est ce chiffre qui est écrit dans le code.
-L'**index** vaut 1, 2, 3… pour chaque type et angle (0 à 9 possibles).
+L'**index** vaut 0, 1, 2… pour chaque type et angle, comme dans le catalogue du labo (0 à 9, donc 10 éprouvettes au
+maximum par type et par angle). `premier_index: 1` fait commencer à 1.
 
 Le programme refuse une commande fausse, avec un message, sans rien écrire :
 - angle non codable (150°, 20°…) ;
-- plus de 9 éprouvettes au même angle ;
+- plus de 10 éprouvettes au même angle ;
 - deux fois le même code sur le même type ;
 - type inconnu.
 
@@ -147,7 +154,7 @@ forcée.
 | `input/` | plans reçus : 4 modèles de 2025 (`.dxf` + notice `.pptx` / `.pdf`) et le plan de travail `ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` |
 | `scripts/` | `sheetlib.py` (lecture commune), `check_sheet.py` (vérification), `extract_library.py` (bibliothèque), `notchcode.py` (code à encoches), `make_templates.py` (gabarits sans code), `nest.py` (moteur de placement), `make_plan.py` (commande → plan complet) |
 | `orders/` | commandes : `exemple.yaml` (modèle à copier), `CT_v20260901.yaml` (programme CT complet, sert de test) |
-| `templates/<nom>/` | gabarits sans code : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
+| `templates/<nom>/` | gabarits sans code (`CTLG_261029` = catalogue du labo, par défaut ; `CT_v20260901` = tirés du plan CT) : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
 | `runs/` | **ignoré par git** : tout ce qu'on lance (plans, rapports) |
 | `output/<plan>/` | plans gardés (`--final`) : `<plan>.dxf`, `notice.pdf`, `registry.csv`, `placement.csv`, `specimens.dxf`, `check/`, `README.md` |
 | `reports/<plan>/` | rapports gardés (`--final`) de la vérification des plans reçus : `report.md`, `preview.png`, `issues.png`, `pieces.csv` |
@@ -250,20 +257,28 @@ Sorties dans `runs/<nom>/` (ou `output/<nom>/` avec `--final`) : `<nom>.dxf`, `p
 Ce script place une bibliothèque telle quelle, codes compris. Pour une **nouvelle** commande, on utilise
 `make_plan.py` (section « Utilisation rapide »), qui appelle le même moteur.
 
-## 4. Créer les gabarits sans code (une fois par bibliothèque)
+## 4. Créer les gabarits sans code (une fois par catalogue)
 
 ```bash
-py cutting-sheets/scripts/make_templates.py cutting-sheets/library/CT_600x500_v20260901 CT_v20260901
+py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf CTLG_261029
 ```
 
-Pour chaque type, une éprouvette du plan sert de modèle. On retire :
+**Source : le catalogue du labo.** Chaque éprouvette y est un bloc nommé `<famille>_<nn>` (ex. `CTLG_UTUT_21`). Le
+type est le **nom de la famille**, lu dans le fichier. Le modèle de chaque type est son bloc `_00` (angle 0°, index 0).
+
+Ancienne source, encore possible : une bibliothèque extraite d'un plan sans noms
+(`make_templates.py cutting-sheets/library/CT_600x500_v20260901 CT_v20260901`). Le type y est reconnu d'après la
+forme, ce qui ne marche pas pour les familles qui ont le même contour (SHLD / SHMD / SHHD).
+
+Pour chaque type, on retire du modèle :
 - les 19 traits du code ;
 - le trait Q3 qui suit le code : sa longueur dépend du code, puisqu'un code fait 12 ou 13 mm.
 
 Le gabarit garde la position de départ du code (−6,000 ; 52,944 mm sur les barreaux) et le point où finit ce trait.
 
-**Validation automatique :** chaque éprouvette du plan est reconstruite à partir de son gabarit et du code lu
-dessus, puis comparée à l'originale (`validation.csv`).
+**Validation automatique :** chaque éprouvette de la source est reconstruite à partir de son gabarit et du code lu
+dessus, puis comparée à l'originale (`validation.csv`). Pour le catalogue, le code lu doit aussi être le numéro du
+bloc (`_21` = angle 2 × 15° = 30°, index 1).
 
 **Mikrosteg :** la position proposée est le milieu du plus long côté droit Q3, loin du code. Elle apparaît seulement
 sur la notice, à faire confirmer.
@@ -271,9 +286,10 @@ sur la notice, à faire confirmer.
 ## 5. Vérifications faites par `make_plan.py` sur le DXF final
 
 1. Tous les contrôles de `check_sheet.py` (contours fermés, couleurs, écarts, marges, chevauchements).
-2. **Relecture du code** de chaque éprouvette dans le DXF : le chiffre d'angle et l'index lus doivent être ceux
+2. **Contour** de chaque éprouvette du DXF = gabarit avec son code, tourné de l'angle de pose (écart ≤ 0,02 mm,
+   même nombre de trous). Ce contrôle couvre aussi l'axe des trous des disques.
+3. **Relecture du code** de chaque éprouvette dans le DXF : le chiffre d'angle et l'index lus doivent être ceux
    commandés, et la direction de la tête codée doit être l'angle commandé (ou + 180°).
-3. Pour `DISC2` : l'axe des trous doit être à angle + 90°.
 
 ## Résultats
 
@@ -293,4 +309,5 @@ Résultats du 30/10/2026 :
 | Gabarits `CT_v20260901` : les 63 éprouvettes reconstruites (gabarit + code lu) | traits du code à moins de 0,010 mm, contour à moins de 0,016 mm de l'original |
 | Commande `CT_v20260901.yaml` (même programme) | 63 éprouvettes sur **1 tôle** : 571 mm utilisés sans recuit, 567 mm avec 2 × 15 itérations ; tous les contrôles OK |
 | Codes générés vs plan du labo | les 60 codes sont **identiques** |
-| Commande `exemple.yaml` (5 UT 30°, 3 NT20 45°, 2 CH 0°, 2 DISC2 90°) | 1 tôle 300 × 300 mm, tous les contrôles OK, 12 / 12 codes relus |
+| Gabarits `CTLG_261029` (catalogue du labo) : les 410 éprouvettes codées reconstruites | code = numéro du bloc pour 410 / 410 ; traits du code à moins de 0,012 mm, contour à moins de 0,017 mm |
+| Commande `exemple.yaml` (5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90°) | 1 tôle 300 × 300 mm, tous les contrôles OK ; chaque éprouvette = le bloc du labo de même code à moins de 0,013 mm |

@@ -2,7 +2,7 @@
 # Lancer :  py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/exemple.yaml
 
 nom: ETH_300x300mm_SHEET_v20261030_exemple   # nom du plan (dossier de sortie, DXF, notice)
-gabarits: templates/CT_v20260901             # gabarits sans code (make_templates.py)
+gabarits: templates/CTLG_261029              # catalogue du labo (specimen_templates_261029_barcoded.dxf)
 tole: 300x300          # largeur x hauteur en mm ; la hauteur est le sens de laminage
 ecart: 5               # mm entre deux eprouvettes (regle des encadrants)
 marge: 5               # mm au bord de la tole (provisoire)
@@ -14,14 +14,18 @@ identifiant:
   lot: 240702AA
   geometrie_echantillon: MTS0
   supplement: AA
-  geometrie_essai: {UT: UT00, NT20: NT20}     # 4 caracteres par type (a confirmer avec le labo)
+  geometrie_essai: {UTUT: UTUT, NT20: NT20}   # 4 caracteres par type (a confirmer avec le labo)
 
-# type : UT, NT20, NT6.67, CH, DISC0, DISC2, STRIP
-# angle : de la tete qui porte le code, depuis le sens de laminage, 0-135 deg par pas de 15
-#         (DISC2 : les trous sont a angle + 90 deg ; angle 90 = trous dans le sens de laminage)
-# nombre : combien ; index (numero dans le code) = 1, 2, 3... sauf si premier_index est donne
+# type (noms du catalogue du labo) :
+#   eprouvettes longues 106 mm : UTUT (ou UT), NT20, NT06 (ou NT6.67), CHCH (ou CH)
+#   eprouvettes courtes 81 mm  : UTST, SHLD, SHMD, SHHD
+#   disques                    : MNAK_FULL (ou DISC0), MNAK_HOLE (ou DISC2 ; trous a angle + 90 deg)
+#   bande sans code            : TENS_FULL (ou STRIP)
+# angle  : de la tete qui porte le code, depuis le sens de laminage, 0-135 deg par pas de 15
+# nombre : combien ; index (numero dans le code) = 0, 1, 2... (0-9) sauf si premier_index est donne
 eprouvettes:
-  - {type: UT,    angle: 30, nombre: 5}
-  - {type: NT20,  angle: 45, nombre: 3}
-  - {type: CH,    angle: 0,  nombre: 2}
-  - {type: DISC2, angle: 90, nombre: 2}
+  - {type: UTUT, angle: 30,  nombre: 5}
+  - {type: NT20, angle: 45,  nombre: 3}
+  - {type: UTST, angle: 0,   nombre: 2}
+  - {type: SHLD, angle: 135, nombre: 2}
+  - {type: MNAK_HOLE, angle: 90, nombre: 2}
