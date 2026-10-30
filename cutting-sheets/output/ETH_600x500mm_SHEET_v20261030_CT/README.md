@@ -35,7 +35,7 @@
 
 | Sheet | Specimens | Height used (mm) |
 |---|---|---|
-| 1 | 63 | 571.0 |
+| 1 | 63 | 567.0 |
 
 ## Checks of the final DXF
 
