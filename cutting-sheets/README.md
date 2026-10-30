@@ -16,9 +16,28 @@ Relevées sur les plans reçus le 29/10/2026 (`input/`).
 | Bleu (couleur 5) | bords de la zone utile, entailles, trous, code d'identification | qualité **Q5** (maximale) |
 | Sens de laminage | axe +Y du dessin | l'angle de chaque éprouvette est compté depuis +Y |
 | Coin chanfreiné | un coin à 45° sur chaque pièce | repère d'orientation et de face |
-| Code à encoches | « peigne » bleu ≈ 13 × 3 mm dans le bord d'une tête | **un code par orientation et par répétition** (ex. « 45°, n° 2 »), partagé par l'UT, la NT20, la NT6.67 et le trou central de même orientation, qu'on distingue par leur forme |
+| Code à encoches | « peigne » bleu de 12–13 × 3 mm dans le bord d'une tête | code-barres « 2 parmi 5 » : les 5 encoches donnent un **numéro** (0–9), les 4 pleins l'**angle au laminage** (chiffre × 15°, 0–135°). Voir ci-dessous |
 | *Mikrosteg* | pas dans le DXF (confirmé par les encadrants), seulement sur la notice (carrés rouges) | micro-attache, « exactement au milieu » d'un côté sans importance |
 | Textes | seulement pour information | « bitte nicht gravieren » : à ne pas graver |
+
+### Le code à encoches (décodé le 30/10/2026, vérifié sur tous les plans)
+
+Lecture : code en haut, dessin vu de dessus, de gauche à droite. Le coin chanfreiné est alors à gauche ; s'il est à
+droite, on regarde l'autre face.
+
+| Élément | Largeur | Lecture |
+|---|---|---|
+| 5 encoches N1–N5, 3 mm de profondeur | 1 mm (étroite) ou 2 mm (large), toujours **2 larges** | **numéro** = somme des poids 1-2-4-7-0 des encoches larges (4 + 7 = 0) |
+| 4 pleins L1–L4 entre les encoches | 1 ou 2 mm | **angle** = (somme des poids 1-2-4-7 des pleins larges, 4 + 7 = 0) × 15° |
+
+Exemple : encoches larges N2 et N5 → 2 + 0 = n° 2 ; plein large L2 → 2 × 15° = 30°.
+
+| Plan | Sens du numéro |
+|---|---|
+| Programmes UT / NT / CH / disques | 1, 2, 3 = répétition à cet angle (même code pour l'UT, la NT20, la NT6.67 et le CH de même angle) |
+| Cisaillement 2025 | LD1 = 1, LD2 = 2, MD1 = 4, MD2 = 5, HD1 = 7, HD2 = 8 |
+
+Angles codables : 0°, 15°, …, 135°. Les angles −15° et −30° (150°, 165°) ne le sont pas.
 
 **C'est la couleur qui fait foi, pas le calque** : selon les fichiers, les calques s'appellent `3` / `4` / `5` ou
 `Normal_Quality` / `Medium_Quality` / `High_Quality`, et beaucoup de traits sont sur le calque `0` avec une couleur
