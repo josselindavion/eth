@@ -37,3 +37,7 @@ desktop.ini
 .crossnote/config.js
 .crossnote/head.html
 .crossnote/parser.js
+
+# Python
+__pycache__/
+*.pyc
