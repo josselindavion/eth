@@ -7,8 +7,7 @@ gabarits: templates/CTLG_261029
 tole: 500x600          # largeur x hauteur en mm ; la hauteur est le sens de laminage
 ecart: 5
 marge: 5
-recuit: 30            # iterations de recuit par coeur (~2 s chacune) : quelques mm de gagnes ; 0 = rapide
-coeurs: auto
+temps: 60             # secondes de calcul par tole (sparrow) ; plus long = un peu plus compact
 
 eprouvettes:
   - {type: UTUT,      angle: 0,  nombre: 3, premier_index: 1}

@@ -3,14 +3,15 @@
 make_plan.py -- Plan de decoupe EDM complet a partir d'un fichier de commande ("5 UT a 30 deg, 3 NT20 a 45 deg...").
 
 Lancement (Python 3 + ezdxf, shapely, matplotlib, scipy, pyyaml), depuis la racine du repo :
-    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/exemple_UT30.yaml
+    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/exemple.yaml
 
 Etapes :
     1. lecture de la commande (YAML, voir cutting-sheets/orders/) et controle : type connu, angle multiple de 15 deg
        et codable (0-135 deg), index 0-9, pas deux fois le meme code sur le meme type ;
     2. une eprouvette = gabarit sans code (templates/<nom>/) + son code a encoches (notchcode.py) ;
        angle = direction de la tete qui porte le code depuis le sens de laminage (+Y), sens trigonometrique ;
-    3. placement automatique (nest.py) : angle impose ou demi-tour (+180 deg), pas de miroir, ecart et marge ;
+    3. placement automatique avec sparrow (sparrow_place.py) : angle impose ou demi-tour (+180 deg), pas de miroir,
+       ecart et marge ;
     4. plan DXF (mm, calques Q3_NORMAL / Q4_MEDIUM / Q5_HIGH) ;
     5. verifications : check_sheet.py (contours, ecarts, marges...) puis RELECTURE DU CODE de chaque eprouvette dans
        le DXF final (angle, index, direction) et comparaison a la commande ;
@@ -25,7 +26,6 @@ import argparse
 import collections
 import csv
 import datetime
-import math
 import os
 import sys
 import time
@@ -42,8 +42,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import check_sheet                                    # noqa: E402
 import make_templates as mt                           # noqa: E402
-import nest                                           # noqa: E402
 import notchcode as nc                                # noqa: E402
+import sparrow_place as sp                            # noqa: E402
 from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
@@ -79,8 +79,8 @@ def read_order(path):
         'tole': str(o.get('tole', '500x600')),
         'ecart': float(o.get('ecart', 5.0)),
         'marge': float(o.get('marge', 5.0)),
-        'recuit': int(o.get('recuit', 0)),
-        'coeurs': int(o['coeurs']) if str(o.get('coeurs', 'auto')).lower() != 'auto' else nest.default_procs(),
+        'temps': float(o.get('temps', 60)),
+        'graine': int(o.get('graine', 1)),
         'toles_max': int(o.get('toles_max', 20)),
         'identifiant': o.get('identifiant') or {},
         'lignes': o['eprouvettes'],
@@ -157,21 +157,6 @@ def build_specimens(specs, path):
                 blk.add_line(a, b, dxfattribs={'layer': mt.LAYERS[c], 'color': c})
     doc.saveas(path)
     return doc
-
-
-def make_items(specs):
-    polys = {}
-    items = []
-    for s in specs:
-        T = s['T']
-        if T.kind not in polys:
-            polys[T.kind] = mt.template_polygon(T, closed=True)        # contour sans encoches : conservatif
-        row = {'block': s['block'], 'type': T.kind, 'orientation_to_RD_deg': '%g' % sl.fold_rd(s['angle']),
-               'rotation_deg': s['angle'], 'shape_key': T.kind}
-        it = nest.Item(row, polys[T.kind])
-        it.spec = s
-        items.append(it)
-    return items
 
 
 # ============================================================
@@ -260,7 +245,7 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
     today = datetime.date.today().isoformat()
     with PdfPages(path) as pdf:
         for k in range(n_sheets):
-            ox = k * (W + nest.SHEET_SPACING)
+            ox = k * (W + sp.SHEET_SPACING)
             fig = plt.figure(figsize=(8.27, 11.69))
             ax = fig.add_axes([0.20, 0.10, 0.72, 0.78])
             for s in d.segs:
@@ -333,15 +318,13 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
 # ============================================================
 # PROGRAMME
 # ============================================================
-def run(order_path, anneal=None, procs=None, final=False):
+def run(order_path, seconds=None, final=False):
     N = 6
     t_start = time.time()
     step(1, N, 'Commande et gabarits')
     cfg = read_order(order_path)
-    if anneal is not None:
-        cfg['recuit'] = anneal
-    if procs is not None:
-        cfg['coeurs'] = procs
+    if seconds is not None:
+        cfg['temps'] = seconds
     temps = mt.load_templates(cfg['gabarits'])
     specs = expand(cfg, temps)
     W, H = cfg['W'], cfg['H']
@@ -358,36 +341,36 @@ def run(order_path, anneal=None, procs=None, final=False):
     step(2, N, 'Eprouvettes : gabarit + code a encoches')
     specs_by_block = {s['block']: s for s in specs}
     libdoc = build_specimens(specs, os.path.join(out, 'specimens.dxf'))
-    items = make_items(specs)
     print('    %d eprouvettes codees' % len(specs))
 
-    step(3, N, 'Placement')
+    step(3, N, 'Placement (sparrow)')
+    polys = {}
+    for sp_ in specs:
+        if sp_['T'].kind not in polys:
+            polys[sp_['T'].kind] = mt.template_polygon(sp_['T'], closed=True)    # contour sans encoches
     t0 = time.time()
-    raster = nest.Raster(items, 0.5, cfg['ecart'])
-    orders = nest.initial_orders(items)
-    bar = Bar('Ordres depart', len(orders))
-    scores = nest.score_orders(orders, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['coeurs'],
-                               on_progress=lambda k, n: bar.update(k))
-    best = min(((scores[nm], o, nm) for nm, o in orders.items()), key=lambda b: b[0])
-    if best[0][0] == math.inf:
-        raise OrderError('les eprouvettes ne tiennent pas sur %d toles' % cfg['toles_max'])
-    bar.done('meilleur : %d tole(s), %.1f mm' % best[0][:2])
-    order = best[1]
-    if cfg['recuit']:
-        chains = max(1, cfg['coeurs'])
-        bar = Bar('Recuit', chains * cfg['recuit'])
-        order, sc = nest.anneal_parallel(order, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['recuit'],
-                                         procs=cfg['coeurs'], on_progress=lambda k, n: bar.update(k))
-        bar.done('%d x %d iterations, meilleur : %d tole(s), %.1f mm' % (chains, cfg['recuit'], sc[0], sc[1]))
-    sheets = nest.place_all(order, items, raster, W, H, cfg['marge'], cfg['toles_max'])
+    bars = {}
+
+    def on_progress(k, t, best):
+        if k not in bars:
+            if bars:
+                bars[k - 1].done()
+            bars[k] = Bar('Tole %d' % k, int(cfg['temps']))
+        bars[k].update(min(int(t), int(cfg['temps'])), ('meilleur %.1f mm' % best) if best else '')
+    try:
+        sheets = sp.place(specs, polys, W, H, cfg['ecart'], cfg['marge'], cfg['temps'], cfg['graine'],
+                          max_sheets=cfg['toles_max'], on_progress=on_progress)
+    except sp.PlacementError as e:
+        raise OrderError(str(e))
+    bars[max(bars)].done()
     print('    %d tole(s) en %.0f s : %s' % (len(sheets), time.time() - t0, ' ; '.join(
-        'tole %d = %d eprouvettes, %.1f mm de haut' % (k + 1, len(s.placed), s.top()) for k, s in enumerate(sheets))))
+        'tole %d = %d eprouvettes, %.1f mm de haut' % (k + 1, len(s), sp.top(s)) for k, s in enumerate(sheets))))
 
     step(4, N, 'Ecriture du DXF')
     dxf = os.path.join(out, '%s.dxf' % cfg['nom'])
-    rows = nest.write_dxf(dxf, sheets, libdoc, W, H)
+    rows = sp.write_dxf(dxf, sheets, libdoc, W, H)
     for r in rows:
-        r['x_sheet'] = r['insert_x_mm'] - (r['sheet'] - 1) * (W + nest.SHEET_SPACING)
+        r['x_sheet'] = r['insert_x_mm'] - (r['sheet'] - 1) * (W + sp.SHEET_SPACING)
         r['y_sheet'] = r['insert_y_mm']
 
     step(5, N, 'Verification du DXF final')
@@ -448,7 +431,7 @@ def write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg):
           % (len(specs), len(sheets), cfg['W'], cfg['H'], cfg['ecart'], cfg['marge']), '',
           '| Sheet | Specimens | Height used (mm) |', '|---|---|---|']
     for k, s in enumerate(sheets):
-        L.append('| %d | %d | %.1f |' % (k + 1, len(s.placed), s.top()))
+        L.append('| %d | %d | %.1f |' % (k + 1, len(s), sp.top(s)))
     L += ['', '## Checks of the final DXF', '', '| Check | Status | Detail |', '|---|---|---|']
     L += ['| %s | %s | %s |' % c for c in checks]
     if bad:
@@ -469,13 +452,12 @@ def write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('order', help='fichier de commande YAML')
-    ap.add_argument('--recuit', type=int, default=None, help='remplace "recuit" de la commande')
-    ap.add_argument('--coeurs', type=int, default=None, help='remplace "coeurs" de la commande')
+    ap.add_argument('--temps', type=float, default=None, help='remplace "temps" de la commande (secondes de calcul par tole)')
     ap.add_argument('--final', action='store_true',
                     help='ecrire dans output/ (suivi par git) au lieu de runs/ (ignore par git)')
     args = ap.parse_args()
     try:
-        ok, out = run(args.order, args.recuit, args.coeurs, args.final)
+        ok, out = run(args.order, args.temps, args.final)
     except OrderError as e:
         print('COMMANDE REFUSEE :\n' + str(e))
         sys.exit(2)

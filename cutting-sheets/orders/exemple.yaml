@@ -6,8 +6,7 @@ gabarits: templates/CTLG_261029              # catalogue du labo (specimen_templ
 tole: 300x300          # largeur x hauteur en mm ; la hauteur est le sens de laminage
 ecart: 5               # mm entre deux eprouvettes (regle des encadrants)
 marge: 5               # mm au bord de la tole (provisoire)
-recuit: 0              # iterations de recuit simule (0 = placement rapide ; 50-150 pour gagner de la place)
-coeurs: auto           # recuits en parallele (auto = coeurs du PC - 1) ; chacun fait 'recuit' iterations
+temps: 20             # secondes de calcul par tole (sparrow) ; plus long = un peu plus compact
 
 # Facultatif : champs de l'identifiant complet (QR code du labo), recopies dans registry.csv
 identifiant:

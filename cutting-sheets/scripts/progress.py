@@ -32,7 +32,7 @@ class Bar:
     def __init__(self, label, total):
         self.label, self.total = label, max(1, total)
         self.t0 = self.last = time.time()
-        self.n = 0
+        self.n, self.info = 0, ''
         self._draw(0, force=True)
 
     def _line(self, n, tail):
@@ -48,19 +48,21 @@ class Bar:
         self.last = now
         el = now - self.t0
         tail = ('reste ~%s' % _fmt(el / n * (self.total - n))) if 0 < n < self.total and el > 1 else ''
+        tail = ('%s   %s' % (tail, self.info)).strip()
         # jamais plus large que le terminal : sinon la ligne passe a la ligne et le retour chariot ne l'efface plus
         cols = shutil.get_terminal_size((80, 24)).columns - 1
         sys.stdout.write('\r' + self._line(n, tail)[:cols].ljust(cols))
         sys.stdout.flush()
 
-    def update(self, n):
-        self.n = n
+    def update(self, n, info=''):
+        self.n, self.info = n, info
         self._draw(n)
 
     def done(self, note=''):
         el = time.time() - self.t0
         cols = shutil.get_terminal_size((80, 24)).columns - 1
-        sys.stdout.write('\r' + ' ' * cols + '\r' + self._line(self.total, 'en %s' % _fmt(el)) + '\n')
+        sys.stdout.write('\r' + ' ' * cols + '\r' + self._line(self.total, ('en %s   %s' % (_fmt(el), self.info)).strip())
+                         + '\n')
         if note:
             sys.stdout.write('    %s\n' % note)
         sys.stdout.flush()

@@ -8,8 +8,10 @@ d'éprouvettes, il produit le DXF pour l'atelier, la notice et le registre des �
 **Installation, une seule fois sur le PC du labo :**
 
 ```bash
-py -m pip install ezdxf shapely matplotlib scipy pyyaml
+py -m pip install ezdxf shapely matplotlib scipy pyyaml spyrrow==0.9.0
 ```
+
+`spyrrow` est le moteur de placement (sparrow). Il faut Python 3.10 à 3.14 : vérifier avec `py --version`.
 
 **Les deux commandes prêtes :**
 
@@ -32,8 +34,9 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 - `README.md` : résumé et contrôles ;
 - `check/` : rapport détaillé de vérification.
 
-Le terminal affiche les 6 étapes (`[3/6] Placement`…), une barre de progression avec le temps restant pour les
-phases longues (placement, recuit, vérification), puis les contrôles : tout doit être `OK`.
+Le terminal affiche les 6 étapes (`[3/6] Placement`…) et une barre de progression avec le temps restant. Pendant
+le placement, la barre montre aussi la meilleure hauteur trouvée jusque-là. À la fin viennent les contrôles : tout
+doit être `OK`.
 
 `runs/` est **ignoré par git** : on peut relancer autant qu'on veut sans créer de conflit. Pour garder un plan dans
 le repo (par exemple celui envoyé à l'atelier), on ajoute `--final` : il va alors dans `output/<nom>/`, puis
@@ -57,8 +60,8 @@ eprouvettes:
 | `gabarits` | dossier des gabarits sans code | `templates/CTLG_261029` (catalogue du labo) |
 | `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
 | `ecart`, `marge` | écart entre pièces et marge au bord (mm) | 5, 5 |
-| `recuit` | itérations de recuit simulé par cœur pour gagner de la place (environ 2 s chacune pour 63 éprouvettes) ; 0 = rapide | 0 |
-| `coeurs` | nombre de recuits en parallèle, chacun avec un tirage différent ; on garde le meilleur | `auto` = cœurs du PC − 1 |
+| `temps` | secondes de calcul du placement, par tôle ; plus long = un peu plus compact (vraie feuille : 514 mm en 60 s, 505 mm en 180 s) | 60 |
+| `graine` | graine du tirage aléatoire de sparrow (changer pour essayer une autre solution) | 1 |
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet dans le registre | – |
 | `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
 
@@ -92,8 +95,9 @@ eprouvettes:
 3. **Place** toutes les éprouvettes :
    - angle commandé ou demi-tour (+180°), jamais de miroir ;
    - 5 mm entre pièces, 5 mm au bord ;
-   - placement « en bas à gauche » sur une grille de 0,5 mm qui garantit l'écart ;
-   - plusieurs ordres de départ, puis recuit simulé en parallèle sur les cœurs du PC.
+   - moteur **sparrow** (voir ci-dessous) ;
+   - si tout ne tient pas sur une tôle : les éprouvettes entièrement dans la tôle forment la tôle 1, les autres sont
+     replacées sur une tôle suivante, etc.
 4. **Écrit le DXF** : mm, calques `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`.
 5. **Vérifie le DXF final** sans rien supposer :
    - contours fermés, couleurs, écarts, marges, chevauchements (`check_sheet.py`) ;
@@ -101,13 +105,30 @@ eprouvettes:
    - **code relu** = code commandé, et direction de la tête codée = angle commandé.
 6. Écrit la **notice** et le **registre**.
 
+## Le moteur de placement : sparrow
+
+[sparrow](https://arxiv.org/abs/2509.13329) est un logiciel libre (licence MIT) de l'université KU Leuven (2025). Il
+est publié comme meilleur que l'état de l'art pour placer des formes quelconques sur une bande de hauteur minimale.
+On l'utilise par son interface Python `spyrrow`.
+
+| Ce qu'on lui donne | Valeur |
+|---|---|
+| Bande | la tôle couchée : hauteur fixe = largeur de la tôle ; longueur à minimiser = sens de laminage |
+| Formes | contour extérieur de chaque gabarit (sans encoches, donc un peu plus grand que la pièce) |
+| Angles permis | pour chaque éprouvette, l'angle commandé et l'angle + 180° seulement (pas de miroir) |
+| Écart minimal | `ecart` + 0,05 mm, car sparrow tolère environ 0,01 mm de moins ; il garde aussi cet écart avec le bord |
+| Temps | `temps` secondes par tôle |
+
+Sur la vraie feuille (63 éprouvettes, 500 × 600 mm), le placement occupe **514 mm** de hauteur en 60 s. Notre ancien
+moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm.
+
 ## Contenu du dossier
 
 | Dossier | Contenu |
 |---|---|
 | `orders/` | les commandes : `exemple.yaml`, `feuille_CT.yaml` |
 | `templates/CTLG_261029/` | gabarits sans code tirés du catalogue du labo : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `scripts/` | `make_plan.py` (commande → plan), `nest.py` (moteur de placement), `notchcode.py` (code à encoches), `make_templates.py` (gabarits depuis le catalogue), `check_sheet.py` (vérification d'un DXF), `sheetlib.py` (lecture des DXF) |
+| `scripts/` | `make_plan.py` (commande → plan), `sparrow_place.py` (placement avec sparrow + DXF), `progress.py` (barre de progression), `notchcode.py` (code à encoches), `make_templates.py` (gabarits depuis le catalogue), `check_sheet.py` (vérification d'un DXF), `sheetlib.py` (lecture des DXF) |
 | `input/` | fichiers reçus du labo : catalogue `specimen_templates_261029_barcoded.dxf`, plan CT `…v20260901_CT_bardcode.dxf`, modèles de 2025 (`.dxf` + notices `.pptx` / `.pdf`) |
 | `runs/` | **ignoré par git** : tout ce qu'on lance |
 
