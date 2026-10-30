@@ -3,6 +3,62 @@
 Outils pour vérifier, puis générer, les **plans de découpe par électroérosion à fil (EDM)** des éprouvettes : un DXF
 pour l'atelier, plus la notice qui l'accompagne.
 
+## Utilisation rapide : « je veux 5 UT à 30° »
+
+1. Copier `orders/exemple.yaml` sous un nouveau nom et écrire la commande :
+
+   ```yaml
+   nom: ETH_300x300mm_SHEET_v20261030_UT30
+   tole: 300x300
+   eprouvettes:
+     - {type: UT,   angle: 30, nombre: 5}
+     - {type: NT20, angle: 45, nombre: 3}
+   ```
+
+2. Lancer :
+
+   ```bash
+   cd ~/Documents/eth
+   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/<ma_commande>.yaml
+   ```
+
+3. Résultat dans `output/<nom>/` :
+   - `<nom>.dxf` : le plan pour l'atelier ;
+   - `notice.pdf` : une page par tôle et la liste des éprouvettes ;
+   - `registry.csv` : une ligne par éprouvette (numéro, type, angle, code, identifiant) ;
+   - `README.md` : résumé et contrôles.
+
+   Le terminal affiche les contrôles ; tout doit être `OK`.
+
+| Champ de la commande | Sens | Défaut |
+|---|---|---|
+| `nom` | nom du plan, du dossier de sortie et du DXF | nom du fichier |
+| `gabarits` | dossier des gabarits sans code | `templates/CT_v20260901` |
+| `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
+| `ecart`, `marge` | écart entre pièces et marge au bord (mm) | 5, 5 |
+| `recuit` | itérations de recuit simulé (0 = rapide ; 50–150 pour gagner de la place, environ 10 s chacune) | 0 |
+| `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet du registre | – |
+| `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
+
+| Type | Éprouvette |
+|---|---|
+| `UT` | traction uniaxiale |
+| `NT20` / `NT6.67` | traction entaillée, rayon 20 / 6,67 mm |
+| `CH` | trou central Ø 4,8 mm |
+| `DISC0` | disque sans trou |
+| `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) |
+| `STRIP` | bande 140 × 30 mm sans code |
+
+**L'angle** est celui de la tête qui porte le code, compté depuis le sens de laminage (+Y), dans le sens
+trigonométrique. On peut demander 0° à 135° par pas de 15° ; c'est ce chiffre qui est écrit dans le code.
+L'**index** vaut 1, 2, 3… pour chaque type et angle (0 à 9 possibles).
+
+Le programme refuse une commande fausse, avec un message, sans rien écrire :
+- angle non codable (150°, 20°…) ;
+- plus de 9 éprouvettes au même angle ;
+- deux fois le même code sur le même type ;
+- type inconnu.
+
 ## Les conventions des plans du labo
 
 Relevées sur les plans reçus le 29/10/2026 (`input/`).
@@ -65,15 +121,17 @@ forcée.
 | Dossier | Contenu |
 |---|---|
 | `input/` | plans reçus : 4 modèles de 2025 (`.dxf` + notice `.pptx` / `.pdf`) et le plan de travail `ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` |
-| `scripts/` | `sheetlib.py` (lecture commune), `check_sheet.py` (vérification), `extract_library.py` (bibliothèque), `nest.py` (placement automatique et plan DXF) |
-| `output/<plan>/` | plans générés : `<plan>.dxf`, `placement.csv`, `check/` (rapport de vérification du plan généré) |
+| `scripts/` | `sheetlib.py` (lecture commune), `check_sheet.py` (vérification), `extract_library.py` (bibliothèque), `notchcode.py` (code à encoches), `make_templates.py` (gabarits sans code), `nest.py` (moteur de placement), `make_plan.py` (commande → plan complet) |
+| `orders/` | commandes : `exemple.yaml` (modèle à copier), `CT_v20260901.yaml` (programme CT complet, sert de test) |
+| `templates/<nom>/` | gabarits sans code : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
+| `output/<plan>/` | plans générés : `<plan>.dxf`, `notice.pdf`, `registry.csv`, `placement.csv`, `specimens.dxf`, `check/`, `README.md` |
 | `reports/<plan>/` | rapport de vérification de chaque plan : `report.md`, `preview.png`, `issues.png`, `pieces.csv` |
 | `library/<nom>/` | bibliothèque d'éprouvettes extraite d'un plan : `specimens.dxf`, `index.csv`, `types.png`, `README.md`, `repaired_source.dxf` |
 
 ## Installation (PC du labo, une fois)
 
 ```bash
-py -m pip install ezdxf shapely matplotlib scipy
+py -m pip install ezdxf shapely matplotlib scipy pyyaml
 ```
 
 ## 1. Vérifier un plan
@@ -152,6 +210,34 @@ Ce que fait le script :
 
 Sorties dans `output/<nom>/` : `<nom>.dxf`, `placement.csv`, `check/report.md`, `check/preview.png`.
 
+Ce script place une bibliothèque telle quelle, codes compris. Pour une **nouvelle** commande, on utilise
+`make_plan.py` (section « Utilisation rapide »), qui appelle le même moteur.
+
+## 4. Créer les gabarits sans code (une fois par bibliothèque)
+
+```bash
+py cutting-sheets/scripts/make_templates.py cutting-sheets/library/CT_600x500_v20260901 CT_v20260901
+```
+
+Pour chaque type, une éprouvette du plan sert de modèle. On retire :
+- les 19 traits du code ;
+- le trait Q3 qui suit le code : sa longueur dépend du code, puisqu'un code fait 12 ou 13 mm.
+
+Le gabarit garde la position de départ du code (−6,000 ; 52,944 mm sur les barreaux) et le point où finit ce trait.
+
+**Validation automatique :** chaque éprouvette du plan est reconstruite à partir de son gabarit et du code lu
+dessus, puis comparée à l'originale (`validation.csv`).
+
+**Mikrosteg :** la position proposée est le milieu du plus long côté droit Q3, loin du code. Elle apparaît seulement
+sur la notice, à faire confirmer.
+
+## 5. Vérifications faites par `make_plan.py` sur le DXF final
+
+1. Tous les contrôles de `check_sheet.py` (contours fermés, couleurs, écarts, marges, chevauchements).
+2. **Relecture du code** de chaque éprouvette dans le DXF : le chiffre d'angle et l'index lus doivent être ceux
+   commandés, et la direction de la tête codée doit être l'angle commandé (ou + 180°).
+3. Pour `DISC2` : l'axe des trous doit être à angle + 90°.
+
 ## Résultats
 
 Résultats du 29/10/2026 :
@@ -162,3 +248,12 @@ Résultats du 29/10/2026 :
 | `…v20260901_CT_bardcode` (plan de travail) | **pas prêt** : 3 contours ouverts + 2 fragments isolés, unités non définies, écarts jusqu’à 1,7 mm (pointes de dents face à face) |
 | Bibliothèque `CT_600x500_v20260901` | 63 éprouvettes, 9 types, toutes fermées après réparation, formes identiques par type |
 | **Plan généré `ETH_600x500mm_1_SHEET_v20261029_CT`** | **63 éprouvettes sur 1 tôle de 500 × 600 mm** (au lieu de 2), écart mini 5,25 mm, marge mini 5,1 mm, tous les contrôles OK |
+
+Résultats du 30/10/2026 :
+
+| Test | Résultat |
+|---|---|
+| Gabarits `CT_v20260901` : les 63 éprouvettes reconstruites (gabarit + code lu) | traits du code à moins de 0,010 mm, contour à moins de 0,016 mm de l'original |
+| Commande `CT_v20260901.yaml` (même programme) | 63 éprouvettes sur **1 tôle** (571 mm utilisés, sans recuit), tous les contrôles OK |
+| Codes générés vs plan du labo | les 60 codes sont **identiques** |
+| Commande `exemple.yaml` (5 UT 30°, 3 NT20 45°, 2 CH 0°, 2 DISC2 90°) | 1 tôle 300 × 300 mm, tous les contrôles OK, 12 / 12 codes relus |

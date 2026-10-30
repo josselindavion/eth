@@ -1,0 +1,33 @@
+# Programme CT (plan du labo ETH_600x500mm_2_SHEET_v20260901_CT_bardcode), refait sur des toles 500 x 600 mm.
+# Sert de test : les codes generes doivent etre ceux du plan du labo.
+
+nom: ETH_600x500mm_SHEET_v20261030_CT
+gabarits: templates/CT_v20260901
+tole: 500x600
+ecart: 5
+marge: 5
+recuit: 0
+
+eprouvettes:
+  - {type: UT,     angle: 0, nombre: 3}
+  - {type: UT,     angle: 15, nombre: 3}
+  - {type: UT,     angle: 30, nombre: 3}
+  - {type: UT,     angle: 45, nombre: 3}
+  - {type: UT,     angle: 60, nombre: 3}
+  - {type: UT,     angle: 75, nombre: 3}
+  - {type: UT,     angle: 90, nombre: 3}
+  - {type: NT20,   angle: 0, nombre: 3}
+  - {type: NT20,   angle: 45, nombre: 3}
+  - {type: NT20,   angle: 90, nombre: 3}
+  - {type: NT6.67, angle: 0, nombre: 3}
+  - {type: NT6.67, angle: 45, nombre: 3}
+  - {type: NT6.67, angle: 90, nombre: 3}
+  - {type: CH,     angle: 0, nombre: 3}
+  - {type: CH,     angle: 45, nombre: 3}
+  - {type: CH,     angle: 90, nombre: 3}
+  - {type: DISC0,  angle: 0,  nombre: 3}
+  - {type: DISC2,  angle: 90, nombre: 3}   # trous dans le sens de laminage
+  - {type: DISC2,  angle: 45, nombre: 3}   # trous a 45 deg du laminage
+  - {type: DISC2,  angle: 0, nombre: 3}   # trous a 90 deg du laminage
+  - {type: STRIP,  angle: 0,  nombre: 2}
+  - {type: STRIP,  angle: 90, nombre: 1}

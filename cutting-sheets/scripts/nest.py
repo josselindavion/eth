@@ -64,8 +64,13 @@ class Item:
         self.kind = row['type']
         self.orient = row['orientation_to_RD_deg']
         self.poly = poly
-        base = 0.0 if self.kind.startswith('DISC') else float(row['axis_angle_in_source_deg'])
+        if row.get('rotation_deg') not in (None, ''):          # angle impose (make_plan.py)
+            base = float(row['rotation_deg'])
+        else:
+            base = 0.0 if self.kind.startswith('DISC') else float(row['axis_angle_in_source_deg'])
         self.angles = (base, (base + 180.0) % 360.0)
+        # pieces de meme contour (meme gabarit, codes differents) : un seul masque de placement
+        self.shape_key = row.get('shape_key') or self.block
         self.area = poly.area
 
 
@@ -118,7 +123,7 @@ class Raster:
         self.masks = {}
         for it in items:
             for a in it.angles:
-                key = (it.block, a)
+                key = (it.shape_key, a)
                 if key not in self.masks:
                     self.masks[key] = self._mask(affinity.rotate(it.poly, a, origin=(0, 0)))
 
@@ -182,7 +187,7 @@ def try_place(sheet, raster, item):
     """Meilleure position (en bas a gauche) de l'item sur la tole, en essayant les angles permis."""
     best = None
     for a in item.angles:
-        mask, (x0, y0), poly = raster.masks[(item.block, a)]
+        mask, (x0, y0), poly = raster.masks[(item.shape_key, a)]
         h, w = mask.shape
         if h > sheet.occ.shape[0] or w > sheet.occ.shape[1]:
             continue
