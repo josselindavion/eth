@@ -78,6 +78,7 @@ def read_order(path):
         'ecart': float(o.get('ecart', 5.0)),
         'marge': float(o.get('marge', 5.0)),
         'recuit': int(o.get('recuit', 0)),
+        'coeurs': int(o['coeurs']) if str(o.get('coeurs', 'auto')).lower() != 'auto' else nest.default_procs(),
         'toles_max': int(o.get('toles_max', 20)),
         'identifiant': o.get('identifiant') or {},
         'lignes': o['eprouvettes'],
@@ -333,10 +334,12 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
 # ============================================================
 # PROGRAMME
 # ============================================================
-def run(order_path, anneal=None):
+def run(order_path, anneal=None, procs=None):
     cfg = read_order(order_path)
     if anneal is not None:
         cfg['recuit'] = anneal
+    if procs is not None:
+        cfg['coeurs'] = procs
     temps = mt.load_templates(cfg['gabarits'])
     specs = expand(cfg, temps)
     W, H = cfg['W'], cfg['H']
@@ -355,9 +358,10 @@ def run(order_path, anneal=None):
     t0 = time.time()
     raster = nest.Raster(items, 0.5, cfg['ecart'])
     best = None
-    for nm, order in nest.initial_orders(items).items():
-        sh = nest.place_all(order, items, raster, W, H, cfg['marge'], cfg['toles_max'])
-        sc = nest.score(sh)
+    orders = nest.initial_orders(items)
+    scores = nest.score_orders(orders, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['coeurs'])
+    for nm, order in orders.items():
+        sc = scores[nm]
         print('   ordre %-7s : %s tole(s), hauteur derniere tole %s mm' % (nm, sc[0], sc[1]))
         if best is None or sc < best[0]:
             best = (sc, order, nm)
@@ -365,8 +369,10 @@ def run(order_path, anneal=None):
         raise OrderError('les eprouvettes ne tiennent pas sur %d toles' % cfg['toles_max'])
     order = best[1]
     if cfg['recuit']:
-        print('Recuit simule (%d iterations) depuis l\'ordre "%s"' % (cfg['recuit'], best[2]))
-        order, _ = nest.anneal(order, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['recuit'])
+        print('Recuit simule : %d recuit(s) en parallele de %d iterations, depuis l\'ordre "%s"'
+              % (cfg['coeurs'], cfg['recuit'], best[2]))
+        order, _ = nest.anneal_parallel(order, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['recuit'],
+                                        procs=cfg['coeurs'])
     sheets = nest.place_all(order, items, raster, W, H, cfg['marge'], cfg['toles_max'])
     print('Placement : %d tole(s) en %.0f s' % (len(sheets), time.time() - t0))
     for k, s in enumerate(sheets):
@@ -446,9 +452,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('order', help='fichier de commande YAML')
     ap.add_argument('--recuit', type=int, default=None, help='remplace "recuit" de la commande')
+    ap.add_argument('--coeurs', type=int, default=None, help='remplace "coeurs" de la commande')
     args = ap.parse_args()
     try:
-        ok, out = run(args.order, args.recuit)
+        ok, out = run(args.order, args.recuit, args.coeurs)
     except OrderError as e:
         print('COMMANDE REFUSEE :\n' + str(e))
         sys.exit(2)

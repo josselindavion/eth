@@ -28,8 +28,10 @@ Sorties dans cutting-sheets/output/<name>/ : <name>.dxf, placement.csv, check/ (
 """
 import argparse
 import collections
+import copy
 import csv
 import math
+import multiprocessing
 import os
 import random
 import sys
@@ -120,12 +122,14 @@ class Raster:
     def __init__(self, items, res, gap):
         self.res, self.gap = res, gap
         self.hd = res * math.sqrt(2) / 2           # demi-diagonale d'une case
-        self.masks = {}
+        self.masks, self.flipped, self.stamps = {}, {}, {}
         for it in items:
             for a in it.angles:
                 key = (it.shape_key, a)
                 if key not in self.masks:
                     self.masks[key] = self._mask(affinity.rotate(it.poly, a, origin=(0, 0)))
+                    self.flipped[key] = np.ascontiguousarray(self.masks[key][0][::-1, ::-1])
+                    self.stamps[key] = self._stamp(key)
 
     def _cells(self, geom, x0, y0, nx, ny):
         xs = x0 + (np.arange(nx) + 0.5) * self.res
@@ -151,6 +155,30 @@ class Raster:
         rows, cols = np.where(m)
         r0, r1, c0, c1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
         return m[r0:r1, c0:c1].astype(np.float32), (x0 + c0 * self.res, y0 + r0 * self.res), poly
+
+    def _stamp(self, key):
+        """Cases interdites autour de la piece (forme, angle) posee en case (0, 0) : centre a moins de
+        gap + demi-diagonale. Une piece posee en case (J, I) interdit le meme motif decale de (J, I) : calcule une
+        seule fois par forme et par angle."""
+        mask, (x0, y0), poly = self.masks[key]
+        g = affinity.translate(poly, -x0, -y0).buffer(self.gap + self.hd, join_style=1)
+        b = g.bounds
+        c0, r0 = int(math.floor(b[0] / self.res)), int(math.floor(b[1] / self.res))
+        c1, r1 = int(math.ceil(b[2] / self.res)) + 1, int(math.ceil(b[3] / self.res)) + 1
+        return r0, c0, self._cells(g, c0 * self.res, r0 * self.res, c1 - c0, r1 - r0).astype(np.float32)
+
+    def block(self, sheet, key, J, I):
+        """Marque sur la tole les cases interdites par la piece (forme, angle) posee en case (J, I)."""
+        r0, c0, sub = self.stamps[key]
+        ny, nx = sheet.occ.shape
+        R0, C0 = J + r0, I + c0
+        R1, C1 = R0 + sub.shape[0], C0 + sub.shape[1]
+        a0, b0 = max(0, R0), max(0, C0)
+        a1, b1 = min(ny, R1), min(nx, C1)
+        if a1 > a0 and b1 > b0:
+            win = sheet.occ[a0:a1, b0:b1]
+            np.maximum(win, sub[a0 - R0:a1 - R0, b0 - C0:b1 - C0], out=win)
+            sheet.top_row = max(sheet.top_row, a1)
 
     def blocked_by(self, poly, shape):
         """Cases interdites autour d'une piece posee : centre a moins de gap + demi-diagonale."""
@@ -178,31 +206,53 @@ class Sheet:
         self.occ[ny - k0:, :] = 1
         self.occ[:, nx - k0:] = 1
         self.placed = []                         # (item, angle, tx, ty, polygone place)
+        self.top_row = k0                        # premiere ligne au-dessus de la marge du bas et des cases interdites par des pieces
+        self.jmin = {}                           # (forme, angle) -> ligne la plus basse encore possible (None : ne tient plus)
 
     def top(self):
         return max((p[4].bounds[3] for p in self.placed), default=0.0)
 
 
 def try_place(sheet, raster, item):
-    """Meilleure position (en bas a gauche) de l'item sur la tole, en essayant les angles permis."""
+    """Meilleure position (en bas a gauche) de l'item sur la tole, en essayant les angles permis.
+
+    Recherche limitee aux lignes utiles (meme resultat qu'une recherche sur toute la tole) :
+      - les cases interdites ne font qu'augmenter, donc la position libre la plus basse d'une forme ne peut que
+        monter : on repart de la derniere trouvee (sheet.jmin) ;
+      - au-dessus de sheet.top_row il n'y a que la marge : si la piece n'est pas libre a la ligne top_row, elle ne
+        l'est nulle part plus haut ; on cherche donc entre jmin et top_row ;
+      - une forme qui ne tient plus sur la tole est retenue (jmin = None) et n'est plus essayee.
+    """
     best = None
+    ny, nx = sheet.occ.shape
     for a in item.angles:
-        mask, (x0, y0), poly = raster.masks[(item.shape_key, a)]
+        key = (item.shape_key, a)
+        j0 = sheet.jmin.get(key, 0)
+        if j0 is None:
+            continue
+        mask, (x0, y0), poly = raster.masks[key]
         h, w = mask.shape
-        if h > sheet.occ.shape[0] or w > sheet.occ.shape[1]:
+        if best is not None and j0 > best[0]:
+            continue                                            # ne peut pas etre plus bas que le meilleur
+        j1 = min(ny, max(sheet.top_row, j0) + h)
+        if h > ny or w > nx or j1 - j0 < h:
+            sheet.jmin[key] = None
             continue
-        corr = fftconvolve(sheet.occ, mask[::-1, ::-1], mode='valid')
-        free = np.argwhere(corr < 0.5)
-        if not len(free):
+        ok = fftconvolve(sheet.occ[j0:j1], raster.flipped[key], mode='valid') < 0.5
+        rows = ok.any(axis=1)
+        if not rows.any():
+            sheet.jmin[key] = None
             continue
-        J, I = free[np.lexsort((free[:, 1], free[:, 0]))[0]]           # plus bas, puis plus a gauche
+        jj = int(rows.argmax())
+        J, I = j0 + jj, int(ok[jj].argmax())                    # plus bas, puis plus a gauche
+        sheet.jmin[key] = J
         if best is None or (J, I) < (best[0], best[1]):
-            best = (J, I, a, mask, x0, y0, poly)
+            best = (J, I, a, key, x0, y0, poly)
     if best is None:
         return None
-    J, I, a, mask, x0, y0, poly = best
+    J, I, a, key, x0, y0, poly = best
     tx, ty = I * raster.res - x0, J * raster.res - y0
-    return a, tx, ty, affinity.translate(poly, tx, ty)
+    return a, tx, ty, affinity.translate(poly, tx, ty), (key, J, I)
 
 
 def place_all(order, items, raster, W, H, margin, max_sheets):
@@ -223,11 +273,8 @@ def place_all(order, items, raster, W, H, margin, max_sheets):
             r = try_place(sh, raster, it)
             if r is None:
                 raise SystemExit('Piece %s trop grande pour la tole %gx%g mm' % (it.block, W, H))
-        a, tx, ty, placed = r
-        b = raster.blocked_by(placed, sh.occ.shape)
-        if b:
-            (r0, r1, c0, c1), sub = b
-            sh.occ[r0:r1, c0:c1] = np.maximum(sh.occ[r0:r1, c0:c1], sub)
+        a, tx, ty, placed, (key, J, I) = r
+        raster.block(sh, key, J, I)
         sh.placed.append((it, a, tx, ty, placed))
     return sheets
 
@@ -279,8 +326,76 @@ def anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, log=p
             cur, cur_s = cand, s
             if f(s) < f(best_s):
                 best, best_s = list(cand), s
-                log('   recuit %4d/%d : %d tole(s), hauteur derniere tole %.1f mm' % (it + 1, n_iter, s[0], s[1]))
+                if log:
+                    log('   recuit %4d/%d : %d tole(s), hauteur derniere tole %.1f mm'
+                        % (it + 1, n_iter, s[0], s[1]))
     return best, best_s
+
+
+def default_procs():
+    """Nombre de recuits en parallele : tous les coeurs du PC sauf un (au moins 1)."""
+    return max(1, (os.cpu_count() or 2) - 1)
+
+
+_WORKER = {}
+
+
+def _init_worker(items, raster, args):
+    _WORKER.update(items=items, raster=raster, args=args)
+
+
+def _chain(job):
+    order, n_iter, seed = job
+    W, H, margin, max_sheets = _WORKER['args']
+    t = time.time()
+    best, best_s = anneal(order, _WORKER['items'], _WORKER['raster'], W, H, margin, max_sheets, n_iter, seed, log=None)
+    return best, best_s, seed, time.time() - t
+
+
+def _score_order(job):
+    name, order = job
+    W, H, margin, max_sheets = _WORKER['args']
+    return name, score(place_all(order, _WORKER['items'], _WORKER['raster'], W, H, margin, max_sheets))
+
+
+def _lite(items):
+    """Copie des items avec seulement ce qu'il faut pour placer (rien d'ezdxf), pour les processus paralleles."""
+    out = []
+    for it in items:
+        x = copy.copy(it)
+        x.__dict__.pop('spec', None)
+        out.append(x)
+    return out
+
+
+def _pool(procs, items, raster, W, H, margin, max_sheets):
+    ctx = multiprocessing.get_context('spawn')          # meme comportement sous Windows et Linux
+    return ctx.Pool(procs, initializer=_init_worker, initargs=(_lite(items), raster, (W, H, margin, max_sheets)))
+
+
+def score_orders(orders, items, raster, W, H, margin, max_sheets, procs=None):
+    """Score de chaque ordre de depart ({nom: ordre} -> {nom: score}), en parallele si plusieurs coeurs."""
+    procs = min(procs or default_procs(), len(orders))
+    if procs <= 1:
+        return {nm: score(place_all(o, items, raster, W, H, margin, max_sheets)) for nm, o in orders.items()}
+    with _pool(procs, items, raster, W, H, margin, max_sheets) as pool:
+        return dict(pool.map(_score_order, list(orders.items())))
+
+
+def anneal_parallel(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, procs=None, log=print):
+    """Plusieurs recuits independants en parallele (un par coeur, graines seed, seed + 1...), meme ordre de
+    depart et meme nombre d'iterations chacun ; on garde le meilleur. procs = 1 : recuit simple."""
+    procs = procs or default_procs()
+    if procs <= 1:
+        return anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed, log=log)
+    with _pool(procs, items, raster, W, H, margin, max_sheets) as pool:
+        res = pool.map(_chain, [(list(order), n_iter, seed + k) for k in range(procs)])
+    f = lambda s: s[0] * 1e5 + s[1] + 1e-3 * s[2]      # noqa: E731
+    for best, s, sd, dt in res:
+        if log:
+            log('   recuit graine %d : %d tole(s), hauteur derniere tole %.1f mm (%.0f s)' % (sd, s[0], s[1], dt))
+    best, s, sd, dt = min(res, key=lambda r: f(r[1]))
+    return best, s
 
 
 # ============================================================
@@ -322,6 +437,7 @@ def main():
     ap.add_argument('--types', nargs='*', help='ne placer que ces types (prefixes, ex. UT NT CH)')
     ap.add_argument('--name', default=None)
     ap.add_argument('--seed', type=int, default=1)
+    ap.add_argument('--procs', type=int, default=None, help='recuits en parallele (defaut : coeurs du PC - 1)')
     args = ap.parse_args()
     W, H = (float(v) for v in args.sheet.lower().split('x'))
     name = args.name or '%s_%gx%g' % (os.path.basename(args.library.rstrip('/\\')), W, H)
@@ -333,17 +449,19 @@ def main():
 
     t0 = time.time()
     raster = Raster(items, args.res, args.gap)
+    orders = initial_orders(items)
+    scores = score_orders(orders, items, raster, W, H, args.margin, args.max_sheets, args.procs)
     results = {}
-    for nm, order in initial_orders(items).items():
-        sheets = place_all(order, items, raster, W, H, args.margin, args.max_sheets)
-        results[nm] = (score(sheets), order)
-        print('   ordre %-7s : %d tole(s), hauteur derniere tole %.1f mm' % (nm, *score(sheets)[:2]))
+    for nm, order in orders.items():
+        results[nm] = (scores[nm], order)
+        print('   ordre %-7s : %s tole(s), hauteur derniere tole %s mm' % (nm, *scores[nm][:2]))
     best_name = min(results, key=lambda k: results[k][0])
     best_s, best_order = results[best_name]
     print('   (%.1f s par placement complet)' % ((time.time() - t0) / len(results)))
     if args.anneal:
         print('Recuit simule (%d iterations) depuis l\'ordre "%s"' % (args.anneal, best_name))
-        best_order, best_s = anneal(best_order, items, raster, W, H, args.margin, args.max_sheets, args.anneal, args.seed)
+        best_order, best_s = anneal_parallel(best_order, items, raster, W, H, args.margin, args.max_sheets, args.anneal,
+                                             args.seed, args.procs)
     sheets = place_all(best_order, items, raster, W, H, args.margin, args.max_sheets)
     fs = score(sheets)
     print('Placement final : %d tole(s), hauteur derniere tole %.1f mm' % fs[:2])

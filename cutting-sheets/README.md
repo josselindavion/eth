@@ -36,7 +36,8 @@ pour l'atelier, plus la notice qui l'accompagne.
 | `gabarits` | dossier des gabarits sans code | `templates/CT_v20260901` |
 | `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
 | `ecart`, `marge` | écart entre pièces et marge au bord (mm) | 5, 5 |
-| `recuit` | itérations de recuit simulé (0 = rapide ; 50–150 pour gagner de la place, environ 10 s chacune) | 0 |
+| `recuit` | itérations de recuit simulé par cœur (0 = rapide ; 50–150 pour gagner de la place, environ 2 s chacune pour 63 éprouvettes) | 0 |
+| `coeurs` | nombre de recuits en parallèle, chacun avec un tirage différent ; on garde le meilleur | `auto` = cœurs du PC − 1 |
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet du registre | – |
 | `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
 
@@ -196,7 +197,8 @@ py cutting-sheets/scripts/nest.py cutting-sheets/library/CT_600x500_v20260901 --
 | `--gap` | écart entre pièces (5 mm par défaut) |
 | `--margin` | marge au bord de la tôle (5 mm par défaut) |
 | `--res` | pas de la grille de placement (0,5 mm) |
-| `--anneal N` | N itérations de recuit simulé, environ 10 s chacune ; 0 = pas de recuit |
+| `--anneal N` | N itérations de recuit simulé par cœur, environ 2 s chacune ; 0 = pas de recuit |
+| `--procs N` | recuits en parallèle (défaut : cœurs du PC − 1) |
 | `--types UT NT` | ne placer que certains types |
 
 Ce que fait le script :
@@ -204,9 +206,18 @@ Ce que fait le script :
 2. Les collisions sont testées sur une grille conservative : l'écart réel est toujours ≥ `--gap`.
 3. Placement « en bas à gauche », tôle par tôle. Plusieurs ordres de départ sont essayés, puis le recuit simulé
    améliore l'ordre.
-4. Le plan est écrit en DXF : blocs de la bibliothèque, géométrie exacte, mm, calques `Q3_NORMAL` / `Q4_MEDIUM` /
+4. Accélérations (30/10/2026), qui donnent **le même placement** que la recherche complète (vérifié sur 20 ordres
+   de placement, écart 0) :
+   - on ne cherche que dans les lignes utiles : la position libre la plus basse d'une forme ne peut que monter quand
+     la tôle se remplit, et au-dessus de la zone remplie il n'y a que la marge ;
+   - une forme qui ne tient plus sur une tôle n'y est plus essayée ;
+   - la zone interdite autour d'une pièce (pièce + écart) est calculée une fois par forme et par angle ;
+   - les ordres de départ et les recuits tournent en parallèle sur les cœurs du PC.
+
+   Résultat : une mise en place complète prend 2,1 s au lieu de 6,9 s pour 63 éprouvettes sur 500 × 600 mm.
+5. Le plan est écrit en DXF : blocs de la bibliothèque, géométrie exacte, mm, calques `Q3_NORMAL` / `Q4_MEDIUM` /
    `Q5_HIGH`.
-5. Il est vérifié par `check_sheet.py`, plus un contrôle du type et de l'angle au laminage de chaque éprouvette.
+6. Il est vérifié par `check_sheet.py`, plus un contrôle du type et de l'angle au laminage de chaque éprouvette.
 
 Sorties dans `output/<nom>/` : `<nom>.dxf`, `placement.csv`, `check/report.md`, `check/preview.png`.
 
@@ -254,6 +265,6 @@ Résultats du 30/10/2026 :
 | Test | Résultat |
 |---|---|
 | Gabarits `CT_v20260901` : les 63 éprouvettes reconstruites (gabarit + code lu) | traits du code à moins de 0,010 mm, contour à moins de 0,016 mm de l'original |
-| Commande `CT_v20260901.yaml` (même programme) | 63 éprouvettes sur **1 tôle** (571 mm utilisés, sans recuit), tous les contrôles OK |
+| Commande `CT_v20260901.yaml` (même programme) | 63 éprouvettes sur **1 tôle** : 571 mm utilisés sans recuit, 567 mm avec 2 × 15 itérations ; tous les contrôles OK |
 | Codes générés vs plan du labo | les 60 codes sont **identiques** |
 | Commande `exemple.yaml` (5 UT 30°, 3 NT20 45°, 2 CH 0°, 2 DISC2 90°) | 1 tôle 300 × 300 mm, tous les contrôles OK, 12 / 12 codes relus |
