@@ -44,6 +44,7 @@ import check_sheet                                    # noqa: E402
 import make_templates as mt                           # noqa: E402
 import nest                                           # noqa: E402
 import notchcode as nc                                # noqa: E402
+from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
 BASE = os.path.abspath(os.path.join(HERE, '..'))       # dossier cutting-sheets
@@ -176,7 +177,7 @@ def make_items(specs):
 # ============================================================
 # VERIFICATION DU CODE DANS LE DXF FINAL
 # ============================================================
-def code_check(R, rows, specs_by_block):
+def code_check(R, rows, specs_by_block, on_progress=None):
     """Chaque eprouvette du DXF final, relue sans rien supposer : son contour doit etre celui du gabarit (avec son
     code) tourne de l'angle de pose, son code lu doit etre celui commande, et la direction du code l'angle commande."""
     from shapely import affinity
@@ -218,6 +219,8 @@ def code_check(R, rows, specs_by_block):
         r['piece'] = p
         if msg:
             bad.append('%s : %s' % (r['block'], ', '.join(msg)))
+        if on_progress:
+            on_progress(rows.index(r) + 1)
     return bad
 
 # ============================================================
@@ -331,6 +334,9 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
 # PROGRAMME
 # ============================================================
 def run(order_path, anneal=None, procs=None, final=False):
+    N = 6
+    t_start = time.time()
+    step(1, N, 'Commande et gabarits')
     cfg = read_order(order_path)
     if anneal is not None:
         cfg['recuit'] = anneal
@@ -341,57 +347,67 @@ def run(order_path, anneal=None, procs=None, final=False):
     W, H = cfg['W'], cfg['H']
     out = os.path.join(BASE, 'output' if final else 'runs', cfg['nom'])
     os.makedirs(out, exist_ok=True)
-    print('Commande %s : %d eprouvettes, tole %g x %g mm, ecart %g mm, marge %g mm'
+    print('    %s : %d eprouvettes, tole %g x %g mm, ecart %g mm, marge %g mm'
           % (os.path.basename(order_path), len(specs), W, H, cfg['ecart'], cfg['marge']))
     for (alias, ang), grp in sorted(collections.Counter(
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
-        idx = [s['index'] for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
-        print('   %-7s %5g deg  x %d   index %s' % (alias, ang, grp, ', '.join(map(str, idx))))
+        grp_specs = [s for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
+        print('      %-9s %5g deg  x %d   %s' % (alias, ang, grp, ('index ' + ', '.join(str(s['index']) for s in grp_specs))
+                                                if grp_specs[0]['T'].has_code else 'sans code'))
+
+    step(2, N, 'Eprouvettes : gabarit + code a encoches')
     specs_by_block = {s['block']: s for s in specs}
     libdoc = build_specimens(specs, os.path.join(out, 'specimens.dxf'))
     items = make_items(specs)
+    print('    %d eprouvettes codees' % len(specs))
 
+    step(3, N, 'Placement')
     t0 = time.time()
     raster = nest.Raster(items, 0.5, cfg['ecart'])
-    best = None
     orders = nest.initial_orders(items)
-    scores = nest.score_orders(orders, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['coeurs'])
-    for nm, order in orders.items():
-        sc = scores[nm]
-        print('   ordre %-7s : %s tole(s), hauteur derniere tole %s mm' % (nm, sc[0], sc[1]))
-        if best is None or sc < best[0]:
-            best = (sc, order, nm)
+    bar = Bar('Ordres depart', len(orders))
+    scores = nest.score_orders(orders, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['coeurs'],
+                               on_progress=lambda k, n: bar.update(k))
+    best = min(((scores[nm], o, nm) for nm, o in orders.items()), key=lambda b: b[0])
     if best[0][0] == math.inf:
         raise OrderError('les eprouvettes ne tiennent pas sur %d toles' % cfg['toles_max'])
+    bar.done('meilleur : %d tole(s), %.1f mm' % best[0][:2])
     order = best[1]
     if cfg['recuit']:
-        print('Recuit simule : %d recuit(s) en parallele de %d iterations, depuis l\'ordre "%s"'
-              % (cfg['coeurs'], cfg['recuit'], best[2]))
-        order, _ = nest.anneal_parallel(order, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['recuit'],
-                                        procs=cfg['coeurs'])
+        chains = max(1, cfg['coeurs'])
+        bar = Bar('Recuit', chains * cfg['recuit'])
+        order, sc = nest.anneal_parallel(order, items, raster, W, H, cfg['marge'], cfg['toles_max'], cfg['recuit'],
+                                         procs=cfg['coeurs'], on_progress=lambda k, n: bar.update(k))
+        bar.done('%d x %d iterations, meilleur : %d tole(s), %.1f mm' % (chains, cfg['recuit'], sc[0], sc[1]))
     sheets = nest.place_all(order, items, raster, W, H, cfg['marge'], cfg['toles_max'])
-    print('Placement : %d tole(s) en %.0f s' % (len(sheets), time.time() - t0))
-    for k, s in enumerate(sheets):
-        print('   tole %d : %d eprouvettes, hauteur occupee %.1f mm' % (k + 1, len(s.placed), s.top()))
+    print('    %d tole(s) en %.0f s : %s' % (len(sheets), time.time() - t0, ' ; '.join(
+        'tole %d = %d eprouvettes, %.1f mm de haut' % (k + 1, len(s.placed), s.top()) for k, s in enumerate(sheets))))
 
+    step(4, N, 'Ecriture du DXF')
     dxf = os.path.join(out, '%s.dxf' % cfg['nom'])
     rows = nest.write_dxf(dxf, sheets, libdoc, W, H)
     for r in rows:
         r['x_sheet'] = r['insert_x_mm'] - (r['sheet'] - 1) * (W + nest.SHEET_SPACING)
         r['y_sheet'] = r['insert_y_mm']
+
+    step(5, N, 'Verification du DXF final')
+    t0 = time.time()
     R = check_sheet.analyse(dxf, cfg['ecart'], cfg['ecart'], cfg['marge'])
     check_sheet.write_outputs(R, os.path.join(out, 'check'), argparse.Namespace(
         min_gap=cfg['ecart'], warn_gap=cfg['ecart'], min_margin=cfg['marge']))
-    bad = code_check(R, rows, specs_by_block)
+    print('    controles du plan (contours, ecarts, marges...) en %.0f s' % (time.time() - t0))
+    bar = Bar('Eprouvettes', len(rows))
+    bad = code_check(R, rows, specs_by_block, on_progress=bar.update)
+    bar.done('contour + code relus')
     checks = list(R['checks']) + [('Specimens vs order', 'OK' if not bad else 'ERROR',
                                    '%d of %d specimens: outline = template, code read in the DXF = code ordered, '
                                    'direction = angle ordered' % (len(rows) - len(bad), len(rows)))]
-    print('Verification du plan :')
     for c in checks:
-        print('   %-24s %-8s %s' % c)
+        print('    %-24s %-8s %s' % c)
     for b in bad:
-        print('      ' + b)
+        print('       ' + b)
 
+    step(6, N, 'Notice et registre')
     reg = registry(rows, specs_by_block, cfg)
     with open(os.path.join(out, 'registry.csv'), 'w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=list(reg[0].keys()))
@@ -404,12 +420,16 @@ def run(order_path, anneal=None, procs=None, final=False):
         w.writerows(rows)
     notice(os.path.join(out, 'notice.pdf'), cfg, dxf, rows, reg, specs_by_block, checks)
     write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg)
-    print('Plan    : %s' % dxf)
-    print('Notice  : %s' % os.path.join(out, 'notice.pdf'))
-    print('Registre: %s' % os.path.join(out, 'registry.csv'))
-    if not final:
-        print('(dossier runs/ : ignore par git. Pour garder ce plan dans le repo : relancer avec --final)')
+
     status = all(c[1] in ('OK', 'INFO') for c in checks)
+    print('')
+    print('%s en %s' % ('TERMINE, tous les controles OK,' if status else 'TERMINE AVEC DES ERREURS (voir ci-dessus)',
+                        progress_fmt(time.time() - t_start)))
+    print('    Plan    : %s' % dxf)
+    print('    Notice  : %s' % os.path.join(out, 'notice.pdf'))
+    print('    Registre: %s' % os.path.join(out, 'registry.csv'))
+    if not final:
+        print('    (dossier runs/ : ignore par git. Pour garder ce plan dans le repo : relancer avec --final)')
     return status, out
 
 

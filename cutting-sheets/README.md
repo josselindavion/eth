@@ -32,7 +32,8 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 - `README.md` : résumé et contrôles ;
 - `check/` : rapport détaillé de vérification.
 
-Le terminal affiche les contrôles : tout doit être `OK`.
+Le terminal affiche les 6 étapes (`[3/6] Placement`…), une barre de progression avec le temps restant pour les
+phases longues (placement, recuit, vérification), puis les contrôles : tout doit être `OK`.
 
 `runs/` est **ignoré par git** : on peut relancer autant qu'on veut sans créer de conflit. Pour garder un plan dans
 le repo (par exemple celui envoyé à l'atelier), on ajoute `--final` : il va alors dans `output/<nom>/`, puis

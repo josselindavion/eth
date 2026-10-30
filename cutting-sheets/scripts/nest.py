@@ -233,7 +233,8 @@ def initial_orders(items):
     }
 
 
-def anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, log=print):
+def anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, log=None, progress=None):
+    """Recuit simule sur l'ordre de placement. progress(k) est appele apres chaque iteration k = 1..n_iter."""
     rnd = random.Random(seed)
     cur = list(order)
     cur_s = score(place_all(cur, items, raster, W, H, margin, max_sheets))
@@ -258,6 +259,8 @@ def anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, log=p
                 if log:
                     log('   recuit %4d/%d : %d tole(s), hauteur derniere tole %.1f mm'
                         % (it + 1, n_iter, s[0], s[1]))
+        if progress:
+            progress(it + 1)
     return best, best_s
 
 
@@ -269,22 +272,32 @@ def default_procs():
 _WORKER = {}
 
 
-def _init_worker(items, raster, args):
-    _WORKER.update(items=items, raster=raster, args=args)
+def _init_worker(items, raster, args, counter):
+    _WORKER.update(items=items, raster=raster, args=args, counter=counter)
+
+
+def _tick(_k=None):
+    """Compteur partage entre les processus : une iteration (ou un ordre) de plus."""
+    c = _WORKER['counter']
+    with c.get_lock():
+        c.value += 1
 
 
 def _chain(job):
     order, n_iter, seed = job
     W, H, margin, max_sheets = _WORKER['args']
     t = time.time()
-    best, best_s = anneal(order, _WORKER['items'], _WORKER['raster'], W, H, margin, max_sheets, n_iter, seed, log=None)
+    best, best_s = anneal(order, _WORKER['items'], _WORKER['raster'], W, H, margin, max_sheets, n_iter, seed,
+                          progress=_tick)
     return best, best_s, seed, time.time() - t
 
 
 def _score_order(job):
     name, order = job
     W, H, margin, max_sheets = _WORKER['args']
-    return name, score(place_all(order, _WORKER['items'], _WORKER['raster'], W, H, margin, max_sheets))
+    sc = score(place_all(order, _WORKER['items'], _WORKER['raster'], W, H, margin, max_sheets))
+    _tick()
+    return name, sc
 
 
 def _lite(items):
@@ -297,32 +310,49 @@ def _lite(items):
     return out
 
 
-def _pool(procs, items, raster, W, H, margin, max_sheets):
+def _run_pool(procs, items, raster, W, H, margin, max_sheets, func, jobs, total, on_progress):
+    """Lance func sur jobs dans procs processus ; on_progress(fait, total) est appele pendant l'attente, d'apres un
+    compteur partage que les processus incrementent."""
     ctx = multiprocessing.get_context('spawn')          # meme comportement sous Windows et Linux
-    return ctx.Pool(procs, initializer=_init_worker, initargs=(_lite(items), raster, (W, H, margin, max_sheets)))
+    counter = ctx.Value('i', 0)
+    with ctx.Pool(procs, initializer=_init_worker,
+                  initargs=(_lite(items), raster, (W, H, margin, max_sheets), counter)) as pool:
+        res = pool.map_async(func, jobs)
+        while not res.ready():
+            if on_progress:
+                on_progress(counter.value, total)
+            res.wait(0.25)
+        out = res.get()
+    if on_progress:
+        on_progress(total, total)
+    return out
 
 
-def score_orders(orders, items, raster, W, H, margin, max_sheets, procs=None):
+def score_orders(orders, items, raster, W, H, margin, max_sheets, procs=None, on_progress=None):
     """Score de chaque ordre de depart ({nom: ordre} -> {nom: score}), en parallele si plusieurs coeurs."""
     procs = min(procs or default_procs(), len(orders))
     if procs <= 1:
-        return {nm: score(place_all(o, items, raster, W, H, margin, max_sheets)) for nm, o in orders.items()}
-    with _pool(procs, items, raster, W, H, margin, max_sheets) as pool:
-        return dict(pool.map(_score_order, list(orders.items())))
+        out = {}
+        for k, (nm, o) in enumerate(orders.items(), 1):
+            out[nm] = score(place_all(o, items, raster, W, H, margin, max_sheets))
+            if on_progress:
+                on_progress(k, len(orders))
+        return out
+    return dict(_run_pool(procs, items, raster, W, H, margin, max_sheets, _score_order, list(orders.items()),
+                          len(orders), on_progress))
 
 
-def anneal_parallel(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, procs=None, log=print):
+def anneal_parallel(order, items, raster, W, H, margin, max_sheets, n_iter, seed=1, procs=None, on_progress=None):
     """Plusieurs recuits independants en parallele (un par coeur, graines seed, seed + 1...), meme ordre de
-    depart et meme nombre d'iterations chacun ; on garde le meilleur. procs = 1 : recuit simple."""
+    depart et meme nombre d'iterations chacun ; on garde le meilleur. procs = 1 : recuit simple.
+    on_progress(fait, total) : total = procs x n_iter iterations."""
     procs = procs or default_procs()
     if procs <= 1:
-        return anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed, log=log)
-    with _pool(procs, items, raster, W, H, margin, max_sheets) as pool:
-        res = pool.map(_chain, [(list(order), n_iter, seed + k) for k in range(procs)])
+        return anneal(order, items, raster, W, H, margin, max_sheets, n_iter, seed,
+                      progress=(lambda k: on_progress(k, n_iter)) if on_progress else None)
+    res = _run_pool(procs, items, raster, W, H, margin, max_sheets, _chain,
+                    [(list(order), n_iter, seed + k) for k in range(procs)], procs * n_iter, on_progress)
     f = lambda s: s[0] * 1e5 + s[1] + 1e-3 * s[2]      # noqa: E731
-    for best, s, sd, dt in res:
-        if log:
-            log('   recuit graine %d : %d tole(s), hauteur derniere tole %.1f mm (%.0f s)' % (sd, s[0], s[1], dt))
     best, s, sd, dt = min(res, key=lambda r: f(r[1]))
     return best, s
 
