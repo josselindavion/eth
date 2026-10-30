@@ -25,7 +25,7 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 | Commande | Contenu |
 |---|---|
 | `orders/exemple.yaml` | petit exemple sur une tôle 300 × 300 mm : 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
-| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (63 éprouvettes, mêmes codes), sur une tôle 500 × 600 mm |
+| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (mêmes éprouvettes et mêmes codes, avec 8 bandes `TENS_FULL` au lieu de 3 : 68 éprouvettes), sur une tôle 500 × 600 mm |
 
 **Résultats** dans `cutting-sheets/runs/<nom>/` :
 - `<nom>.dxf` : le plan pour l'atelier ;
@@ -60,7 +60,7 @@ eprouvettes:
 | `gabarits` | dossier des gabarits sans code | `templates/CTLG_261029` (catalogue du labo) |
 | `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
 | `ecart`, `marge` | écart entre pièces et marge au bord (mm) | 5, 5 |
-| `temps` | secondes de calcul du placement, par tôle ; plus long = un peu plus compact (vraie feuille : 514 mm en 60 s, 505 mm en 180 s) | 60 |
+| `temps` | secondes de calcul du placement, par tôle ; plus long = un peu plus compact (programme CT de 63 éprouvettes : 514 mm en 60 s, 505 mm en 180 s) | 60 |
 | `graine` | graine du tirage aléatoire de sparrow (changer pour essayer une autre solution) | 1 |
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet dans le registre | – |
 | `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
@@ -119,8 +119,9 @@ On l'utilise par son interface Python `spyrrow`.
 | Écart minimal | `ecart` + 0,05 mm, car sparrow tolère environ 0,01 mm de moins ; il garde aussi cet écart avec le bord |
 | Temps | `temps` secondes par tôle |
 
-Sur la vraie feuille (63 éprouvettes, 500 × 600 mm), le placement occupe **514 mm** de hauteur en 60 s. Notre ancien
-moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm.
+Sur le programme CT de 63 éprouvettes (500 × 600 mm), le placement occupe **514 mm** de hauteur en 60 s ; notre
+ancien moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm. Avec les 68 éprouvettes de `feuille_CT.yaml` :
+574 mm, 1 tôle.
 
 ## Contenu du dossier
 
