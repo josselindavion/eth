@@ -54,7 +54,8 @@ Types disponibles = familles du **catalogue du labo** (`input/specimen_templates
 | `MNAK_HOLE` | `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) | 0, 45, 90° |
 | `TENS_FULL` | `STRIP` | bande 140 × 30 mm sans code | – |
 
-Un angle absent du catalogue (ex. NT20 à 30°) est quand même généré, avec un **avertissement**.
+Tous les angles codables sont permis pour tous les types, même ceux absents du catalogue (ex. NT20 à 30°) : le
+gabarit est simplement tourné.
 
 **L'angle** est celui de la tête qui porte le code, compté depuis le sens de laminage (+Y), dans le sens
 trigonométrique. On peut demander 0° à 135° par pas de 15° ; c'est ce chiffre qui est écrit dans le code.

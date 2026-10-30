@@ -105,10 +105,6 @@ def expand(cfg, temps):
             errors.append('%s : type inconnu ; types disponibles : %s'
                           % (where, ', '.join(sorted(set(t.alias for t in temps.values())))))
             continue
-        if T.has_code and T.angles and float(line['angle']) not in T.angles:
-            cfg.setdefault('avertissements', []).append(
-                '%s : %s a %g deg n\'existe pas dans le catalogue (angles du catalogue : %s) ; il est quand meme genere'
-                % (where, T.alias, float(line['angle']), ', '.join('%g' % a for a in T.angles)))
         ang = float(line['angle'])
         n = int(line.get('nombre', 1))
         if not 0 <= ang < 180:
@@ -351,8 +347,6 @@ def run(order_path, anneal=None, procs=None, final=False):
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
         idx = [s['index'] for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
         print('   %-7s %5g deg  x %d   index %s' % (alias, ang, grp, ', '.join(map(str, idx))))
-    for w in cfg.get('avertissements', []):
-        print('   AVERTISSEMENT ' + w)
     specs_by_block = {s['block']: s for s in specs}
     libdoc = build_specimens(specs, os.path.join(out, 'specimens.dxf'))
     items = make_items(specs)
