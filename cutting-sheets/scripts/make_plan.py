@@ -17,8 +17,9 @@ Etapes :
     6. registre des eprouvettes (registry.csv) et notice pour l'atelier (notice.pdf : plan numerote, Mikrosteg en
        rouge, qualites, sens de laminage).
 
-Sorties dans cutting-sheets/output/<nom>/ : <nom>.dxf, notice.pdf, registry.csv, placement.csv, specimens.dxf,
-check/ (rapport de verification), README.md.
+Sorties dans cutting-sheets/runs/<nom>/ (dossier IGNORE par git : on peut relancer sans creer de conflit), ou dans
+cutting-sheets/output/<nom>/ (suivi par git) avec --final, pour un plan a garder ou a envoyer a l'atelier :
+<nom>.dxf, notice.pdf, registry.csv, placement.csv, specimens.dxf, check/ (rapport de verification), README.md.
 """
 import argparse
 import collections
@@ -334,7 +335,7 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
 # ============================================================
 # PROGRAMME
 # ============================================================
-def run(order_path, anneal=None, procs=None):
+def run(order_path, anneal=None, procs=None, final=False):
     cfg = read_order(order_path)
     if anneal is not None:
         cfg['recuit'] = anneal
@@ -343,7 +344,7 @@ def run(order_path, anneal=None, procs=None):
     temps = mt.load_templates(cfg['gabarits'])
     specs = expand(cfg, temps)
     W, H = cfg['W'], cfg['H']
-    out = os.path.join(BASE, 'output', cfg['nom'])
+    out = os.path.join(BASE, 'output' if final else 'runs', cfg['nom'])
     os.makedirs(out, exist_ok=True)
     print('Commande %s : %d eprouvettes, tole %g x %g mm, ecart %g mm, marge %g mm'
           % (os.path.basename(order_path), len(specs), W, H, cfg['ecart'], cfg['marge']))
@@ -411,6 +412,8 @@ def run(order_path, anneal=None, procs=None):
     print('Plan    : %s' % dxf)
     print('Notice  : %s' % os.path.join(out, 'notice.pdf'))
     print('Registre: %s' % os.path.join(out, 'registry.csv'))
+    if not final:
+        print('(dossier runs/ : ignore par git. Pour garder ce plan dans le repo : relancer avec --final)')
     status = all(c[1] in ('OK', 'INFO') for c in checks)
     return status, out
 
@@ -453,9 +456,11 @@ def main():
     ap.add_argument('order', help='fichier de commande YAML')
     ap.add_argument('--recuit', type=int, default=None, help='remplace "recuit" de la commande')
     ap.add_argument('--coeurs', type=int, default=None, help='remplace "coeurs" de la commande')
+    ap.add_argument('--final', action='store_true',
+                    help='ecrire dans output/ (suivi par git) au lieu de runs/ (ignore par git)')
     args = ap.parse_args()
     try:
-        ok, out = run(args.order, args.recuit, args.coeurs)
+        ok, out = run(args.order, args.recuit, args.coeurs, args.final)
     except OrderError as e:
         print('COMMANDE REFUSEE :\n' + str(e))
         sys.exit(2)

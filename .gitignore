@@ -41,3 +41,6 @@ desktop.ini
 # Python
 __pycache__/
 *.pyc
+
+# Plans de decoupe lances au labo (cutting-sheets) : dossier de travail, jamais suivi par git
+cutting-sheets/runs/

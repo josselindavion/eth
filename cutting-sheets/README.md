@@ -22,7 +22,7 @@ pour l'atelier, plus la notice qui l'accompagne.
    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/<ma_commande>.yaml
    ```
 
-3. Résultat dans `output/<nom>/` :
+3. Résultat dans `runs/<nom>/` (voir « Où vont les fichiers » ci-dessous) :
    - `<nom>.dxf` : le plan pour l'atelier ;
    - `notice.pdf` : une page par tôle et la liste des éprouvettes ;
    - `registry.csv` : une ligne par éprouvette (numéro, type, angle, code, identifiant) ;
@@ -59,6 +59,29 @@ Le programme refuse une commande fausse, avec un message, sans rien écrire :
 - plus de 9 éprouvettes au même angle ;
 - deux fois le même code sur le même type ;
 - type inconnu.
+
+
+### Où vont les fichiers (pas de conflit git)
+
+Par défaut, tout ce que les scripts produisent va dans **`cutting-sheets/runs/`**, un dossier **ignoré par git**. On
+peut relancer autant qu'on veut, au labo ou ailleurs : `git pull` ne crée plus de conflit.
+
+Pour un plan à garder dans le repo (par exemple celui envoyé à l'atelier), on relance avec `--final` :
+
+```bash
+py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/<ta_commande>.yaml --final
+git add cutting-sheets/output/<nom>
+git commit -m "Plan <nom> envoye a l'atelier"
+git push
+```
+
+| Script | Par défaut (ignoré par git) | Avec `--final` (suivi par git) |
+|---|---|---|
+| `make_plan.py`, `nest.py` | `runs/<nom>/` | `output/<nom>/` |
+| `check_sheet.py` | `runs/reports/<plan>/` | `reports/<plan>/` |
+
+`extract_library.py` et `make_templates.py` écrivent toujours dans `library/` et `templates/`. Ils ne se lancent
+qu'une fois par nouvelle bibliothèque : les relancer réécrit des fichiers suivis par git.
 
 ## Les conventions des plans du labo
 
@@ -125,8 +148,9 @@ forcée.
 | `scripts/` | `sheetlib.py` (lecture commune), `check_sheet.py` (vérification), `extract_library.py` (bibliothèque), `notchcode.py` (code à encoches), `make_templates.py` (gabarits sans code), `nest.py` (moteur de placement), `make_plan.py` (commande → plan complet) |
 | `orders/` | commandes : `exemple.yaml` (modèle à copier), `CT_v20260901.yaml` (programme CT complet, sert de test) |
 | `templates/<nom>/` | gabarits sans code : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `output/<plan>/` | plans générés : `<plan>.dxf`, `notice.pdf`, `registry.csv`, `placement.csv`, `specimens.dxf`, `check/`, `README.md` |
-| `reports/<plan>/` | rapport de vérification de chaque plan : `report.md`, `preview.png`, `issues.png`, `pieces.csv` |
+| `runs/` | **ignoré par git** : tout ce qu'on lance (plans, rapports) |
+| `output/<plan>/` | plans gardés (`--final`) : `<plan>.dxf`, `notice.pdf`, `registry.csv`, `placement.csv`, `specimens.dxf`, `check/`, `README.md` |
+| `reports/<plan>/` | rapports gardés (`--final`) de la vérification des plans reçus : `report.md`, `preview.png`, `issues.png`, `pieces.csv` |
 | `library/<nom>/` | bibliothèque d'éprouvettes extraite d'un plan : `specimens.dxf`, `index.csv`, `types.png`, `README.md`, `repaired_source.dxf` |
 
 ## Installation (PC du labo, une fois)
@@ -141,6 +165,8 @@ py -m pip install ezdxf shapely matplotlib scipy pyyaml
 cd ~/Documents/eth
 py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf
 ```
+
+Le rapport va dans `runs/reports/<plan>/` (ou `reports/<plan>/` avec `--final`).
 
 Options :
 - `--min-gap 5` : écart minimal entre pièces, ERREUR en dessous (règle des encadrants) ;
@@ -219,7 +245,7 @@ Ce que fait le script :
    `Q5_HIGH`.
 6. Il est vérifié par `check_sheet.py`, plus un contrôle du type et de l'angle au laminage de chaque éprouvette.
 
-Sorties dans `output/<nom>/` : `<nom>.dxf`, `placement.csv`, `check/report.md`, `check/preview.png`.
+Sorties dans `runs/<nom>/` (ou `output/<nom>/` avec `--final`) : `<nom>.dxf`, `placement.csv`, `check/report.md`, `check/preview.png`.
 
 Ce script place une bibliothèque telle quelle, codes compris. Pour une **nouvelle** commande, on utilise
 `make_plan.py` (section « Utilisation rapide »), qui appelle le même moteur.

@@ -24,7 +24,8 @@ Moteur :
     5. le meilleur placement est recalcule a la resolution fine (--final-res), ecrit en DXF (blocs de la
        bibliotheque, geometrie exacte, mm), puis verifie par check_sheet.py.
 
-Sorties dans cutting-sheets/output/<name>/ : <name>.dxf, placement.csv, check/ (rapport de verification).
+Sorties dans cutting-sheets/runs/<name>/ (ignore par git), ou output/<name>/ avec --final : <name>.dxf,
+placement.csv, check/ (rapport de verification).
 """
 import argparse
 import collections
@@ -51,7 +52,8 @@ sys.path.insert(0, HERE)
 import check_sheet                      # noqa: E402
 import sheetlib as sl                   # noqa: E402
 
-OUT_ROOT = os.path.abspath(os.path.join(HERE, '..', 'output'))
+OUT_ROOT = os.path.abspath(os.path.join(HERE, '..', 'output'))     # --final : suivi par git
+RUNS_ROOT = os.path.abspath(os.path.join(HERE, '..', 'runs'))      # defaut : ignore par git
 SHEET_SPACING = 40.0                    # mm entre deux toles dans le DXF (comme les plans du labo)
 
 
@@ -438,10 +440,11 @@ def main():
     ap.add_argument('--name', default=None)
     ap.add_argument('--seed', type=int, default=1)
     ap.add_argument('--procs', type=int, default=None, help='recuits en parallele (defaut : coeurs du PC - 1)')
+    ap.add_argument('--final', action='store_true', help='ecrire dans output/ (suivi par git) au lieu de runs/')
     args = ap.parse_args()
     W, H = (float(v) for v in args.sheet.lower().split('x'))
     name = args.name or '%s_%gx%g' % (os.path.basename(args.library.rstrip('/\\')), W, H)
-    out = os.path.join(OUT_ROOT, name)
+    out = os.path.join(OUT_ROOT if args.final else RUNS_ROOT, name)
     os.makedirs(out, exist_ok=True)
     libdoc, items = load_library(args.library, args.types)
     print('%d eprouvettes a placer sur des toles de %g x %g mm (ecart %g mm, marge %g mm)'

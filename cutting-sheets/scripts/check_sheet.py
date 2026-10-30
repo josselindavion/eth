@@ -5,7 +5,7 @@ check_sheet.py -- Verifie un plan de decoupe EDM (DXF) avant envoi a l'atelier.
 Lancement (Python 3 + ezdxf, shapely, matplotlib), depuis la racine du repo :
     py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/<plan>.dxf [--min-gap 3] [--warn-gap 5] [--min-margin 5]
 
-Sorties dans cutting-sheets/reports/<plan>/ :
+Sorties dans cutting-sheets/runs/reports/<plan>/ (ignore par git), ou reports/<plan>/ avec --final :
     report.md      rapport (anglais) : verdict, controles, inventaire des eprouvettes, details des problemes
     preview.png    plan complet, problemes entoures
     issues.png     zooms sur chaque probleme bloquant
@@ -32,7 +32,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sheetlib as sl                    # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPORTS = os.path.abspath(os.path.join(HERE, '..', 'reports'))
+REPORTS = os.path.abspath(os.path.join(HERE, '..', 'reports'))              # --final : suivi par git
+RUNS_REPORTS = os.path.abspath(os.path.join(HERE, '..', 'runs', 'reports'))  # defaut : ignore par git
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#333333'}
 QUALITY_LAYERS = {'3': 3, '4': 4, '5': 5, 'NORMAL_QUALITY': 3, 'MEDIUM_QUALITY': 4, 'HIGH_QUALITY': 5}
 
@@ -329,10 +330,11 @@ def main():
     ap.add_argument('--min-gap', type=float, default=5.0, help='ecart minimal entre pieces (mm), sinon ERROR (encadrants, 29/10/2026 : 5 mm)')
     ap.add_argument('--warn-gap', type=float, default=5.0, help='ecart en dessous duquel on signale (mm)')
     ap.add_argument('--min-margin', type=float, default=5.0, help='marge minimale au bord de la tole (mm ; valeur provisoire, non precisee par les encadrants)')
-    ap.add_argument('--out', default=None, help='dossier de sortie (defaut : cutting-sheets/reports/<plan>/)')
+    ap.add_argument('--out', default=None, help='dossier de sortie (defaut : cutting-sheets/runs/reports/<plan>/)')
+    ap.add_argument('--final', action='store_true', help='ecrire dans reports/ (suivi par git) au lieu de runs/reports/')
     args = ap.parse_args()
     R = analyse(args.dxf, args.min_gap, args.warn_gap, args.min_margin)
-    out = args.out or os.path.join(REPORTS, os.path.splitext(os.path.basename(args.dxf))[0])
+    out = args.out or os.path.join(REPORTS if args.final else RUNS_REPORTS, os.path.splitext(os.path.basename(args.dxf))[0])
     write_outputs(R, out, args)
     for c in R['checks']:
         print('%-24s %-8s %s' % c)
