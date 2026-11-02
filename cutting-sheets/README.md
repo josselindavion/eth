@@ -65,6 +65,8 @@ eprouvettes:
 | `marges` | marge au bord de la tôle **par côté** (mm) : `{gauche, bas, droite, haut}` ; aucune pièce n'y est placée. Sert aussi de **zone de bridage** (ex. en L : 40 mm à gauche et en bas). Le bas est le début du sens de laminage | 5 partout |
 | `marge` | raccourci : la même marge sur les 4 côtés (un côté absent de `marges` prend cette valeur) | 5 |
 | `temps` | secondes de calcul de sparrow, par tôle (et par essai) ; plus long = un peu plus compact (programme CT de 63 éprouvettes : 514 mm en 60 s, 505 mm en 180 s) | 60 |
+| `ajouts` | essais de **remplissage** par tôle : une fois le groupe d'une tôle placé, on essaie d'y ajouter des éprouvettes des tôles suivantes (arrêt après 3 échecs d'affilée) ; 0 = pas de remplissage, plus rapide | 8 |
+| `temps_ajout` | secondes de sparrow par essai d'ajout | `temps` / 2 |
 | `graine` | graine du tirage aléatoire de sparrow (changer pour essayer une autre solution) | 1 |
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet dans le registre | – |
 | `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
@@ -100,9 +102,11 @@ eprouvettes:
    - angle commandé ou demi-tour (+180°), jamais de miroir ;
    - 5 mm entre pièces, 5 mm au bord ;
    - moteur **sparrow** (voir ci-dessous) ;
-   - plusieurs tôles : les éprouvettes sont d'abord **réparties en groupes de surface égale**, un par tôle, puis
-     sparrow compacte chaque groupe sur sa tôle ; on part du nombre minimal de tôles (surface des pièces / surface
-     utile) et on ajoute une tôle tant qu'un groupe ne tient pas.
+   - plusieurs tôles, tôle par tôle : les éprouvettes restantes sont **réparties en groupes de surface égale**, un
+     par tôle restante, et sparrow compacte le premier groupe sur la tôle ; puis on **remplit** la tôle en essayant
+     d'y ajouter des éprouvettes des groupes suivants (de la plus grande à la plus petite ; gardée si tout tient) ;
+     on part du nombre minimal de tôles (surface des pièces / surface utile) et on ajoute une tôle tant qu'un groupe
+     ne tient pas.
 4. **Écrit le DXF** : mm, calques `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`.
 5. **Vérifie le DXF final** sans rien supposer :
    - contours fermés, couleurs, écarts, marges, chevauchements (`check_sheet.py`) ;
@@ -128,10 +132,10 @@ Sur le programme CT de 63 éprouvettes (500 × 600 mm), le placement occupe **51
 ancien moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm. Avec les 68 éprouvettes de `feuille_CT.yaml` :
 574 mm, 1 tôle.
 
-Sur des tôles de 350 × 250 mm avec bridage en L de 40 mm, `feuille_CT.yaml` prend **5 tôles** de 13 à 14 éprouvettes,
-remplies jusqu'à 215–230 mm sur 245 (essai à 4 tôles : chaque tôle dépasse d'environ 25 mm). L'ancienne méthode,
-qui coupait une seule longue bande en morceaux, en prenait 6. Durée : environ `temps` × (nombre de tôles + essais
-ratés), soit environ 4 min 30 s avec `temps: 40`.
+Sur des tôles de 350 × 250 mm avec bridage en L de 40 mm, `feuille_CT.yaml` prend **5 tôles** (essai à 4 tôles :
+la première dépasse d'environ 25 mm). Avec le remplissage, les tôles 1 à 4 ont 14, 14, 15 et 15 éprouvettes,
+remplies jusqu'à 230–239 mm sur 245, et la dernière en a 10 (176 mm) ; sans remplissage, 13 à 14 par tôle,
+215–230 mm. Durée : environ 11 à 13 min avec `temps: 40` et `ajouts: 8` ; environ 4 min 30 s avec `ajouts: 0`.
 
 ## Contenu du dossier
 

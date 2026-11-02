@@ -111,18 +111,27 @@ def _split(specs, polys, n, gap):
     return [g for g in groups if g]
 
 
+def _area(polys, s, gap):
+    return polys[s['T'].kind].buffer(gap / 2.0, join_style=1).area
+
+
 def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_sheets=20, on_progress=None,
-          log=None):
+          log=None, fill_tries=8, fill_seconds=None, fill_max=0.85, fill_fails=3):
     """Toutes les eprouvettes sur des toles W x H. margins : {'gauche', 'bas', 'droite', 'haut'} en mm.
 
     Methode :
       1. nombre de toles de depart n = surface des pieces (+ demi-ecart) / surface utile d'une tole, arrondi au-dessus
          (c'est un minimum : on ne peut pas faire moins) ;
-      2. repartition des eprouvettes en n groupes de surface egale (_split) ;
-      3. sparrow compacte chaque groupe sur sa tole (temps "seconds" par tole) ;
-      4. si un groupe ne tient pas dans la tole, on arrete cet essai et on recommence avec n + 1 toles.
+      2. tole par tole : les eprouvettes restantes sont reparties en autant de groupes de surface egale qu'il reste de
+         toles (_split) ; sparrow compacte le premier groupe sur la tole (temps "seconds") ;
+      3. REMPLISSAGE : on essaie d'ajouter des eprouvettes des groupes suivants, de la plus grande a la plus petite ;
+         sparrow recompacte la tole avec l'eprouvette en plus (temps "fill_seconds") ; si tout tient, elle reste,
+         sinon on n'essaie plus cette forme sur cette tole ; on s'arrete apres "fill_fails" echecs d'affilee ou
+         "fill_tries" essais, et on n'essaie que si la surface occupee resterait <= fill_max x surface utile ;
+      4. si les eprouvettes sont toutes placees avant la derniere tole prevue, on s'arrete (moins de toles) ;
+         si un groupe ne tient pas dans sa tole, on recommence avec n + 1 toles.
     Renvoie une liste de toles, chacune une liste (spec, rotation_deg, x, y, contour_place).
-    on_progress(libelle, secondes_ecoulees, meilleure_hauteur) ; log(message).
+    on_progress(libelle, secondes_ecoulees, meilleure_hauteur, duree_prevue) ; log(message).
     """
     uw = W - margins['gauche'] - margins['droite']
     uh = H - margins['bas'] - margins['haut']
@@ -134,23 +143,59 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_s
             raise PlacementError('%s a %g deg (%.0f x %.0f mm une fois tournee) ne tient pas dans la zone utile de la '
                                  'tole (%g x %g mm, marges deduites)' % (T.alias, s['angle'], b[2] - b[0], b[3] - b[1],
                                                                         uw, uh))
-    total = sum(polys[s['T'].kind].buffer(gap / 2.0, join_style=1).area for s in specs)
-    n = max(1, int(math.ceil(total / ((uw + gap) * (uh + gap)) - 1e-9)))
+    fill_seconds = fill_seconds or max(5, seconds / 2.0)
+    U = (uw + gap) * (uh + gap)
+    total = sum(_area(polys, s, gap) for s in specs)
+    n = max(1, int(math.ceil(total / U - 1e-9)))
+
+    def solve(group, label, sec):
+        placed = _solve_strip(group, polys, W, gap, margins, sec, seed, workers,
+                              (lambda t, b: on_progress(label, t, b, sec)) if on_progress else None)
+        return placed, max(p[4].bounds[3] for p in placed)
+
     while n <= min(max_sheets, len(specs)):
-        groups = _split(specs, polys, n, gap)
-        sheets = []
-        for k, g in enumerate(groups, 1):
-            label = '%d tole%s : %d/%d' % (n, 's' if n > 1 else '', k, len(groups))
-            placed = _solve_strip(g, polys, W, gap, margins, seconds, seed, workers,
-                                  (lambda t, b, label=label: on_progress(label, t, b)) if on_progress else None)
-            t = max(p[4].bounds[3] for p in placed)
+        remaining, sheets = list(specs), []
+        while remaining:
+            k = len(sheets) + 1
+            left = n - k + 1
+            if left <= 0:
+                break
+            group = list(_split(remaining, polys, left, gap)[0]) if left > 1 else list(remaining)
+            placed, t = solve(group, '%d toles : %d/%d' % (n, k, n), seconds)
             if t > lim:
                 if log:
                     log('tole %d sur %d : depasse de %.1f mm -> essai avec %d toles' % (k, n, t - lim, n + 1))
-                sheets = None
                 break
+            ids = set(id(x) for x in group)
+            rest = [x for x in remaining if id(x) not in ids]
+            # remplissage avec les eprouvettes des groupes suivants
+            used, failed, tries, streak = sum(_area(polys, x, gap) for x in group), set(), 0, 0
+            while rest and tries < fill_tries and streak < fill_fails:
+                cands = sorted((x for x in rest if (x['T'].kind, x['angle']) not in failed
+                                and (used + _area(polys, x, gap)) / U <= fill_max),
+                               key=lambda x: (-_area(polys, x, gap), x['block']))
+                if not cands:
+                    break
+                c = cands[0]
+                tries += 1
+                name = '%s %g deg' % (c['T'].alias, c['angle'])
+                trial, tt = solve(group + [c], 'tole %d : +%s' % (k, c['T'].alias), fill_seconds)
+                if tt <= lim:
+                    group.append(c)
+                    placed, t = trial, tt
+                    used += _area(polys, c, gap)
+                    rest = [x for x in rest if x is not c]
+                    streak = 0
+                    if log:
+                        log('tole %d : + %s ajoutee (%d eprouvettes)' % (k, name, len(group)))
+                else:
+                    failed.add((c['T'].kind, c['angle']))
+                    streak += 1
+                    if log:
+                        log('tole %d : + %s ne rentre pas' % (k, name))
             sheets.append(placed)
-        if sheets:
+            remaining = rest
+        if not remaining:
             return sheets
         n += 1
     raise PlacementError('les eprouvettes ne tiennent pas sur %d toles' % min(max_sheets, len(specs)))

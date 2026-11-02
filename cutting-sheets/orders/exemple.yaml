@@ -12,6 +12,7 @@ marges:                # mm au bord de la tole, par cote ; rien n'est decoupe da
   droite: 5
   haut: 5
 temps: 20             # secondes de calcul par tole (sparrow) ; plus long = un peu plus compact
+ajouts: 8             # essais pour remplir chaque tole avec des eprouvettes des toles suivantes (0 = rapide, sans remplissage)
 
 # Facultatif : champs de l'identifiant complet (QR code du labo), recopies dans registry.csv
 identifiant:

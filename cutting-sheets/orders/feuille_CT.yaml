@@ -13,6 +13,7 @@ marges:                # mm au bord de la tole, par cote ; rien n'est decoupe da
   droite: 5
   haut: 5
 temps: 40             # secondes de calcul par tole (sparrow) ; plus long = un peu plus compact
+ajouts: 8             # essais pour remplir chaque tole avec des eprouvettes des toles suivantes (0 = rapide, sans remplissage)
 
 eprouvettes:
   - {type: UTUT,      angle: 0,  nombre: 3, premier_index: 1}

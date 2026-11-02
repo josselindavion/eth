@@ -84,6 +84,8 @@ def read_order(path):
         'marge': float(o.get('marge', 5.0)),          # meme marge sur les 4 cotes (raccourci)
         'temps': float(o.get('temps', 60)),
         'graine': int(o.get('graine', 1)),
+        'ajouts': int(o.get('ajouts', 8)),                  # essais d'ajout par tole au plus (0 = pas de remplissage)
+        'temps_ajout': float(o['temps_ajout']) if o.get('temps_ajout') else None,
         'toles_max': int(o.get('toles_max', 20)),
         'identifiant': o.get('identifiant') or {},
         'lignes': o['eprouvettes'],
@@ -391,12 +393,12 @@ def run(order_path, seconds=None, final=False):
     t0 = time.time()
     state = {'bar': None, 'label': None}
 
-    def on_progress(label, t, best):
+    def on_progress(label, t, best, total):
         if label != state['label']:
             if state['bar']:
                 state['bar'].done()
-            state['bar'], state['label'] = Bar(label, int(cfg['temps'])), label
-        state['bar'].update(min(int(t), int(cfg['temps'])), ('haut a %.1f mm' % best) if best else '')
+            state['bar'], state['label'] = Bar(label, int(total)), label
+        state['bar'].update(min(int(t), int(total)), ('haut a %.1f mm' % best) if best else '')
 
     def log(msg):
         if state['bar']:
@@ -405,7 +407,8 @@ def run(order_path, seconds=None, final=False):
         print('    ' + msg)
     try:
         sheets = sp.place(specs, polys, W, H, cfg['ecart'], cfg['marges'], cfg['temps'], cfg['graine'],
-                          max_sheets=cfg['toles_max'], on_progress=on_progress, log=log)
+                          max_sheets=cfg['toles_max'], on_progress=on_progress, log=log,
+                          fill_tries=cfg['ajouts'], fill_seconds=cfg['temps_ajout'])
     except sp.PlacementError as e:
         raise OrderError(str(e))
     if state['bar']:
