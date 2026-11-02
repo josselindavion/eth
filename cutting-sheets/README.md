@@ -59,7 +59,7 @@ eprouvettes:
 | Champ | Sens | Défaut |
 |---|---|---|
 | `nom` | nom du plan, du dossier de sortie et du DXF | nom du fichier |
-| `gabarits` | dossier des gabarits sans code | `templates/CTLG_261029` (catalogue du labo) |
+| `gabarits` | dossier des gabarits sans code | `templates/CTLG_261102` (catalogue du labo + `MNAK_RECT`) |
 | `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
 | `ecart` | écart minimal entre deux pièces (mm) | 5 |
 | `marges` | marge au bord de la tôle **par côté** (mm) : `{gauche, bas, droite, haut}` ; aucune pièce n'y est placée. Sert aussi de **zone de bridage** (ex. en L : 40 mm à gauche et en bas). Le bas est le début du sens de laminage | 5 partout |
@@ -82,6 +82,7 @@ eprouvettes:
 | `SHLD` / `SHMD` / `SHHD` | – | cisaillement court, 81 mm ; même contour, seul le coin à côté du code change |
 | `MNAK_FULL` | `DISC0` | disque sans trou |
 | `MNAK_HOLE` | `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) |
+| `MNAK_RECT_HOLE` | `MNAK_RECT` | Mini-Nakajima **rectangulaire** 80 × 54 mm à 2 trous (proposition d'Erik, 02/11/2026) : mêmes trous, encoches et position du code que `MNAK_HOLE`, même convention d'angle (trous à angle + 90°) |
 | `TENS_FULL` | `STRIP` | bande 140 × 30 mm sans code |
 
 - **Angle** : direction de la tête qui porte le code, comptée depuis le sens de laminage (+Y), dans le sens
@@ -142,8 +143,8 @@ remplies jusqu'à 230–239 mm sur 245, et la dernière en a 10 (176 mm) ; sans 
 | Dossier | Contenu |
 |---|---|
 | `orders/` | les commandes : `exemple.yaml`, `feuille_CT.yaml` |
-| `templates/CTLG_261029/` | gabarits sans code tirés du catalogue du labo : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `scripts/` | `make_plan.py` (commande → plan), `sparrow_place.py` (placement avec sparrow + DXF), `progress.py` (barre de progression), `notchcode.py` (code à encoches), `make_templates.py` (gabarits depuis le catalogue), `check_sheet.py` (vérification d'un DXF), `sheetlib.py` (lecture des DXF) |
+| `templates/CTLG_261102/` | gabarits sans code tirés du catalogue du labo et du catalogue complémentaire `MNAK_RECT` : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
+| `scripts/` | `make_plan.py` (commande → plan), `sparrow_place.py` (placement avec sparrow + DXF), `progress.py` (barre de progression), `notchcode.py` (code à encoches), `make_templates.py` (gabarits depuis le catalogue), `build_mnak_rect.py` (catalogue complémentaire du Mini-Nakajima rectangulaire), `check_sheet.py` (vérification d'un DXF), `sheetlib.py` (lecture des DXF) |
 | `input/` | fichiers reçus du labo : catalogue `specimen_templates_261029_barcoded.dxf`, plan CT `…v20260901_CT_bardcode.dxf`, modèles de 2025 (`.dxf` + notices `.pptx` / `.pdf`) |
 | `runs/` | **ignoré par git** : tout ce qu'on lance |
 
@@ -164,16 +165,23 @@ py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SH
 **Refaire les gabarits** (seulement si le labo envoie un nouveau catalogue) :
 
 ```bash
-py cutting-sheets/scripts/make_templates.py cutting-sheets/input/<catalogue>.dxf <nom>
+py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
 ```
+
+On peut donner plusieurs catalogues ; le dernier argument est le nom des gabarits.
+
+**Catalogue complémentaire `MNAK_RECT`** : `build_mnak_rect.py` lit l'export SolidWorks d'Erik
+(`input/RoundSample_Dual_Hole_rectange.dxf`) et écrit `input/specimen_templates_extra_MNAK_RECT.dxf` dans le format du
+catalogue du labo : 30 blocs `MNAK_RECT_HOLE_<angle><index>` (angles 0, 45, 90°, index 0–9), contour Q3, trous Q5,
+code sur le méplat à 27 mm du centre, comme le disque.
 
 - Le type de chaque éprouvette est le nom de sa famille de blocs (`CTLG_UTUT_21` → `CTLG_UTUT`).
 - Le bloc `_00` sert de modèle. On lui retire les 19 traits du code et le trait Q3 qui le suit : sa longueur dépend
   du code, qui fait 12 ou 13 mm.
 - **Validation :** chaque bloc du catalogue est reconstruit à partir du gabarit et du code lu dessus, puis comparé
   à l'original. Le code lu doit être le numéro du bloc (`_21` = angle 2 × 15° = 30°, index 1).
-- Pour `CTLG_261029` :
-  - 410 / 410 blocs corrects ;
+- Pour `CTLG_261102` :
+  - 410 / 410 blocs du catalogue du labo + 30 / 30 blocs `MNAK_RECT` corrects ;
   - traits du code à moins de 0,012 mm ;
   - contour à moins de 0,017 mm.
 

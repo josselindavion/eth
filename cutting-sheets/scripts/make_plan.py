@@ -48,7 +48,7 @@ from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
 BASE = os.path.abspath(os.path.join(HERE, '..'))       # dossier cutting-sheets
-DEFAULT_TEMPLATES = os.path.join(BASE, 'templates', 'CTLG_261029')     # catalogue du labo
+DEFAULT_TEMPLATES = os.path.join(BASE, 'templates', 'CTLG_261102')     # catalogue du labo + MNAK_RECT
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#222222'}
 
 

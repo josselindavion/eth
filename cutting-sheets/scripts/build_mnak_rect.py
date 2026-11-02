@@ -1,0 +1,85 @@
+# -*- coding: utf-8 -*-
+"""
+build_mnak_rect.py -- Catalogue complementaire : Mini-Nakajima RECTANGULAIRE a 2 trous (proposition d'Erik, 02/11/2026).
+
+Lancement (depuis la racine du repo) :
+    py cutting-sheets/scripts/build_mnak_rect.py
+
+Entree  : cutting-sheets/input/RoundSample_Dual_Hole_rectange.dxf (export SolidWorks de la piece, mm, tout en couleur 7)
+Sortie  : cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf, dans le format du catalogue du labo :
+          un bloc par eprouvette, nomme MNAK_RECT_HOLE_<chiffre d'angle><index>, pose a son angle (0, 45, 90 deg ;
+          index 0 a 9, comme MNAK_HOLE), qualites par couleur (3 = Q3, 5 = Q5).
+
+Repere et code (identiques au disque MNAK_HOLE du catalogue, verifie le 02/11/2026) :
+    - la piece d'Erik est tournee de +90 deg : le meplat x = +27 devient le meplat y = +27, les trous (R3,9 a 9 mm
+      du centre) sont alors le long de x, perpendiculaires a la direction du code, comme sur le disque ;
+    - code a encoches sur ce meplat, depart en x = -7,0 mm (comme le disque), trait Q3 jusqu'au bout du meplat ;
+    - angle de l'eprouvette = direction du code depuis le sens de laminage ; trous a angle + 90 deg ;
+    - qualites comme le disque : contour Q3 (vert), trous Q5 (bleu), code Q5.
+"""
+import math
+import os
+import sys
+
+import ezdxf
+from ezdxf.math import Matrix44
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import notchcode as nc                   # noqa: E402
+
+SRC = os.path.join(HERE, '..', 'input', 'RoundSample_Dual_Hole_rectange.dxf')
+OUT = os.path.join(HERE, '..', 'input', 'specimen_templates_extra_MNAK_RECT.dxf')
+FAMILY = 'MNAK_RECT_HOLE'
+ANGLE_DIGITS = (0, 3, 6)                 # 0, 45, 90 deg, comme MNAK_HOLE dans le catalogue du labo
+CODE_X0, FLAT_Y = -7.0, 27.0
+LAYERS = {3: 'Normal_Quality', 5: 'High_Quality'}
+
+
+def base_entities():
+    """Entites de la piece tournee de +90 deg ; le meplat du code est remplace par ses deux morceaux Q3."""
+    doc = ezdxf.readfile(SRC)
+    rot = Matrix44.z_rotate(math.radians(90))
+    ents, flat = [], None
+    for e in doc.modelspace():
+        x = e.copy()
+        x.transform(rot)
+        if x.dxftype() == 'LINE' and abs(x.dxf.start.y - FLAT_Y) < 1e-6 and abs(x.dxf.end.y - FLAT_Y) < 1e-6:
+            flat = sorted((x.dxf.start.x, x.dxf.end.x))
+            continue
+        ents.append((x, 5 if x.dxftype() == 'CIRCLE' else 3))
+    if flat is None:
+        raise SystemExit('meplat y = %g introuvable dans %s' % (FLAT_Y, SRC))
+    return ents, flat
+
+
+def main():
+    ents, (fx0, fx1) = base_entities()
+    out = ezdxf.new('R2000', setup=True)
+    out.header['$INSUNITS'] = 4
+    for c, name in LAYERS.items():
+        out.layers.add(name, color=c)
+    msp = out.modelspace()
+    k = 0
+    for a in ANGLE_DIGITS:
+        for idx in range(10):
+            name = '%s_%d%d' % (FAMILY, a, idx)
+            blk = out.blocks.new(name)
+            for e, c in ents:
+                y = e.copy()
+                y.dxf.layer, y.dxf.color = LAYERS[c], c
+                blk.add_foreign_entity(y, copy=False)
+            lines, length = nc.code_lines(a, idx)
+            blk.add_line((fx0, FLAT_Y), (CODE_X0, FLAT_Y), dxfattribs={'layer': LAYERS[3], 'color': 3})
+            for (u0, v0), (u1, v1) in lines:
+                blk.add_line((CODE_X0 + u0, FLAT_Y + v0), (CODE_X0 + u1, FLAT_Y + v1),
+                             dxfattribs={'layer': LAYERS[5], 'color': 5})
+            blk.add_line((CODE_X0 + length, FLAT_Y), (fx1, FLAT_Y), dxfattribs={'layer': LAYERS[3], 'color': 3})
+            msp.add_blockref(name, (120.0 * (k % 10), -120.0 * (k // 10)), dxfattribs={'rotation': 15.0 * a})
+            k += 1
+    out.saveas(OUT)
+    print('%d blocs %s -> %s' % (k, FAMILY, os.path.abspath(OUT)))
+
+
+if __name__ == '__main__':
+    main()

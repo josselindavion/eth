@@ -3,7 +3,7 @@
 # Lancer :  py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 
 nom: ETH_350x250mm_SHEET_v20261102_CT
-gabarits: templates/CTLG_261029
+gabarits: templates/CTLG_261102              # catalogue du labo + Mini-Nakajima rectangulaire (MNAK_RECT)
 tole: 350x250          # largeur x hauteur en mm ; la hauteur est le sens de laminage
                        # (zone de coupe de l'EDM ~350 x 250 mm : a confirmer avec l'atelier)
 ecart: 5               # mm entre deux eprouvettes (regle des encadrants)

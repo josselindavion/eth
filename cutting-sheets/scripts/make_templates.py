@@ -52,7 +52,8 @@ ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#444444'}
 CATALOGUE_ALIASES = {
     'CTLG_UTUT': ['UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'], 'CTLG_CHCH': ['CHCH', 'CH'],
     'CTST_UTST': ['UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
-    'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP']}
+    'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP'],
+    'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT']}     # catalogue complementaire (build_mnak_rect.py)
 BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')
 
 
@@ -288,18 +289,23 @@ def fig_templates(temps, path):
 def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
-    lib, name = sys.argv[1], sys.argv[2]
+    libs, name = sys.argv[1:-1], sys.argv[-1]      # un ou plusieurs catalogues .dxf, puis le nom des gabarits
     out = os.path.join(ROOT, name)
     os.makedirs(out, exist_ok=True)
-    if not lib.lower().endswith('.dxf'):
-        sys.exit('Il faut le fichier .dxf du catalogue du labo.')
-    pcs = sl.pieces(sl.Drawing(lib))
-    by = collections.defaultdict(list)
-    for p in pcs:                              # type = nom du bloc (famille), numero = code attendu
-        src = collections.Counter(s.source for s in p.segs).most_common(1)[0][0]
-        m = BLOCK_RE.match(src)
-        p.block, p.block_num = src, (int(m.group(2)) if m else None)
-        by[m.group(1) if m else src].append(p)
+    if not all(x.lower().endswith('.dxf') for x in libs):
+        sys.exit('Il faut le(s) fichier(s) .dxf du catalogue, puis le nom des gabarits.')
+    by, origin = collections.defaultdict(list), {}
+    for lib in libs:
+        for p in sl.pieces(sl.Drawing(lib)):   # type = nom du bloc (famille), numero = code attendu
+            src = collections.Counter(s.source for s in p.segs).most_common(1)[0][0]
+            m = BLOCK_RE.match(src)
+            p.block, p.block_num = src, (int(m.group(2)) if m else None)
+            fam = m.group(1) if m else src
+            if fam in origin and origin[fam] != lib:
+                sys.exit('famille %s presente dans deux catalogues' % fam)
+            origin[fam] = lib
+            by[fam].append(p)
+    lib = ' + '.join(os.path.basename(x) for x in libs)
     temps = []
     for kind in sorted(by):
         group = sorted(by[kind], key=lambda q: (q.block_num is None, q.block_num))
@@ -307,7 +313,7 @@ def main():
         al = CATALOGUE_ALIASES.get(kind) or [kind.split('_', 1)[1] if '_' in kind else kind]
         T = build_template(model, al[0], kind)
         T.aliases = al
-        T.source = 'block %s of %s' % (model.block, os.path.basename(lib))
+        T.source = 'block %s of %s' % (model.block, os.path.basename(origin[kind]))
         codes = [nc.read_piece(q) for q in group if q.code]
         T.angles = sorted(set(c['angle_deg'] for c in codes))
         temps.append((T, group))
