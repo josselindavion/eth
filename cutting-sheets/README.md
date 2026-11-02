@@ -25,7 +25,7 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 | Commande | Contenu |
 |---|---|
 | `orders/exemple.yaml` | petit exemple sur une tôle 350 × 250 mm avec bridage en L de 40 mm : 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
-| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (mêmes éprouvettes et mêmes codes, avec 8 bandes `TENS_FULL` au lieu de 3 : 68 éprouvettes), sur des tôles de 350 × 250 mm (zone de coupe de l'EDM) avec bridage en L de 40 mm : **6 tôles** |
+| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (mêmes éprouvettes et mêmes codes, avec 8 bandes `TENS_FULL` au lieu de 3 : 68 éprouvettes), sur des tôles de 350 × 250 mm (zone de coupe de l'EDM) avec bridage en L de 40 mm : **5 tôles** |
 
 **Résultats** dans `cutting-sheets/runs/<nom>/` :
 - `<nom>.dxf` : le plan pour l'atelier ;
@@ -63,7 +63,7 @@ eprouvettes:
 | `ecart` | écart minimal entre deux pièces (mm) | 5 |
 | `marges` | marge au bord de la tôle **par côté** (mm) : `{gauche, bas, droite, haut}` ; aucune pièce n'y est placée. Sert aussi de **zone de bridage** (ex. en L : 40 mm à gauche et en bas). Le bas est le début du sens de laminage | 5 partout |
 | `marge` | raccourci : la même marge sur les 4 côtés (un côté absent de `marges` prend cette valeur) | 5 |
-| `temps` | secondes de calcul du placement, par tôle ; plus long = un peu plus compact (programme CT de 63 éprouvettes : 514 mm en 60 s, 505 mm en 180 s) | 60 |
+| `temps` | secondes de calcul de sparrow, par tôle (et par essai) ; plus long = un peu plus compact (programme CT de 63 éprouvettes : 514 mm en 60 s, 505 mm en 180 s) | 60 |
 | `graine` | graine du tirage aléatoire de sparrow (changer pour essayer une autre solution) | 1 |
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet dans le registre | – |
 | `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
@@ -99,8 +99,9 @@ eprouvettes:
    - angle commandé ou demi-tour (+180°), jamais de miroir ;
    - 5 mm entre pièces, 5 mm au bord ;
    - moteur **sparrow** (voir ci-dessous) ;
-   - si tout ne tient pas sur une tôle : les éprouvettes entièrement dans la tôle forment la tôle 1, les autres sont
-     replacées sur une tôle suivante, etc.
+   - plusieurs tôles : les éprouvettes sont d'abord **réparties en groupes de surface égale**, un par tôle, puis
+     sparrow compacte chaque groupe sur sa tôle ; on part du nombre minimal de tôles (surface des pièces / surface
+     utile) et on ajoute une tôle tant qu'un groupe ne tient pas.
 4. **Écrit le DXF** : mm, calques `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`.
 5. **Vérifie le DXF final** sans rien supposer :
    - contours fermés, couleurs, écarts, marges, chevauchements (`check_sheet.py`) ;
@@ -126,9 +127,10 @@ Sur le programme CT de 63 éprouvettes (500 × 600 mm), le placement occupe **51
 ancien moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm. Avec les 68 éprouvettes de `feuille_CT.yaml` :
 574 mm, 1 tôle.
 
-Sur des tôles de 350 × 250 mm avec bridage en L de 40 mm, `feuille_CT.yaml` prend 6 tôles (12 à 13 éprouvettes par
-tôle, la dernière en a 5). Partage en plusieurs tôles : sparrow place tout sur une seule bande ; les éprouvettes
-entièrement dans la tôle forment la tôle 1, et les autres sont replacées pour la tôle suivante.
+Sur des tôles de 350 × 250 mm avec bridage en L de 40 mm, `feuille_CT.yaml` prend **5 tôles** de 13 à 14 éprouvettes,
+remplies jusqu'à 215–230 mm sur 245 (essai à 4 tôles : chaque tôle dépasse d'environ 25 mm). L'ancienne méthode,
+qui coupait une seule longue bande en morceaux, en prenait 6. Durée : environ `temps` × (nombre de tôles + essais
+ratés), soit environ 4 min 30 s avec `temps: 40`.
 
 ## Contenu du dossier
 

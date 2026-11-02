@@ -389,22 +389,29 @@ def run(order_path, seconds=None, final=False):
         if sp_['T'].kind not in polys:
             polys[sp_['T'].kind] = mt.template_polygon(sp_['T'], closed=True)    # contour sans encoches
     t0 = time.time()
-    bars = {}
+    state = {'bar': None, 'label': None}
 
-    def on_progress(k, t, best):
-        if k not in bars:
-            if bars:
-                bars[k - 1].done()
-            bars[k] = Bar('Tole %d' % k, int(cfg['temps']))
-        bars[k].update(min(int(t), int(cfg['temps'])), ('meilleur %.1f mm' % best) if best else '')
+    def on_progress(label, t, best):
+        if label != state['label']:
+            if state['bar']:
+                state['bar'].done()
+            state['bar'], state['label'] = Bar(label, int(cfg['temps'])), label
+        state['bar'].update(min(int(t), int(cfg['temps'])), ('haut a %.1f mm' % best) if best else '')
+
+    def log(msg):
+        if state['bar']:
+            state['bar'].done()
+            state['bar'], state['label'] = None, None
+        print('    ' + msg)
     try:
         sheets = sp.place(specs, polys, W, H, cfg['ecart'], cfg['marges'], cfg['temps'], cfg['graine'],
-                          max_sheets=cfg['toles_max'], on_progress=on_progress)
+                          max_sheets=cfg['toles_max'], on_progress=on_progress, log=log)
     except sp.PlacementError as e:
         raise OrderError(str(e))
-    bars[max(bars)].done()
+    if state['bar']:
+        state['bar'].done()
     print('    %d tole(s) en %.0f s : %s' % (len(sheets), time.time() - t0, ' ; '.join(
-        'tole %d = %d eprouvettes, %.1f mm de haut' % (k + 1, len(s), sp.top(s)) for k, s in enumerate(sheets))))
+        'tole %d = %d eprouvettes, %.0f mm' % (k + 1, len(s), sp.top(s)) for k, s in enumerate(sheets))))
 
     step(4, N, 'Ecriture du DXF')
     dxf = os.path.join(out, '%s.dxf' % cfg['nom'])

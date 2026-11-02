@@ -17,10 +17,11 @@ Regles (encadrants, 29/10/2026) :
     - angle impose : chaque eprouvette ne peut etre posee qu'a son angle commande ou a cet angle + 180 deg ;
       sparrow ne fait jamais de miroir quand on lui donne une liste d'angles.
 
-Plusieurs toles : si la bande depasse la hauteur de la tole, les eprouvettes entierement contenues dans la tole
-forment la tole 1 (leur placement reste valable), et les autres sont replacees sur une nouvelle tole, etc.
+Plusieurs toles (voir place) : les eprouvettes sont d'abord reparties en groupes de surface egale, un par tole,
+puis sparrow compacte chaque groupe sur sa tole ; si un groupe ne tient pas, on recommence avec une tole de plus.
 """
 import collections
+import math
 import threading
 import time
 
@@ -94,28 +95,65 @@ def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
     return placed
 
 
-def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_sheets=20, on_progress=None):
+def _split(specs, polys, n, gap):
+    """Repartit les eprouvettes en n groupes de surface (piece + demi-ecart) a peu pres egale : la plus grande
+    eprouvette restante va dans le groupe le moins charge (methode "LPT"), ce qui melange aussi les types."""
+    area = {}
+    for s in specs:
+        k = s['T'].kind
+        if k not in area:
+            area[k] = polys[k].buffer(gap / 2.0, join_style=1).area
+    groups, load = [[] for _ in range(n)], [0.0] * n
+    for s in sorted(specs, key=lambda s: (-area[s['T'].kind], s['block'])):
+        i = load.index(min(load))
+        groups[i].append(s)
+        load[i] += area[s['T'].kind]
+    return [g for g in groups if g]
+
+
+def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_sheets=20, on_progress=None,
+          log=None):
     """Toutes les eprouvettes sur des toles W x H. margins : {'gauche', 'bas', 'droite', 'haut'} en mm.
+
+    Methode :
+      1. nombre de toles de depart n = surface des pieces (+ demi-ecart) / surface utile d'une tole, arrondi au-dessus
+         (c'est un minimum : on ne peut pas faire moins) ;
+      2. repartition des eprouvettes en n groupes de surface egale (_split) ;
+      3. sparrow compacte chaque groupe sur sa tole (temps "seconds" par tole) ;
+      4. si un groupe ne tient pas dans la tole, on arrete cet essai et on recommence avec n + 1 toles.
     Renvoie une liste de toles, chacune une liste (spec, rotation_deg, x, y, contour_place).
-    on_progress(k_tole, secondes_ecoulees, meilleure_hauteur)."""
-    sheets, remaining = [], list(specs)
-    while remaining:
-        if len(sheets) >= max_sheets:
-            raise PlacementError('les eprouvettes ne tiennent pas sur %d toles' % max_sheets)
-        k = len(sheets) + 1
-        placed = _solve_strip(remaining, polys, W, gap, margins, seconds, seed, workers,
-                              (lambda t, b: on_progress(k, t, b)) if on_progress else None)
-        inside = [p for p in placed if p[4].bounds[3] <= H - margins['haut'] + 1e-6]
-        if not inside:
-            big = max(remaining, key=lambda s: polys[s['T'].kind].area)
-            raise PlacementError('aucune eprouvette ne tient sur une tole de %g x %g mm avec ces marges (zone utile '
-                                 '%g x %g mm ; plus grande eprouvette restante : %s, %.0f x %.0f mm)'
-                                 % (W, H, W - margins['gauche'] - margins['droite'],
-                                    H - margins['bas'] - margins['haut'], big['T'].alias, big['T'].L, big['T'].W))
-        sheets.append(inside)
-        done = set(id(p[0]) for p in inside)
-        remaining = [s for s in remaining if id(s) not in done]
-    return sheets
+    on_progress(libelle, secondes_ecoulees, meilleure_hauteur) ; log(message).
+    """
+    uw = W - margins['gauche'] - margins['droite']
+    uh = H - margins['bas'] - margins['haut']
+    lim = H - margins['haut'] + 1e-6
+    for s in specs:                                          # chaque piece doit tenir seule dans la zone utile
+        T = s['T']
+        b = affinity.rotate(polys[T.kind], s['angle'], origin=(0, 0)).bounds
+        if b[2] - b[0] > uw + 1e-6 or b[3] - b[1] > uh + 1e-6:
+            raise PlacementError('%s a %g deg (%.0f x %.0f mm une fois tournee) ne tient pas dans la zone utile de la '
+                                 'tole (%g x %g mm, marges deduites)' % (T.alias, s['angle'], b[2] - b[0], b[3] - b[1],
+                                                                        uw, uh))
+    total = sum(polys[s['T'].kind].buffer(gap / 2.0, join_style=1).area for s in specs)
+    n = max(1, int(math.ceil(total / ((uw + gap) * (uh + gap)) - 1e-9)))
+    while n <= min(max_sheets, len(specs)):
+        groups = _split(specs, polys, n, gap)
+        sheets = []
+        for k, g in enumerate(groups, 1):
+            label = '%d tole%s : %d/%d' % (n, 's' if n > 1 else '', k, len(groups))
+            placed = _solve_strip(g, polys, W, gap, margins, seconds, seed, workers,
+                                  (lambda t, b, label=label: on_progress(label, t, b)) if on_progress else None)
+            t = max(p[4].bounds[3] for p in placed)
+            if t > lim:
+                if log:
+                    log('tole %d sur %d : depasse de %.1f mm -> essai avec %d toles' % (k, n, t - lim, n + 1))
+                sheets = None
+                break
+            sheets.append(placed)
+        if sheets:
+            return sheets
+        n += 1
+    raise PlacementError('les eprouvettes ne tiennent pas sur %d toles' % min(max_sheets, len(specs)))
 
 
 def top(sheet):
