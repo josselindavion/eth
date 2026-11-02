@@ -82,12 +82,14 @@ eprouvettes:
 | `SHLD` / `SHMD` / `SHHD` | – | cisaillement court, 81 mm ; même contour, seul le coin à côté du code change |
 | `MNAK_FULL` | `DISC0` | disque sans trou |
 | `MNAK_HOLE` | `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) |
-| `MNAK_RECT_HOLE` | `MNAK_RECT` | Mini-Nakajima **rectangulaire** 80 × 54 mm à 2 trous (proposition d'Erik, 02/11/2026) : code sur un **bout** (côté court), chanfrein à gauche du code ; angle = direction du bout codé, les trous sont dans cette direction |
+| `MNAK_RECT_HOLE` | `MNAK_RECT` | Mini-Nakajima **rectangulaire** 80 × 54 mm à 2 trous (proposition d'Erik, 02/11/2026) : code sur un **bout** (côté court), chanfrein à gauche du code ; **angle = même orientation des trous que le disque `MNAK_HOLE` de même angle** (90° = trous dans le sens de laminage) : le bout codé est donc posé à angle − 90° |
 | `MNAK_RECT_FULL` | – | le même **sans trous** (équivalent de `MNAK_FULL`) |
 | `TENS_FULL` | `STRIP` | bande 140 × 30 mm sans code |
 
 - **Angle** : direction de la tête qui porte le code, comptée depuis le sens de laminage (+Y), dans le sens
   trigonométrique. De 0° à 135° par pas de 15°, pour tous les types.
+  Seule exception : `MNAK_RECT` / `MNAK_RECT_FULL`, posés avec le bout codé à angle − 90° pour que leurs trous
+  soient orientés comme ceux du disque de même angle (le code gravé reste l'angle demandé).
 - **Index** : 0, 1, 2… pour chaque type et angle, comme dans le catalogue (0 à 9, donc 10 éprouvettes au maximum par
   type et par angle). `premier_index: 1` fait commencer à 1.
 - Le programme refuse une commande fausse, avec un message, sans rien écrire :

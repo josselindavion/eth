@@ -148,7 +148,8 @@ def expand(cfg, temps):
                               % (where, T.alias, ang, i, used[(T.kind, ang, i)]))
                 continue
             used[(T.kind, ang, i)] = 'ligne %d' % k
-            specs.append({'T': T, 'angle': ang, 'a_digit': a_digit, 'index': i, 'line': k,
+            specs.append({'T': T, 'angle': ang, 'rot': (ang + T.angle_offset) % 360.0,   # rot = angle de pose
+                          'a_digit': a_digit, 'index': i, 'line': k,
                           'test_geometry': str(line.get('geometrie_essai', '') or ''),
                           'block': '%s__%03ddeg__%s%d' % (T.kind, round(ang), 'i' if T.has_code else 'n', i)})
         nxt[key] = idx + n
@@ -217,7 +218,7 @@ def code_check(R, rows, specs_by_block, on_progress=None):
             elif c:
                 if (c['angle_digit'], c['index']) != (s['a_digit'], s['index']):
                     msg.append('code lu angle %g / index %d' % (c['angle_deg'], c['index']))
-                d = (c['direction_deg'] - s['angle']) % 180.0
+                d = (c['direction_deg'] - s['rot']) % 180.0
                 if min(d, 180.0 - d) > 0.5:
                     msg.append('direction %.1f deg' % c['direction_deg'])
                 r['code_read'] = '%d%d' % (c['angle_digit'], c['index'])

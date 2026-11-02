@@ -14,7 +14,8 @@ Regles (encadrants, 29/10/2026) :
       et en bas) : la bande est placee entre x = gauche - gap et x = W - droite + gap, et commence a y = bas - gap ;
       sparrow gardant l'ecart (gap + 0,05) avec les bords de la bande, chaque piece est a >= marge + 0,05 du bord ;
       en haut, une piece n'est gardee sur la tole que si elle est a >= haut du bord ;
-    - angle impose : chaque eprouvette ne peut etre posee qu'a son angle commande ou a cet angle + 180 deg ;
+    - angle impose : chaque eprouvette ne peut etre posee qu'a son angle de pose ou a cet angle + 180 deg ; angle de
+      pose = angle commande + decalage du type (0, sauf MNAK_RECT : -90, voir make_templates.ANGLE_OFFSET) ;
       sparrow ne fait jamais de miroir quand on lui donne une liste d'angles.
 
 Plusieurs toles (voir place) : les eprouvettes sont d'abord reparties en groupes de surface egale, un par tole,
@@ -52,7 +53,7 @@ def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
     items = []
     for gid, ss in groups.items():
         g = affinity.rotate(polys[ss[0]['T'].kind], -90, origin=(0, 0))     # notre +Y = +X de la bande
-        a = ss[0]['angle']
+        a = ss[0]['rot']
         items.append(spyrrow.Item(gid, list(g.exterior.coords)[:-1], demand=len(ss),
                                   allowed_orientations=[a, (a + 180.0) % 360.0]))
     inst = spyrrow.StripPackingInstance('plan', strip_height=strip_h, items=items)
@@ -86,7 +87,7 @@ def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
     # bas -> haut puis gauche -> droite, pour que les index montent dans l'ordre de lecture
     for pi in sorted(sol.placed_items, key=lambda p: (round(p.translation[0], 1), -p.translation[1])):
         s = pool[pi.id].pop(0)
-        a = s['angle']                                      # angle exact : a ou a + 180 (sparrow calcule en float32)
+        a = s['rot']                                        # angle exact : a ou a + 180 (sparrow calcule en float32)
         r = min((a % 360.0, (a + 180.0) % 360.0), key=lambda c: abs((pi.rotation - c + 180.0) % 360.0 - 180.0))
         tx, ty = pi.translation
         x, y = x1 - ty, y0 + tx                             # bande -> tole (rotation +90 deg, puis decalage)
@@ -138,7 +139,7 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_s
     lim = H - margins['haut'] + 1e-6
     for s in specs:                                          # chaque piece doit tenir seule dans la zone utile
         T = s['T']
-        b = affinity.rotate(polys[T.kind], s['angle'], origin=(0, 0)).bounds
+        b = affinity.rotate(polys[T.kind], s['rot'], origin=(0, 0)).bounds
         if b[2] - b[0] > uw + 1e-6 or b[3] - b[1] > uh + 1e-6:
             raise PlacementError('%s a %g deg (%.0f x %.0f mm une fois tournee) ne tient pas dans la zone utile de la '
                                  'tole (%g x %g mm, marges deduites)' % (T.alias, s['angle'], b[2] - b[0], b[3] - b[1],
@@ -224,7 +225,7 @@ def write_dxf(path, sheets, libdoc, W, H):
         for spec, r, x, y, poly in s:
             msp.add_blockref(spec['block'], (ox + x, y), dxfattribs={'rotation': r, 'layer': '0'})
             rows.append({'sheet': k + 1, 'block': spec['block'], 'type': spec['T'].kind,
-                         'orientation_to_RD_deg': '%g' % (spec['angle'] % 180), 'rotation_deg': round(r, 4),
+                         'orientation_to_RD_deg': '%g' % (spec['angle'] % 180), 'rotation_deg': round(r, 4),  # angle commande / angle de pose
                          'insert_x_mm': round(ox + x, 4), 'insert_y_mm': round(y, 4)})
     doc.saveas(path)
     return rows

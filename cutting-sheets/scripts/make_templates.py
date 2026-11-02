@@ -56,6 +56,10 @@ CATALOGUE_ALIASES = {
     'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT'],    # catalogue complementaire (build_mnak_rect.py)
     'MNAK_RECT_FULL': ['MNAK_RECT_FULL']}
 BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')
+# decalage entre l'angle de l'eprouvette (ecrit dans le code) et la direction de son bout code, en degres :
+# MNAK_RECT : meme orientation des trous que le disque MNAK_HOLE de meme angle (decide le 02/11/2026) ; sur le
+# rectangle les trous sont dans la direction du code, sur le disque perpendiculaires -> bout code a angle - 90 deg
+ANGLE_OFFSET = {'MNAK_RECT_HOLE': -90.0, 'MNAK_RECT_FULL': -90.0}
 
 
 # ============================================================
@@ -65,10 +69,11 @@ class Template:
     """Gabarit d'un type : entites (repere du gabarit), position du code, fin du trait qui suit le code."""
 
     def __init__(self, kind, alias, ents, code_origin=None, tail_end_x=None, tail_color=3,
-                 L=0.0, W=0.0, holes=0, depth=nc.DEPTH, source='', aliases=None, angles=None):
+                 L=0.0, W=0.0, holes=0, depth=nc.DEPTH, source='', aliases=None, angles=None, angle_offset=0.0):
         self.kind, self.alias, self.ents = kind, alias, ents         # ents : liste (entite ezdxf, couleur)
         self.aliases = aliases or [alias]                            # noms acceptes dans la commande
         self.angles = angles or []                                   # angles presents dans le catalogue (info)
+        self.angle_offset = angle_offset                             # direction du bout code = angle + angle_offset
         self.code_origin, self.tail_end_x, self.tail_color = code_origin, tail_end_x, tail_color
         self.L, self.W, self.holes, self.depth, self.source = L, W, holes, depth, source
 
@@ -179,7 +184,7 @@ def template_polygon(T, a_digit=None, index=None, closed=False):
 # ============================================================
 # ECRITURE / LECTURE
 # ============================================================
-FIELDS = ['type', 'alias', 'aliases', 'catalogue_angles', 'block', 'has_code', 'code_x0', 'code_y0', 'code_depth', 'tail_end_x', 'tail_color',
+FIELDS = ['type', 'alias', 'aliases', 'catalogue_angles', 'angle_offset', 'block', 'has_code', 'code_x0', 'code_y0', 'code_depth', 'tail_end_x', 'tail_color',
           'L_mm', 'W_mm', 'holes', 'source_piece']
 
 
@@ -196,7 +201,7 @@ def write_templates(out, temps):
             x.dxf.layer, x.dxf.color = LAYERS.get(c, '0'), c
             blk.add_foreign_entity(x, copy=False)
         rows.append({'type': T.kind, 'alias': T.alias, 'aliases': ';'.join(T.aliases),
-                     'catalogue_angles': ';'.join('%g' % a for a in T.angles),
+                     'catalogue_angles': ';'.join('%g' % a for a in T.angles), 'angle_offset': '%g' % T.angle_offset,
                      'block': 'T__' + T.kind, 'has_code': int(T.has_code),
                      'code_x0': T.code_origin[0] if T.has_code else '', 'code_y0': T.code_origin[1] if T.has_code else '',
                      'code_depth': T.depth if T.has_code else '', 'tail_end_x': T.tail_end_x if T.has_code else '',
@@ -228,7 +233,8 @@ def load_templates(tdir):
                          float(r['L_mm']), float(r['W_mm']), int(r['holes']),
                          float(r['code_depth']) if has else nc.DEPTH, r['source_piece'],
                          aliases=(r.get('aliases') or r['alias']).split(';'),
-                         angles=[float(a) for a in (r.get('catalogue_angles') or '').split(';') if a])
+                         angles=[float(a) for a in (r.get('catalogue_angles') or '').split(';') if a],
+                         angle_offset=float(r.get('angle_offset') or 0.0))
             out[T.kind] = T
             out[T.kind.upper()] = T
             for a in T.aliases:
@@ -314,6 +320,7 @@ def main():
         al = CATALOGUE_ALIASES.get(kind) or [kind.split('_', 1)[1] if '_' in kind else kind]
         T = build_template(model, al[0], kind)
         T.aliases = al
+        T.angle_offset = ANGLE_OFFSET.get(kind, 0.0)
         T.source = 'block %s of %s' % (model.block, os.path.basename(origin[kind]))
         codes = [nc.read_piece(q) for q in group if q.code]
         T.angles = sorted(set(c['angle_deg'] for c in codes))

@@ -17,8 +17,9 @@ Repere et code (decides le 02/11/2026) :
       trous (R3,9) en (0, +-9), donc le long de l'axe long ;
     - code a encoches sur le BOUT y = +40, depart en x = CODE_X0 (comme les barreaux du catalogue), traits Q3 de part et
       d'autre jusqu'aux coins ;
-    - angle de l'eprouvette = direction du bout code depuis le sens de laminage (regle de toutes les eprouvettes du
-      catalogue) ; les trous sont alors dans la direction de l'angle ;
+    - angle de l'eprouvette (ecrit dans le code) : MEME ORIENTATION DES TROUS QUE LE DISQUE MNAK_HOLE de meme angle
+      (decide le 02/11/2026) : trous a angle + 90 deg (angle 90 = trous dans le sens de laminage) ; comme les trous du
+      rectangle sont dans la direction du bout code, le bout code est a angle - 90 deg (ANGLE_OFFSET) ;
     - qualites comme le disque : contour Q3 (vert), trous Q5 (bleu), code Q5 ;
     - CHANFREIN de reperage : la piece d'Erik est symetrique ; le coin arrondi R2 a gauche du bout code (code en haut)
       est remplace par un chanfrein a 45 deg de CHAMFER mm, comme le coin chanfreine des autres eprouvettes, pour
@@ -38,6 +39,7 @@ import notchcode as nc                   # noqa: E402
 
 SRC = os.path.join(HERE, '..', 'input', 'RoundSample_Dual_Hole_rectange.dxf')
 OUT = os.path.join(HERE, '..', 'input', 'specimen_templates_extra_MNAK_RECT.dxf')
+ANGLE_OFFSET = -90.0                     # bout code a angle - 90 deg : trous orientes comme le disque MNAK_HOLE
 ROT_DEG = 0.0                            # rotation de la piece d'Erik : aucune (le bout y = +40 porte le code)
 FAMILIES = (('MNAK_RECT_HOLE', True), ('MNAK_RECT_FULL', False))     # (famille, avec trous)
 CHAMFER = 4.0                            # mm, cotes du chanfrein a 45 deg du coin haut gauche
@@ -112,7 +114,8 @@ def main():
                     blk.add_line((CODE_X0 + u0, FLAT_Y + v0), (CODE_X0 + u1, FLAT_Y + v1),
                                  dxfattribs={'layer': LAYERS[5], 'color': 5})
                 blk.add_line((CODE_X0 + length, FLAT_Y), (fx1, FLAT_Y), dxfattribs={'layer': LAYERS[3], 'color': 3})
-                msp.add_blockref(name, (120.0 * (k % 10), -120.0 * (k // 10)), dxfattribs={'rotation': 15.0 * a})
+                msp.add_blockref(name, (120.0 * (k % 10), -120.0 * (k // 10)),
+                                 dxfattribs={'rotation': 15.0 * a + ANGLE_OFFSET})
                 k += 1
     out.saveas(OUT)
     print('%d blocs (%s) -> %s' % (k, ', '.join(f for f, _ in FAMILIES), os.path.abspath(OUT)))

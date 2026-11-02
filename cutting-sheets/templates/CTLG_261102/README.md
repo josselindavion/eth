@@ -40,8 +40,8 @@ Every specimen of the source was rebuilt from its template and the code read on 
 | CTST_UTST | 70 | 0–9 | 70 / 70 | 0.0088 | 0.0148 |
 | MNAK_FULL | 30 | 0–9 | 30 / 30 | 0.0039 | 0.0055 |
 | MNAK_HOLE | 30 | 0–9 | 30 / 30 | 0.0039 | 0.0055 |
-| MNAK_RECT_FULL | 30 | 0–9 | 30 / 30 | 0.0048 | 0.0139 |
-| MNAK_RECT_HOLE | 30 | 0–9 | 30 / 30 | 0.0048 | 0.0139 |
+| MNAK_RECT_FULL | 30 | 0–9 | 30 / 30 | 0.0048 | 0.0048 |
+| MNAK_RECT_HOLE | 30 | 0–9 | 30 / 30 | 0.0048 | 0.0048 |
 | TENS_FULL | 1 | – | – | – | 0.0004 |
 
 Details per specimen: `validation.csv`.
