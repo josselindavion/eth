@@ -83,6 +83,7 @@ eprouvettes:
 | `MNAK_FULL` | `DISC0` | disque sans trou |
 | `MNAK_HOLE` | `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) |
 | `MNAK_RECT_HOLE` | `MNAK_RECT` | Mini-Nakajima **rectangulaire** 80 × 54 mm à 2 trous (proposition d'Erik, 02/11/2026) : mêmes trous, encoches et position du code que `MNAK_HOLE`, même convention d'angle (trous à angle + 90°) |
+| `MNAK_RECT_FULL` | – | le même **sans trous** (équivalent de `MNAK_FULL`) |
 | `TENS_FULL` | `STRIP` | bande 140 × 30 mm sans code |
 
 - **Angle** : direction de la tête qui porte le code, comptée depuis le sens de laminage (+Y), dans le sens
@@ -172,8 +173,10 @@ On peut donner plusieurs catalogues ; le dernier argument est le nom des gabarit
 
 **Catalogue complémentaire `MNAK_RECT`** : `build_mnak_rect.py` lit l'export SolidWorks d'Erik
 (`input/RoundSample_Dual_Hole_rectange.dxf`) et écrit `input/specimen_templates_extra_MNAK_RECT.dxf` dans le format du
-catalogue du labo : 30 blocs `MNAK_RECT_HOLE_<angle><index>` (angles 0, 45, 90°, index 0–9), contour Q3, trous Q5,
-code sur le méplat à 27 mm du centre, comme le disque.
+catalogue du labo : 30 blocs `MNAK_RECT_HOLE_<angle><index>` (2 trous) et 30 blocs `MNAK_RECT_FULL_<angle><index>`
+(sans trous), angles 0, 45, 90°, index 0–9 ; contour Q3, trous Q5, code sur le méplat à 27 mm du centre, comme le
+disque. La pièce d'Erik étant symétrique, le coin arrondi en haut à gauche (code en haut) est remplacé par un
+**chanfrein 4 × 4 mm à 45°**, comme le coin chanfreiné des autres éprouvettes (il indique la face pour lire le code).
 
 - Le type de chaque éprouvette est le nom de sa famille de blocs (`CTLG_UTUT_21` → `CTLG_UTUT`).
 - Le bloc `_00` sert de modèle. On lui retire les 19 traits du code et le trait Q3 qui le suit : sa longueur dépend
@@ -181,7 +184,7 @@ code sur le méplat à 27 mm du centre, comme le disque.
 - **Validation :** chaque bloc du catalogue est reconstruit à partir du gabarit et du code lu dessus, puis comparé
   à l'original. Le code lu doit être le numéro du bloc (`_21` = angle 2 × 15° = 30°, index 1).
 - Pour `CTLG_261102` :
-  - 410 / 410 blocs du catalogue du labo + 30 / 30 blocs `MNAK_RECT` corrects ;
+  - 410 / 410 blocs du catalogue du labo + 60 / 60 blocs `MNAK_RECT` corrects ;
   - traits du code à moins de 0,012 mm ;
   - contour à moins de 0,017 mm.
 

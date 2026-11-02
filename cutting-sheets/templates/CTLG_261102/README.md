@@ -16,6 +16,7 @@ One template per specimen type, **without notch code**. The code (angle + index)
 | CTST_UTST | `UTST` | 80.8 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 40.394) |
 | MNAK_FULL | `MNAK_FULL`, `DISC0` | 60.0 × 54.0 | 0 | 0°, 45°, 90° | (-7.000, 27.000) |
 | MNAK_HOLE | `MNAK_HOLE`, `DISC2` | 60.0 × 54.0 | 2 | 0°, 45°, 90° | (-7.000, 27.000) |
+| MNAK_RECT_FULL | `MNAK_RECT_FULL` | 80.0 × 54.0 | 0 | 0°, 45°, 90° | (-7.000, 27.000) |
 | MNAK_RECT_HOLE | `MNAK_RECT_HOLE`, `MNAK_RECT` | 80.0 × 54.0 | 2 | 0°, 45°, 90° | (-7.000, 27.000) |
 | TENS_FULL | `TENS_FULL`, `STRIP` | 140.0 × 30.0 | 0 | – | no code |
 
@@ -39,7 +40,8 @@ Every specimen of the source was rebuilt from its template and the code read on 
 | CTST_UTST | 70 | 0–9 | 70 / 70 | 0.0088 | 0.0148 |
 | MNAK_FULL | 30 | 0–9 | 30 / 30 | 0.0039 | 0.0055 |
 | MNAK_HOLE | 30 | 0–9 | 30 / 30 | 0.0039 | 0.0055 |
-| MNAK_RECT_HOLE | 30 | 0–9 | 30 / 30 | 0.0051 | 0.0130 |
+| MNAK_RECT_FULL | 30 | 0–9 | 30 / 30 | 0.0047 | 0.0133 |
+| MNAK_RECT_HOLE | 30 | 0–9 | 30 / 30 | 0.0047 | 0.0133 |
 | TENS_FULL | 1 | – | – | – | 0.0004 |
 
 Details per specimen: `validation.csv`.

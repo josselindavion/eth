@@ -53,7 +53,8 @@ CATALOGUE_ALIASES = {
     'CTLG_UTUT': ['UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'], 'CTLG_CHCH': ['CHCH', 'CH'],
     'CTST_UTST': ['UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
     'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP'],
-    'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT']}     # catalogue complementaire (build_mnak_rect.py)
+    'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT'],    # catalogue complementaire (build_mnak_rect.py)
+    'MNAK_RECT_FULL': ['MNAK_RECT_FULL']}
 BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')
 
 
