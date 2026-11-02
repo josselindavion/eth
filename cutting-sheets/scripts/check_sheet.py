@@ -68,7 +68,7 @@ def analyse(path, min_gap, warn_gap, min_margin):
     pcs = sl.pieces(d)
     sl.assign_sheets(pcs, frs)
     cut = d.cut
-    R = {'drawing': d, 'frames': frs, 'pieces': pcs, 'checks': [], 'issues': []}
+    R = {'drawing': d, 'frames': frs, 'pieces': pcs, 'checks': [], 'issues': [], 'margin_limits': side_margins(min_margin)}
 
     def check(name, status, detail):
         R['checks'].append((name, status, detail))
@@ -241,7 +241,20 @@ def fig_preview(R, out):
     xs = [x for s in d.segs for x, _ in s.pts]
     ys = [y for s in d.segs for _, y in s.pts]
     w, h = max(xs) - min(xs), max(ys) - min(ys)
-    fig, ax = plt.subplots(figsize=(min(16, 4 + 10 * w / max(h, 1)), 10))
+    fw = min(16.0, 4 + 10 * w / max(h, 1))                  # largeur (pouces), puis hauteur a l'echelle du dessin
+    fig, ax = plt.subplots(figsize=(fw, min(10.0, max(3.0, fw * h / max(w, 1) + 0.8))))
+    # marges de la machine (zone de bridage + marges) : zebrures rouges, rien ne doit y etre decoupe
+    m = R.get('margin_limits')
+    if m:
+        for f in frs:
+            x0, y0, x1, y1 = f.bounds
+            bands = [(x0, y0, x1 - x0, m['bottom']), (x0, y1 - m['top'], x1 - x0, m['top']),
+                     (x0, y0 + m['bottom'], m['left'], y1 - y0 - m['bottom'] - m['top']),
+                     (x1 - m['right'], y0 + m['bottom'], m['right'], y1 - y0 - m['bottom'] - m['top'])]
+            for bx, by, bw, bh in bands:
+                if bw > 0 and bh > 0:
+                    ax.add_patch(plt.Rectangle((bx, by), bw, bh, fill=False, hatch='////', ec='#dc2626', lw=0,
+                                               alpha=0.55, zorder=0))
     draw_base(ax, R)
     for p in R['pieces']:
         x, y = p.center
@@ -251,8 +264,10 @@ def fig_preview(R, out):
         ax.add_patch(plt.Circle((x, y), 6, fill=False, color=col, lw=1.6))
     for i, f in enumerate(frs):
         ax.text(f.bounds[0] + 4, f.bounds[3] - 4, 'sheet %d' % (i + 1), fontsize=9, va='top')
-    ax.set_title('%s  –  red: blocking problem, orange: to check; small numbers: piece index'
-                 % os.path.basename(d.path), fontsize=9, loc='left')
+    ax.set_title('%s  –  red hatching: machine margins (%s), no cutting; red circle: blocking problem, '
+                 'orange: to check; small numbers: piece index'
+                 % (os.path.basename(d.path), fmt_margins({k: v for k, v in m.items()}) if m else '–'),
+                 fontsize=9, loc='left')
     ax.axis('off')
     fig.tight_layout()
     fig.savefig(out, dpi=170)

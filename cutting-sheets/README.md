@@ -32,7 +32,8 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 - `notice.pdf` : une page par tôle (éprouvettes numérotées, qualités, sens de laminage) et la liste des éprouvettes ;
 - `registry.csv` : une ligne par éprouvette (numéro, type, angle, code, position, identifiant) ;
 - `README.md` : résumé et contrôles ;
-- `check/` : rapport détaillé de vérification.
+- `check/` : rapport détaillé de vérification ; `check/preview.png` montre le plan avec les **marges de la machine
+  zébrées en rouge** (zone de bridage + marges, rien n'y est découpé).
 
 Le terminal affiche les 6 étapes (`[3/6] Placement`…) et une barre de progression avec le temps restant. Pendant
 le placement, la barre montre aussi la meilleure hauteur trouvée jusque-là. À la fin viennent les contrôles : tout
