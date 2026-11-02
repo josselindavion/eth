@@ -12,15 +12,17 @@ Sortie  : cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf, dans le f
           (sans trous), pose a son angle (0, 45, 90 deg ; index 0 a 9, comme MNAK_HOLE / MNAK_FULL), qualites par
           couleur (3 = Q3, 5 = Q5).
 
-Repere et code (identiques au disque MNAK_HOLE du catalogue, verifie le 02/11/2026) :
-    - la piece d'Erik est tournee de +90 deg : le meplat x = +27 devient le meplat y = +27, les trous (R3,9 a 9 mm
-      du centre) sont alors le long de x, perpendiculaires a la direction du code, comme sur le disque ;
-    - code a encoches sur ce meplat, depart en x = -7,0 mm (comme le disque), trait Q3 jusqu'au bout du meplat ;
-    - angle de l'eprouvette = direction du code depuis le sens de laminage ; trous a angle + 90 deg ;
+Repere et code (decides le 02/11/2026) :
+    - repere de la piece d'Erik, sans rotation : rectangle 54 (x) x 80 (y) mm, bouts (cotes courts, 49 mm) en y = +-40,
+      trous (R3,9) en (0, +-9), donc le long de l'axe long ;
+    - code a encoches sur le BOUT y = +40, depart en x = CODE_X0 (comme les barreaux du catalogue), traits Q3 de part et
+      d'autre jusqu'aux coins ;
+    - angle de l'eprouvette = direction du bout code depuis le sens de laminage (regle de toutes les eprouvettes du
+      catalogue) ; les trous sont alors dans la direction de l'angle ;
     - qualites comme le disque : contour Q3 (vert), trous Q5 (bleu), code Q5 ;
-    - CHANFREIN de reperage (decide le 02/11/2026) : la piece d'Erik est symetrique ; le coin arrondi R2 en haut a
-      gauche (code en haut) est remplace par un chanfrein a 45 deg de CHAMFER mm, comme le coin chanfreine des autres
-      eprouvettes, pour savoir de quelle face on lit le code ;
+    - CHANFREIN de reperage : la piece d'Erik est symetrique ; le coin arrondi R2 a gauche du bout code (code en haut)
+      est remplace par un chanfrein a 45 deg de CHAMFER mm, comme le coin chanfreine des autres eprouvettes, pour
+      savoir de quelle face on lit le code ;
     - version sans trous : la meme sans les deux cercles.
 """
 import math
@@ -36,18 +38,19 @@ import notchcode as nc                   # noqa: E402
 
 SRC = os.path.join(HERE, '..', 'input', 'RoundSample_Dual_Hole_rectange.dxf')
 OUT = os.path.join(HERE, '..', 'input', 'specimen_templates_extra_MNAK_RECT.dxf')
+ROT_DEG = 0.0                            # rotation de la piece d'Erik : aucune (le bout y = +40 porte le code)
 FAMILIES = (('MNAK_RECT_HOLE', True), ('MNAK_RECT_FULL', False))     # (famille, avec trous)
 CHAMFER = 4.0                            # mm, cotes du chanfrein a 45 deg du coin haut gauche
 ANGLE_DIGITS = (0, 3, 6)                 # 0, 45, 90 deg, comme MNAK_HOLE dans le catalogue du labo
-CODE_X0, FLAT_Y = -7.0, 27.0
+CODE_X0, FLAT_Y = -6.0, 40.0          # depart du code (comme les barreaux) ; bord du bout code
 LAYERS = {3: 'Normal_Quality', 5: 'High_Quality'}
 
 
 def base_entities(holes=True):
-    """Entites de la piece tournee de +90 deg ; le meplat du code est remplace par ses deux morceaux Q3 (ajoutes
-    avec le code) ; le coin haut gauche (arc R2) devient un chanfrein ; sans trous si holes est faux."""
+    """Entites de la piece ; le bord du bout code est remplace par ses deux morceaux Q3 (ajoutes avec le code) ;
+    le coin haut gauche (arc R2) devient un chanfrein ; sans trous si holes est faux."""
     doc = ezdxf.readfile(SRC)
-    rot = Matrix44.z_rotate(math.radians(90))
+    rot = Matrix44.z_rotate(math.radians(ROT_DEG))
     ents, flat, corner = [], None, None
     for e in doc.modelspace():
         x = e.copy()
@@ -78,6 +81,8 @@ def base_entities(holes=True):
                 setattr(e.dxf, end, (x0 + CHAMFER, y1, 0))
     if not corner:
         raise SystemExit('coin haut gauche introuvable')
+    if abs(flat[0] - cx) < 1e-6 and abs(y1 - FLAT_Y) < 1e-6:     # le bord code commence au coin chanfreine
+        flat = [x0 + CHAMFER, flat[1]]
     ents = [(e, c) for e, c in ents if e is not arc]
     out = ezdxf.new('R2000')
     ents.append((out.modelspace().add_line((x0, y1 - CHAMFER), (x0 + CHAMFER, y1)), 3))
