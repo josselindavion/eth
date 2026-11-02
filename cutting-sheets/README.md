@@ -8,10 +8,11 @@ workshop, the notice and the specimen registry.
 **Installation, once on the lab PC:**
 
 ```bash
-py -m pip install ezdxf shapely matplotlib scipy pyyaml spyrrow==0.9.0
+py -m pip install ezdxf shapely matplotlib scipy pyyaml spyrrow==0.9.0 packingsolver
 ```
 
-`spyrrow` is the placement engine (sparrow). It needs Python 3.10 to 3.14: check with `py --version`.
+`packingsolver` and `spyrrow` are the two placement engines (PackingSolver and sparrow). They need Python 3.10 to
+3.14: check with `py --version`.
 
 **The two ready orders:**
 
@@ -63,9 +64,10 @@ specimens:
 | `gap` | minimum gap between two pieces (mm) | 5 |
 | `margins` | margin to the sheet edge **per side** (mm): `{left, bottom, right, top}`; no piece is placed there. Also the **clamping area** (e.g. L-shaped: 40 mm on the left and at the bottom). Bottom = start of the rolling direction | 5 everywhere |
 | `margin` | shortcut: the same margin on the 4 sides (a side missing from `margins` takes this value) | 5 |
-| `time` | seconds of sparrow per sheet (and per try); longer = slightly more compact | 60 |
-| `fill_tries` | **filling** tries per sheet: once the group of a sheet is placed, specimens of the next sheets are tried on it (stop after 3 failures in a row); 0 = no filling, faster | 8 |
-| `fill_time` | seconds of sparrow per filling try | `time` / 2 |
+| `assign_time` | seconds of PackingSolver to put all the specimens on sheets (step 1 of the placement) | 30 |
+| `fill_tries` | **failed** tries allowed when moving specimens to empty one sheet (step 2); a try that succeeds does not count; 0 = no reduction, faster | 8 |
+| `fill_time` | seconds of sparrow at most per try; a try that succeeds stops as soon as everything fits (often 1–3 s); a try less than 2 mm too long gets as much time again | 10 |
+| `time` | seconds of sparrow at most per sheet for the compaction (step 3; stopped earlier when it no longer improves); 0 = no compaction | 15 |
 | `seed` | seed of sparrow's random draws (change it to try another solution) | 1 |
 | `max_sheets` | maximum number of sheets | 20 |
 | `specimen_id` | optional: `batch`, `sample_geometry`, `additional`, `test_geometry` (per type), for the full specimen ID in the registry | – |
@@ -109,11 +111,16 @@ catalogue `MNAK_RECT`:
 3. **Places** all the specimens:
    - ordered angle or half turn (+180°), never mirrored;
    - gap between pieces and margins per side;
-   - engine **sparrow** (see below);
-   - several sheets, sheet by sheet: the remaining specimens are **split into groups of equal area**, one per
-     remaining sheet, and sparrow packs the first group on the sheet; the sheet is then **filled** with specimens of
-     the next groups (largest first; kept if everything fits); the starting number of sheets is the minimum (area of
-     the pieces / usable area), and one sheet more is tried as long as a group does not fit.
+   - two engines (see below), in 3 steps:
+     1. **assignment**: PackingSolver puts all the specimens on sheets in `assign_time` seconds → n sheets, each
+        with a valid layout;
+     2. **reduction**: as long as the specimens could fill n − 1 sheets (≤ 85 % of their area), the specimens of
+        the least filled sheet are moved, largest first, to the sheets with the most room (lowest top after
+        compaction). For each move, sparrow packs the receiving sheet with one specimen more and is **stopped as soon
+        as it fits**. When a specimen misses a sheet by less than 10 mm, that sheet gives its smallest specimen to a
+        third sheet (**rebalancing**). Nothing is started again from scratch: specimens already moved stay. When the
+        sheet is empty, n − 1;
+     3. **compaction**: sparrow packs each sheet as low as possible; the result is kept only if it fits.
 4. **Writes the DXF**: mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`.
 5. **Checks the final DXF** without assumptions:
    - closed contours, colours, gaps, margins, overlaps (`check_sheet.py`);
@@ -121,7 +128,12 @@ catalogue `MNAK_RECT`:
    - **code read back** = code ordered, and direction of the coded head = placement angle.
 6. Writes the **notice** and the **registry**.
 
-## The placement engine: sparrow
+## The placement engines: PackingSolver and sparrow
+
+[PackingSolver](https://github.com/fontanf/packingsolver) (F. Fontan, open source, MIT licence) solves "bin
+packing" of arbitrary shapes: which piece on which sheet of fixed size. It gives a valid layout of all the sheets
+quickly, but not the densest. It gets the usable area of the sheet (margins removed), the same gap + 0.05 mm and the
+same two angles per specimen.
 
 [sparrow](https://arxiv.org/abs/2509.13329) is open-source software (MIT licence) from KU Leuven (2025). It is
 published as better than the state of the art for packing arbitrary shapes on a strip of minimum length. It is used
@@ -133,7 +145,8 @@ through its Python interface `spyrrow`.
 | Shapes | outer outline of each template (without notches, so slightly larger than the piece) |
 | Allowed angles | for each specimen, the placement angle and the angle + 180° only (no mirror) |
 | Minimum gap | `gap` + 0.05 mm, since sparrow allows about 0.01 mm less; it also keeps this distance to the border |
-| Time | `time` seconds per sheet |
+| Time | `fill_time` per try (stopped as soon as it fits), `time` per sheet for the compaction |
+| Process | sparrow runs in a separate process (`sparrow_worker.py`), so that it can be stopped as soon as the answer is known |
 
 Measured results:
 
@@ -142,6 +155,8 @@ Measured results:
 | CT programme, 63 specimens, one 500 × 600 sheet | 1 sheet, 514 mm high in 60 s (old in-house engine, dropped on 30/10/2026: 564–571 mm) | 1 min |
 | CT programme, 68 specimens, 350 × 250 sheets, L-shaped 40 mm, without filling | 5 sheets of 13–14 specimens, 215–230 mm used of 245 | ~4 min 30 s |
 | same, with filling (`fill_tries: 8`) | 5 sheets: 14, 14, 15, 15, then 10 specimens; 230–239 mm used on sheets 1–4 | ~11–13 min |
+| CT programme with the rectangular Mini-Nakajima (02/11/2026), sparrow only, `time: 10` | 6 sheets (the last with 2 specimens) | 5 min 12 s |
+| same, **PackingSolver + sparrow** (current method, `CT_sheet.yaml`) | **5 sheets** of 13–14 specimens, 238–245 mm used of 245 | **6 min 20 s** |
 
 ## Folder content
 
@@ -149,7 +164,7 @@ Measured results:
 |---|---|
 | `orders/` | the orders: `example.yaml`, `CT_sheet.yaml` |
 | `templates/CTLG_261102/` | templates without code, from the lab catalogue and the complementary catalogue `MNAK_RECT`: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `scripts/` | `make_plan.py` (order → plan), `sparrow_place.py` (placement with sparrow + DXF), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
+| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
 | `input/` | files received from the lab: catalogue `specimen_templates_261029_barcoded.dxf`, CT drawing `…v20260901_CT_bardcode.dxf`, 2025 drawings (`.dxf` + notices `.pptx` / `.pdf`), SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`, and the complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` |
 | `runs/` | **ignored by git**: everything that is run |
 

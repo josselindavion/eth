@@ -13,8 +13,10 @@ margins:               # mm to the sheet edge, per side; nothing is cut in these
   bottom: 40           #   bottom = start of the rolling direction
   right: 5
   top: 5
-time: 40               # seconds of sparrow per sheet; longer = slightly more compact
-fill_tries: 8          # tries to fill each sheet with specimens of the next sheets (0 = fast, no filling)
+assign_time: 30        # seconds of PackingSolver to put the specimens on sheets
+fill_tries: 8          # failed tries allowed when moving specimens to empty one sheet (0 = no reduction)
+fill_time: 10          # seconds of sparrow at most per try (a try that succeeds usually stops after 1-3 s)
+time: 10               # seconds of sparrow at most per sheet for the final compaction (0 = no compaction)
 
 specimens:
   - {type: UTUT,      angle: 0,  count: 3, first_index: 1}

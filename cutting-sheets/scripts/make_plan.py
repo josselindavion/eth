@@ -2,7 +2,7 @@
 """
 make_plan.py -- Complete EDM cutting plan from an order file ("5 UT at 30 deg, 3 NT20 at 45 deg...").
 
-Run (Python 3 + ezdxf, shapely, matplotlib, scipy, pyyaml, spyrrow), from the repository root:
+Run (Python 3 + ezdxf, shapely, matplotlib, scipy, pyyaml, spyrrow, packingsolver), from the repository root:
     py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/example.yaml
 
 Steps:
@@ -10,8 +10,9 @@ Steps:
        codable (0-135 deg), index 0-9, never the same code twice on the same type;
     2. one specimen = template without code (templates/<name>/) + its notch code (notchcode.py);
        angle = direction of the coded end from the rolling direction (+Y), counter-clockwise;
-    3. automatic placement with sparrow (sparrow_place.py): ordered angle or half turn (+180 deg), never mirrored,
-       gap and margins;
+    3. automatic placement (placement.py): PackingSolver assigns the specimens to sheets, sparrow moves specimens to
+       empty the least filled sheet, then compacts each sheet; ordered angle or half turn (+180 deg), never
+       mirrored, gap and margins;
     4. DXF plan (mm, layers Q3_NORMAL / Q4_MEDIUM / Q5_HIGH);
     5. checks: check_sheet.py (contours, gaps, margins...), then every specimen is READ BACK from the final DXF
        (outline, code, direction) and compared with the order;
@@ -43,7 +44,7 @@ sys.path.insert(0, HERE)
 import check_sheet                                    # noqa: E402
 import make_templates as mt                           # noqa: E402
 import notchcode as nc                                # noqa: E402
-import sparrow_place as sp                            # noqa: E402
+import placement as sp                                # noqa: E402
 from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
@@ -96,10 +97,11 @@ def read_order(path):
         'sheet': str(o.get('sheet', '500x600')),
         'gap': float(o.get('gap', 5.0)),
         'margin': float(o.get('margin', 5.0)),              # same margin on the 4 sides (shortcut)
-        'time': float(o.get('time', 60)),
+        'time': float(o.get('time', 15)),                   # sparrow compaction per sheet (s; 0 = no compaction)
+        'assign_time': float(o.get('assign_time', 30)),     # PackingSolver assignment (s)
         'seed': int(o.get('seed', 1)),
-        'fill_tries': int(o.get('fill_tries', 8)),          # filling tries per sheet at most (0 = no filling)
-        'fill_time': float(o['fill_time']) if o.get('fill_time') else None,
+        'fill_tries': int(o.get('fill_tries', 8)),          # tries to move specimens off the least filled sheet
+        'fill_time': float(o.get('fill_time', 10)),         # sparrow, per try to move a specimen (s, at most)
         'max_sheets': int(o.get('max_sheets', 20)),
         'specimen_id': _rename(o.get('specimen_id') or {}, LEGACY_ID),
         'lines': [_rename(line, LEGACY_LINE) for line in o['specimens']],
@@ -401,7 +403,7 @@ def run(order_path, seconds=None, final=False):
     libdoc = build_specimens(specs, os.path.join(out, 'specimens.dxf'))
     print('    %d coded specimens' % len(specs))
 
-    step(3, N, 'Placement (sparrow)')
+    step(3, N, 'Placement (PackingSolver + sparrow)')
     polys = {}
     for sp_ in specs:
         if sp_['T'].kind not in polys:
@@ -410,21 +412,23 @@ def run(order_path, seconds=None, final=False):
     state = {'bar': None, 'label': None}
 
     def on_progress(label, t, best, total):
-        if label != state['label']:
+        if label != state['label'] or t < state.get('t', 0):      # new label, or new run with the same label
             if state['bar']:
                 state['bar'].done()
             state['bar'], state['label'] = Bar(label, int(total)), label
+        state['t'] = t
         state['bar'].update(min(int(t), int(total)), ('top at %.1f mm' % best) if best else '')
 
     def log(msg):
         if state['bar']:
             state['bar'].done()
-            state['bar'], state['label'] = None, None
+            state['bar'], state['label'], state['t'] = None, None, 0
         print('    ' + msg)
     try:
         sheets = sp.place(specs, polys, W, H, cfg['gap'], cfg['margins'], cfg['time'], cfg['seed'],
                           max_sheets=cfg['max_sheets'], on_progress=on_progress, log=log,
-                          fill_tries=cfg['fill_tries'], fill_seconds=cfg['fill_time'])
+                          assign_seconds=cfg['assign_time'], fill_tries=cfg['fill_tries'],
+                          fill_seconds=cfg['fill_time'])
     except sp.PlacementError as e:
         raise OrderError(str(e))
     if state['bar']:
@@ -518,7 +522,7 @@ def write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('order', help='YAML order file')
-    ap.add_argument('--time', type=float, default=None, help='overrides "time" of the order (seconds per sheet)')
+    ap.add_argument('--time', type=float, default=None, help='overrides "time" of the order (compaction seconds per sheet)')
     ap.add_argument('--final', action='store_true',
                     help='write to output/ (tracked by git) instead of runs/ (ignored by git)')
     args = ap.parse_args()
