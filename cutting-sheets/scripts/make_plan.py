@@ -35,7 +35,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt                       # noqa: E402
 from matplotlib.backends.backend_pdf import PdfPages  # noqa: E402
-from matplotlib.patches import FancyArrow           # noqa: E402
+from matplotlib.patches import FancyArrow, Rectangle  # noqa: E402
 import yaml                                           # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +50,9 @@ import sheetlib as sl                                 # noqa: E402
 BASE = os.path.abspath(os.path.join(HERE, '..'))       # dossier cutting-sheets
 DEFAULT_TEMPLATES = os.path.join(BASE, 'templates', 'CTLG_261029')     # catalogue du labo
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#222222'}
+
+
+SIDES = ('gauche', 'bas', 'droite', 'haut')      # bas = debut du sens de laminage (+Y)
 
 
 class OrderError(Exception):
@@ -78,7 +81,7 @@ def read_order(path):
         'gabarits': resolve(o['gabarits'], odir) if o.get('gabarits') else DEFAULT_TEMPLATES,
         'tole': str(o.get('tole', '500x600')),
         'ecart': float(o.get('ecart', 5.0)),
-        'marge': float(o.get('marge', 5.0)),
+        'marge': float(o.get('marge', 5.0)),          # meme marge sur les 4 cotes (raccourci)
         'temps': float(o.get('temps', 60)),
         'graine': int(o.get('graine', 1)),
         'toles_max': int(o.get('toles_max', 20)),
@@ -89,7 +92,22 @@ def read_order(path):
         cfg['W'], cfg['H'] = (float(v) for v in cfg['tole'].lower().split('x'))
     except ValueError:
         raise OrderError('tole : "%s" n\'est pas de la forme 500x600' % cfg['tole'])
+    # marges par cote : "marges: {gauche: 40, bas: 40, droite: 5, haut: 5}" ; un cote absent prend "marge"
+    mg = o.get('marges') or {}
+    if not isinstance(mg, dict) or set(mg) - set(SIDES):
+        raise OrderError('marges : il faut un dict avec les cles %s, ex. {gauche: 40, bas: 40, droite: 5, haut: 5}'
+                         % ', '.join(SIDES))
+    cfg['marges'] = {k: float(mg.get(k, cfg['marge'])) for k in SIDES}
+    if cfg['W'] - cfg['marges']['gauche'] - cfg['marges']['droite'] <= 0 or \
+            cfg['H'] - cfg['marges']['bas'] - cfg['marges']['haut'] <= 0:
+        raise OrderError('marges plus grandes que la tole %s' % cfg['tole'])
     return cfg
+
+
+def fmt_marges(m):
+    if len(set(m.values())) == 1:
+        return '%g mm' % m['gauche']
+    return ', '.join('%s %g' % (k, m[k]) for k in SIDES) + ' mm'
 
 
 def expand(cfg, temps):
@@ -263,6 +281,25 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 ax.text(cx, cy + (0.18 * T.L if T.L / max(T.W, 1) > 1.25 and T.holes else 0), str(r['n']),
                         ha='center', va='center', fontsize=7, color='#333333', zorder=6,
                         bbox=dict(boxstyle='round,pad=0.15', fc='white', ec='none', alpha=0.8))
+            # marges hachurees (zone de bridage + marges) : rien n'y est decoupe
+            m = cfg['marges']
+            bands = [(0, 0, W, m['bas']), (0, H - m['haut'], W, m['haut']),
+                     (0, m['bas'], m['gauche'], H - m['bas'] - m['haut']),
+                     (W - m['droite'], m['bas'], m['droite'], H - m['bas'] - m['haut'])]
+            for bx, by, bw, bh in bands:
+                if bw > 0 and bh > 0:
+                    ax.add_patch(Rectangle((bx, by), bw, bh, fill=False, hatch='////', ec='#9ca3af', lw=0, zorder=0))
+            ax.add_patch(Rectangle((m['gauche'], m['bas']), W - m['gauche'] - m['droite'], H - m['bas'] - m['haut'],
+                                   fill=False, ec='#9ca3af', lw=0.5, ls='--', zorder=0))
+            fs = 6.5
+            ax.text(m['gauche'] / 2, H / 2, '%g mm' % m['gauche'], rotation=90, ha='center', va='center', fontsize=fs,
+                    color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
+            ax.text(W - m['droite'] / 2, H / 2, '%g mm' % m['droite'], rotation=90, ha='center', va='center',
+                    fontsize=fs, color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
+            ax.text(W / 2, m['bas'] / 2, '%g mm' % m['bas'], ha='center', va='center', fontsize=fs, color='#4b5563',
+                    bbox=dict(fc='white', ec='none', pad=0.5))
+            ax.text(W / 2, H - m['haut'] / 2, '%g mm' % m['haut'], ha='center', va='center', fontsize=fs,
+                    color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
             ax.set_xlim(-10, W + 10)
             ax.set_ylim(-10, H + 10)
             ax.set_aspect('equal')
@@ -284,14 +321,17 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 lg.plot([0.02, 0.18], [y, y], color=ACI_RGB[c], lw=2)
                 lg.text(0.22, y, t, color=ACI_RGB[c], fontsize=7.5, va='center')
                 y -= 0.05
-            y -= 0.03
+            lg.add_patch(Rectangle((0.02, y - 0.015), 0.16, 0.03, fill=False, hatch='////', ec='#9ca3af', lw=0.5))
+            lg.text(0.22, y, 'Clamping area /\nmargin: no parts', fontsize=7.5, va='center', color='#4b5563')
+            y -= 0.07
             lg.text(0.02, y, 'Numbers: specimen no.\n(see list). Only for\ninformation, bitte\nnicht gravieren.',
                     fontsize=7, va='top', color='#555555')
             lg.text(0.02, 0.13, '%s\n\nsheet %d / %d\n\n%s' % (cfg['nom'].replace('_SHEET', '_\nSHEET'), k + 1,
                                                                 n_sheets, today),
                     fontsize=7, va='top', bbox=dict(boxstyle='square', fc='white', ec='black', lw=0.6))
             fig.suptitle('EDM cutting sheet %d / %d – %s' % (k + 1, n_sheets, cfg['nom']), fontsize=10, y=0.96)
-            fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  margin ≥ %g mm' % (os.path.basename(dxf_path), cfg['ecart'], cfg['marge']),
+            fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  margins: %s' % (
+                os.path.basename(dxf_path), cfg['ecart'], check_sheet.fmt_margins(cfg['marges'])),
                      fontsize=7, color='#444444', va='top')
             pdf.savefig(fig)
             plt.close(fig)
@@ -330,8 +370,8 @@ def run(order_path, seconds=None, final=False):
     W, H = cfg['W'], cfg['H']
     out = os.path.join(BASE, 'output' if final else 'runs', cfg['nom'])
     os.makedirs(out, exist_ok=True)
-    print('    %s : %d eprouvettes, tole %g x %g mm, ecart %g mm, marge %g mm'
-          % (os.path.basename(order_path), len(specs), W, H, cfg['ecart'], cfg['marge']))
+    print('    %s : %d eprouvettes, tole %g x %g mm, ecart %g mm, marges %s'
+          % (os.path.basename(order_path), len(specs), W, H, cfg['ecart'], fmt_marges(cfg['marges'])))
     for (alias, ang), grp in sorted(collections.Counter(
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
         grp_specs = [s for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
@@ -358,7 +398,7 @@ def run(order_path, seconds=None, final=False):
             bars[k] = Bar('Tole %d' % k, int(cfg['temps']))
         bars[k].update(min(int(t), int(cfg['temps'])), ('meilleur %.1f mm' % best) if best else '')
     try:
-        sheets = sp.place(specs, polys, W, H, cfg['ecart'], cfg['marge'], cfg['temps'], cfg['graine'],
+        sheets = sp.place(specs, polys, W, H, cfg['ecart'], cfg['marges'], cfg['temps'], cfg['graine'],
                           max_sheets=cfg['toles_max'], on_progress=on_progress)
     except sp.PlacementError as e:
         raise OrderError(str(e))
@@ -375,9 +415,9 @@ def run(order_path, seconds=None, final=False):
 
     step(5, N, 'Verification du DXF final')
     t0 = time.time()
-    R = check_sheet.analyse(dxf, cfg['ecart'], cfg['ecart'], cfg['marge'])
+    R = check_sheet.analyse(dxf, cfg['ecart'], cfg['ecart'], cfg['marges'])
     check_sheet.write_outputs(R, os.path.join(out, 'check'), argparse.Namespace(
-        min_gap=cfg['ecart'], warn_gap=cfg['ecart'], min_margin=cfg['marge']))
+        min_gap=cfg['ecart'], warn_gap=cfg['ecart'], min_margin=cfg['marges']))
     print('    controles du plan (contours, ecarts, marges...) en %.0f s' % (time.time() - t0))
     bar = Bar('Eprouvettes', len(rows))
     bad = code_check(R, rows, specs_by_block, on_progress=bar.update)
@@ -427,8 +467,8 @@ def write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg):
     for (a, ang), idx in grp.items():
         L.append('| %s | %g° | %d | %s |' % (a, ang, len(idx), ', '.join(map(str, idx))))
     L += ['', '## Result', '',
-          '%d specimens on %d sheet(s) of %g × %g mm (gap ≥ %g mm, margin ≥ %g mm).'
-          % (len(specs), len(sheets), cfg['W'], cfg['H'], cfg['ecart'], cfg['marge']), '',
+          '%d specimens on %d sheet(s) of %g × %g mm (gap ≥ %g mm, margins: %s).'
+          % (len(specs), len(sheets), cfg['W'], cfg['H'], cfg['ecart'], check_sheet.fmt_margins(cfg['marges'])), '',
           '| Sheet | Specimens | Height used (mm) |', '|---|---|---|']
     for k, s in enumerate(sheets):
         L.append('| %d | %d | %.1f |' % (k + 1, len(s), sp.top(s)))

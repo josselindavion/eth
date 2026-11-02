@@ -10,7 +10,10 @@ tole couchee : sa hauteur fixe est la largeur W de la tole, et sa longueur est l
 Regles (encadrants, 29/10/2026) :
     - ecart entre pieces >= gap (5 mm) : parametre min_items_separation de sparrow (+ 0,05 mm de securite, car
       sparrow tolere ~0,01 mm de moins) ; sparrow garde aussi cet ecart avec le bord de la bande ;
-    - marge au bord de la tole >= margin : la bande est elargie ou retrecie de (margin - gap) de chaque cote ;
+    - marges au bord de la tole, une par cote (gauche, bas, droite, haut ; ex. zone de bridage en L de 40 mm a gauche
+      et en bas) : la bande est placee entre x = gauche - gap et x = W - droite + gap, et commence a y = bas - gap ;
+      sparrow gardant l'ecart (gap + 0,05) avec les bords de la bande, chaque piece est a >= marge + 0,05 du bord ;
+      en haut, une piece n'est gardee sur la tole que si elle est a >= haut du bord ;
     - angle impose : chaque eprouvette ne peut etre posee qu'a son angle commande ou a cet angle + 180 deg ;
       sparrow ne fait jamais de miroir quand on lui donne une liste d'angles.
 
@@ -32,12 +35,16 @@ class PlacementError(Exception):
     pass
 
 
-def _solve_strip(specs, polys, W, gap, margin, seconds, seed, workers, on_progress):
-    """Une bande : renvoie [(spec, rotation_deg, x, y, contour_place)] dans le repere de la tole (y depuis le bas)."""
+def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
+    """Une bande : renvoie [(spec, rotation_deg, x, y, contour_place)] dans le repere de la tole (y depuis le bas).
+    m : marges par cote {'gauche', 'bas', 'droite', 'haut'} en mm."""
     import spyrrow
     sep = gap + SAFETY
-    off = margin - gap                      # decalage entre le bord de la bande et le bord de la tole
-    strip_h = W - 2 * off
+    x0, x1 = m['gauche'] - gap, W - m['droite'] + gap       # bords de la bande, en x sur la tole
+    y0 = m['bas'] - gap                                     # debut de la bande, en y sur la tole
+    strip_h = x1 - x0
+    if strip_h <= 2 * sep:
+        raise PlacementError('marges gauche + droite trop grandes pour une tole de %g mm de large' % W)
     groups = collections.OrderedDict()
     for s in specs:
         groups.setdefault('%s|%g' % (s['T'].kind, s['angle']), []).append(s)
@@ -66,7 +73,7 @@ def _solve_strip(specs, polys, W, gap, margin, seconds, seed, workers, on_progre
         th.join(0.25)
         for rtype, sol in queue.drain():
             if 'Feas' in str(rtype) and 'Infeas' not in str(rtype):
-                top = sol.width - sep + off
+                top = sol.width - sep + y0
                 best = top if best is None else min(best, top)
         if on_progress:
             on_progress(time.time() - t0, best)
@@ -81,25 +88,30 @@ def _solve_strip(specs, polys, W, gap, margin, seconds, seed, workers, on_progre
         a = s['angle']                                      # angle exact : a ou a + 180 (sparrow calcule en float32)
         r = min((a % 360.0, (a + 180.0) % 360.0), key=lambda c: abs((pi.rotation - c + 180.0) % 360.0 - 180.0))
         tx, ty = pi.translation
-        x, y = strip_h - ty + off, tx + off                 # bande -> tole (rotation +90 deg, puis decalage)
+        x, y = x1 - ty, y0 + tx                             # bande -> tole (rotation +90 deg, puis decalage)
         poly = affinity.translate(affinity.rotate(polys[s['T'].kind], r, origin=(0, 0)), x, y)
         placed.append((s, r, x, y, poly))
     return placed
 
 
-def place(specs, polys, W, H, gap, margin, seconds, seed=1, workers=None, max_sheets=20, on_progress=None):
-    """Toutes les eprouvettes sur des toles W x H. Renvoie une liste de toles, chacune une liste
-    (spec, rotation_deg, x, y, contour_place). on_progress(k_tole, secondes_ecoulees, meilleure_hauteur)."""
+def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_sheets=20, on_progress=None):
+    """Toutes les eprouvettes sur des toles W x H. margins : {'gauche', 'bas', 'droite', 'haut'} en mm.
+    Renvoie une liste de toles, chacune une liste (spec, rotation_deg, x, y, contour_place).
+    on_progress(k_tole, secondes_ecoulees, meilleure_hauteur)."""
     sheets, remaining = [], list(specs)
     while remaining:
         if len(sheets) >= max_sheets:
             raise PlacementError('les eprouvettes ne tiennent pas sur %d toles' % max_sheets)
         k = len(sheets) + 1
-        placed = _solve_strip(remaining, polys, W, gap, margin, seconds, seed, workers,
+        placed = _solve_strip(remaining, polys, W, gap, margins, seconds, seed, workers,
                               (lambda t, b: on_progress(k, t, b)) if on_progress else None)
-        inside = [p for p in placed if p[4].bounds[3] <= H - margin + 1e-6]
+        inside = [p for p in placed if p[4].bounds[3] <= H - margins['haut'] + 1e-6]
         if not inside:
-            raise PlacementError('aucune eprouvette ne tient sur une tole de %g x %g mm' % (W, H))
+            big = max(remaining, key=lambda s: polys[s['T'].kind].area)
+            raise PlacementError('aucune eprouvette ne tient sur une tole de %g x %g mm avec ces marges (zone utile '
+                                 '%g x %g mm ; plus grande eprouvette restante : %s, %.0f x %.0f mm)'
+                                 % (W, H, W - margins['gauche'] - margins['droite'],
+                                    H - margins['bas'] - margins['haut'], big['T'].alias, big['T'].L, big['T'].W))
         sheets.append(inside)
         done = set(id(p[0]) for p in inside)
         remaining = [s for s in remaining if id(s) not in done]

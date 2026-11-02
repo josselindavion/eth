@@ -2,11 +2,16 @@
 # avec les gabarits du catalogue du labo. Memes eprouvettes et memes codes que ce plan (index 1, 2, 3).
 # Lancer :  py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 
-nom: ETH_600x500mm_SHEET_v20261030_CT
+nom: ETH_350x250mm_SHEET_v20261102_CT
 gabarits: templates/CTLG_261029
-tole: 500x600          # largeur x hauteur en mm ; la hauteur est le sens de laminage
-ecart: 5
-marge: 5
+tole: 350x250          # largeur x hauteur en mm ; la hauteur est le sens de laminage
+                       # (zone de coupe de l'EDM ~350 x 250 mm : a confirmer avec l'atelier)
+ecart: 5               # mm entre deux eprouvettes (regle des encadrants)
+marges:                # mm au bord de la tole, par cote ; rien n'est decoupe dans ces bandes
+  gauche: 40           #   zone de bridage en L (exemple du jet d'eau : 40 mm ; valeur EDM a confirmer)
+  bas: 40              #   bas = debut du sens de laminage
+  droite: 5
+  haut: 5
 temps: 60             # secondes de calcul par tole (sparrow) ; plus long = un peu plus compact
 
 eprouvettes:

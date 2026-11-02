@@ -24,8 +24,8 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
 
 | Commande | Contenu |
 |---|---|
-| `orders/exemple.yaml` | petit exemple sur une tôle 300 × 300 mm : 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
-| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (mêmes éprouvettes et mêmes codes, avec 8 bandes `TENS_FULL` au lieu de 3 : 68 éprouvettes), sur une tôle 500 × 600 mm |
+| `orders/exemple.yaml` | petit exemple sur une tôle 350 × 250 mm avec bridage en L de 40 mm : 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
+| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (mêmes éprouvettes et mêmes codes, avec 8 bandes `TENS_FULL` au lieu de 3 : 68 éprouvettes), sur des tôles de 350 × 250 mm (zone de coupe de l'EDM) avec bridage en L de 40 mm : **6 tôles** |
 
 **Résultats** dans `cutting-sheets/runs/<nom>/` :
 - `<nom>.dxf` : le plan pour l'atelier ;
@@ -47,8 +47,9 @@ le repo (par exemple celui envoyé à l'atelier), on ajoute `--final` : il va al
 Copier `orders/exemple.yaml` sous un nouveau nom et modifier les lignes :
 
 ```yaml
-nom: ETH_300x300mm_SHEET_v20261030_UT30
-tole: 300x300
+nom: ETH_350x250mm_SHEET_v20261102_UT30
+tole: 350x250
+marges: {gauche: 40, bas: 40, droite: 5, haut: 5}
 eprouvettes:
   - {type: UTUT, angle: 30, nombre: 5}
   - {type: NT20, angle: 45, nombre: 3}
@@ -59,7 +60,9 @@ eprouvettes:
 | `nom` | nom du plan, du dossier de sortie et du DXF | nom du fichier |
 | `gabarits` | dossier des gabarits sans code | `templates/CTLG_261029` (catalogue du labo) |
 | `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
-| `ecart`, `marge` | écart entre pièces et marge au bord (mm) | 5, 5 |
+| `ecart` | écart minimal entre deux pièces (mm) | 5 |
+| `marges` | marge au bord de la tôle **par côté** (mm) : `{gauche, bas, droite, haut}` ; aucune pièce n'y est placée. Sert aussi de **zone de bridage** (ex. en L : 40 mm à gauche et en bas). Le bas est le début du sens de laminage | 5 partout |
+| `marge` | raccourci : la même marge sur les 4 côtés (un côté absent de `marges` prend cette valeur) | 5 |
 | `temps` | secondes de calcul du placement, par tôle ; plus long = un peu plus compact (programme CT de 63 éprouvettes : 514 mm en 60 s, 505 mm en 180 s) | 60 |
 | `graine` | graine du tirage aléatoire de sparrow (changer pour essayer une autre solution) | 1 |
 | `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet dans le registre | – |
@@ -123,6 +126,10 @@ Sur le programme CT de 63 éprouvettes (500 × 600 mm), le placement occupe **51
 ancien moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm. Avec les 68 éprouvettes de `feuille_CT.yaml` :
 574 mm, 1 tôle.
 
+Sur des tôles de 350 × 250 mm avec bridage en L de 40 mm, `feuille_CT.yaml` prend 6 tôles (12 à 13 éprouvettes par
+tôle, la dernière en a 5). Partage en plusieurs tôles : sparrow place tout sur une seule bande ; les éprouvettes
+entièrement dans la tôle forment la tôle 1, et les autres sont replacées pour la tôle suivante.
+
 ## Contenu du dossier
 
 | Dossier | Contenu |
@@ -142,7 +149,8 @@ py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SH
 ```
 
 - Le rapport va dans `runs/reports/<plan>/`.
-- Options : `--min-gap 5` (écart minimal, ERREUR en dessous), `--warn-gap 5`, `--min-margin 5`.
+- Options : `--min-gap 5` (écart minimal, ERREUR en dessous), `--warn-gap 5`, `--min-margin 5` (même marge partout)
+  ou `--margins 40 40 5 5` (gauche, bas, droite, haut).
 - Contrôles : unités, cadre de tôle, contours fermés, traits en double, couleurs, pièces hors tôle ou qui se
   chevauchent, écarts, marges, codes.
 
@@ -179,7 +187,8 @@ C'est la **couleur** qui donne la qualité, pas le nom du calque.
 
 **Règles des encadrants (29/10/2026) :**
 - 5 mm entre pièces ;
-- 5 mm au bord (valeur provisoire) ;
+- marge au bord : zone de bridage, en L de 40 mm pour le jet d'eau (C. 02/11/2026 ; valeur EDM à confirmer) ;
+- zone de coupe de l'EDM ≈ 350 × 250 mm (à confirmer) ;
 - pas de miroir ;
 - pas de Mikrosteg.
 
