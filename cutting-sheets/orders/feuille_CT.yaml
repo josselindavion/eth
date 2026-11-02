@@ -32,9 +32,9 @@ eprouvettes:
   - {type: CHCH,      angle: 0,  nombre: 3, premier_index: 1}
   - {type: CHCH,      angle: 45, nombre: 3, premier_index: 1}
   - {type: CHCH,      angle: 90, nombre: 3, premier_index: 1}
-  - {type: MNAK_FULL, angle: 0,  nombre: 3, premier_index: 1}
-  - {type: MNAK_HOLE, angle: 90, nombre: 3, premier_index: 1}   # trous dans le sens de laminage
-  - {type: MNAK_HOLE, angle: 45, nombre: 3, premier_index: 1}   # trous a 45 deg du laminage
-  - {type: MNAK_HOLE, angle: 0,  nombre: 3, premier_index: 1}   # trous a 90 deg du laminage
+  - {type: MNAK_RECT_FULL, angle: 0,  nombre: 3, premier_index: 1}
+  - {type: MNAK_RECT_HOLE, angle: 90, nombre: 3, premier_index: 1}   # trous dans le sens de laminage
+  - {type: MNAK_RECT_HOLE, angle: 45, nombre: 3, premier_index: 1}   # trous a 45 deg du laminage
+  - {type: MNAK_RECT_HOLE, angle: 0,  nombre: 3, premier_index: 1}   # trous a 90 deg du laminage
   - {type: TENS_FULL, angle: 0,  nombre: 5}
   - {type: TENS_FULL, angle: 90, nombre: 3}
