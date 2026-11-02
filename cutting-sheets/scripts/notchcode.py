@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-notchcode.py -- Code d'identification a encoches des eprouvettes : codage et lecture.
+notchcode.py -- Notch identification code of the specimens: writing and reading.
 
-Code-barres "Interleaved 2 of 5" (document du labo "Specimen ID", confirme sur tous les plans) :
-    - 9 elements visibles, de gauche a droite (code en haut) : E1 P1 E2 P2 E3 P3 E4 P4 E5 ;
-      E = encoche (3 mm de profondeur), P = plein (matiere) ; le 5e plein P5 est implicite (bord de la tete) ;
-    - largeur d'un element : 1 mm (etroit) ou 2 mm (large) ; dans chaque groupe de 5, exactement 2 larges ;
-    - chiffre = somme des poids 1-2-4-7-0 des 2 elements larges (4 + 7 = 11 -> 0) ;
-    - encoches E1..E5 -> INDEX de l'eprouvette ; pleins P1..P5 -> chiffre d'ANGLE, angle = chiffre x 15 deg.
+"Interleaved 2 of 5" barcode (lab document "Specimen ID", confirmed on all drawings):
+    - 9 visible elements, left to right (code on top): E1 P1 E2 P2 E3 P3 E4 P4 E5;
+      E = notch (3 mm deep), P = land (material); the 5th land P5 is implicit (edge of the head);
+    - element width: 1 mm (narrow) or 2 mm (wide); in each group of 5, exactly 2 are wide;
+    - digit = sum of the weights 1-2-4-7-0 of the 2 wide elements (4 + 7 = 11 -> 0);
+    - notches E1..E5 -> INDEX of the specimen; lands P1..P5 -> ANGLE digit, angle = digit x 15 deg.
 
-Repere local du code : u le long du bord (gauche -> droite, code en haut), v vers l'exterieur de la piece ;
-origine = coin haut-gauche de la premiere encoche E1 (le bord de la piece est la droite v = 0).
+Local frame of the code: u along the edge (left -> right, code on top), v outwards from the piece;
+origin = top-left corner of the first notch E1 (the edge of the piece is the line v = 0).
 """
 import math
 
@@ -34,7 +34,7 @@ assert sorted(PATTERNS) == list(range(10))
 
 
 def angle_digit(angle_deg):
-    """Chiffre d'angle (0-9) pour un angle au laminage ; None si l'angle n'est pas codable."""
+    """Angle digit (0-9) for an angle to the rolling direction; None if the angle cannot be coded."""
     k = angle_deg / ANGLE_STEP
     if abs(k - round(k)) > 1e-6 or not 0 <= round(k) <= 9:
         return None
@@ -42,7 +42,7 @@ def angle_digit(angle_deg):
 
 
 def elements(a_digit, index):
-    """Les 9 elements visibles : liste de ('E' | 'P', largeur), de gauche a droite."""
+    """The 9 visible elements: list of ('E' | 'P', width), left to right."""
     n, p = PATTERNS[index], PATTERNS[a_digit]
     out = []
     for k in range(5):
@@ -53,7 +53,7 @@ def elements(a_digit, index):
 
 
 def code_lines(a_digit, index, depth=DEPTH):
-    """Traits du code dans le repere local : liste de ((u0, v0), (u1, v1)), et longueur du code (u de fin)."""
+    """Lines of the code in the local frame: list of ((u0, v0), (u1, v1)), and length of the code (end u)."""
     lines, u = [], 0.0
     for kind, w in elements(a_digit, index):
         if kind == 'E':
@@ -65,25 +65,25 @@ def code_lines(a_digit, index, depth=DEPTH):
 
 
 # ============================================================
-# LECTURE (a partir des traits d'une piece)
+# READING (from the lines of a piece)
 # ============================================================
 def frame(code_pts, tangent_vecs, piece_center):
-    """Repere local du code a partir de ses traits.
+    """Local frame of the code from its lines.
 
-    code_pts : points des traits du code ; tangent_vecs : vecteurs (dx, dy) de tous les traits du code ;
-    piece_center : centre de la piece (sert seulement a savoir de quel cote est l'exterieur).
-    Retourne (origine (x, y), t (vecteur unitaire u), n (vecteur unitaire v, vers l'exterieur)).
+    code_pts: points of the code lines; tangent_vecs: vectors (dx, dy) of all the code lines;
+    piece_center: centre of the piece (only used to know which side is outside).
+    Returns (origin (x, y), t (unit vector u), n (unit vector v, outwards)).
     """
     cx = sum(p[0] for p in code_pts) / len(code_pts)
     cy = sum(p[1] for p in code_pts) / len(code_pts)
     nx, ny = cx - piece_center[0], cy - piece_center[1]
     r = math.hypot(nx, ny)
     nx, ny = nx / r, ny / r
-    tx0, ty0 = ny, -nx                                     # n tourne de -90 deg : u va de gauche a droite
+    tx0, ty0 = ny, -nx                                     # n turned by -90 deg: u goes left to right
     sx = sy = 0.0
     for dx, dy in tangent_vecs:
         L = math.hypot(dx, dy)
-        if L == 0 or abs(dx * nx + dy * ny) > 0.5 * L:      # trait perpendiculaire au bord : ignore
+        if L == 0 or abs(dx * nx + dy * ny) > 0.5 * L:      # line perpendicular to the edge: ignored
             continue
         if dx * tx0 + dy * ty0 < 0:
             dx, dy = -dx, -dy
@@ -106,10 +106,10 @@ def to_global(q, origin, t, n):
 
 
 def read(lines_local, tol=0.05):
-    """Lit un code a partir de ses traits en repere local. Retourne un dict, ou leve ValueError.
+    """Reads a code from its lines in the local frame. Returns a dict, or raises ValueError.
 
-    Les fonds d'encoche sont les traits paralleles au bord a v < -1 mm ; les pleins sont les intervalles entre deux
-    encoches successives ; le 5e plein (implicite) est large si un seul des 4 pleins visibles est large.
+    The notch bottoms are the lines parallel to the edge at v < -1 mm; the lands are the intervals between two
+    successive notches; the 5th (implicit) land is wide if only one of the 4 visible lands is wide.
     """
     bottoms = []
     for (u0, v0), (u1, v1) in lines_local:
@@ -117,7 +117,7 @@ def read(lines_local, tol=0.05):
             bottoms.append((min(u0, u1), max(u0, u1), v0))
     bottoms.sort()
     if len(bottoms) != 5:
-        raise ValueError('%d fonds d\'encoche au lieu de 5' % len(bottoms))
+        raise ValueError('%d notch bottoms instead of 5' % len(bottoms))
     notch_w = [b - a for a, b, _ in bottoms]
     land_w = [bottoms[k + 1][0] - bottoms[k][1] for k in range(4)]
 
@@ -129,14 +129,14 @@ def read(lines_local, tol=0.05):
             elif abs(w - WIDE) <= tol:
                 out.append(True)
             else:
-                raise ValueError('largeur %.3f mm ni etroite ni large' % w)
+                raise ValueError('width %.3f mm neither narrow nor wide' % w)
         return out
     nf, pf = classify(notch_w), classify(land_w)
     if sum(nf) != 2:
-        raise ValueError('%d encoches larges au lieu de 2' % sum(nf))
+        raise ValueError('%d wide notches instead of 2' % sum(nf))
     if sum(pf) not in (1, 2):
-        raise ValueError('%d pleins larges visibles (1 ou 2 attendus)' % sum(pf))
-    pf.append(sum(pf) == 1)                                  # P5 implicite
+        raise ValueError('%d wide visible lands (1 or 2 expected)' % sum(pf))
+    pf.append(sum(pf) == 1)                                  # implicit P5
     a = _digit_of(pf)
     return {'index': _digit_of(nf), 'angle_digit': a, 'angle_deg': a * ANGLE_STEP,
             'notch_mm': [round(w, 3) for w in notch_w], 'land_mm': [round(w, 3) for w in land_w],
@@ -144,8 +144,8 @@ def read(lines_local, tol=0.05):
 
 
 def read_piece(piece):
-    """Lit le code d'une piece sheetlib (None si pas de code). Ajoute la direction du code (deg depuis +Y, sens
-    trigonometrique, de la piece vers le code) et le repere local."""
+    """Reads the code of a sheetlib piece (None if no code). Adds the direction of the code (deg from +Y,
+    counter-clockwise, from the piece to the code) and the local frame."""
     if not piece.code:
         return None
     segs = piece.code['segs']

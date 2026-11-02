@@ -20,7 +20,7 @@ One template per specimen type, **without notch code**. The code (angle + index)
 | MNAK_RECT_HOLE | `MNAK_RECT_HOLE`, `MNAK_RECT` | 80.0 × 54.0 | 2 | 0°, 45°, 90° | (-6.000, 40.000) |
 | TENS_FULL | `TENS_FULL`, `STRIP` | 140.0 × 30.0 | 0 | – | no code |
 
-Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. For discs with two holes, the holes are perpendicular to that direction (angle 90° = holes along the rolling direction).
+Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise, minus the angle offset of the type (MNAK_RECT: −90°). For discs with two holes, the holes are perpendicular to the code direction (angle 90° = holes along the rolling direction); MNAK_RECT has the same hole orientation as the disc of the same angle.
 
 ![Templates](templates.png)
 

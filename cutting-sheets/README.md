@@ -1,230 +1,230 @@
-# Plans de découpe EDM (Task II)
+# EDM cutting plans (Task II)
 
-Outil qui fabrique les **plans de découpe par électroérosion à fil (EDM)** des éprouvettes : à partir d'une liste
-d'éprouvettes, il produit le DXF pour l'atelier, la notice et le registre des éprouvettes.
+Tool that makes the **wire EDM cutting plans** of the specimens: from a list of specimens, it produces the DXF for the
+workshop, the notice and the specimen registry.
 
-## Lancer
+## Run
 
-**Installation, une seule fois sur le PC du labo :**
+**Installation, once on the lab PC:**
 
 ```bash
 py -m pip install ezdxf shapely matplotlib scipy pyyaml spyrrow==0.9.0
 ```
 
-`spyrrow` est le moteur de placement (sparrow). Il faut Python 3.10 à 3.14 : vérifier avec `py --version`.
+`spyrrow` is the placement engine (sparrow). It needs Python 3.10 to 3.14: check with `py --version`.
 
-**Les deux commandes prêtes :**
+**The two ready orders:**
 
 ```bash
 cd ~/Documents/eth
 git pull
-py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/exemple.yaml
-py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/feuille_CT.yaml
+py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/example.yaml
+py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CT_sheet.yaml
 ```
 
-| Commande | Contenu |
+| Order | Content |
 |---|---|
-| `orders/exemple.yaml` | petit exemple sur une tôle 350 × 250 mm avec bridage en L de 40 mm : 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
-| `orders/feuille_CT.yaml` | **la vraie feuille** : le programme CT du plan du labo `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (mêmes éprouvettes et mêmes codes, avec 8 bandes `TENS_FULL` au lieu de 3 : 68 éprouvettes), sur des tôles de 350 × 250 mm (zone de coupe de l'EDM) avec bridage en L de 40 mm : **5 tôles** |
+| `orders/example.yaml` | small example on a 350 × 250 mm sheet with an L-shaped 40 mm clamping area: 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
+| `orders/CT_sheet.yaml` | **the real sheet**: the CT programme of the lab drawing `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (same specimens and codes; discs replaced by the rectangular Mini-Nakajima; 8 `TENS_FULL` strips), on 350 × 250 mm sheets (EDM cutting area) with an L-shaped 40 mm clamping area |
 
-**Résultats** dans `cutting-sheets/runs/<nom>/` :
-- `<nom>.dxf` : le plan pour l'atelier ;
-- `notice.pdf` : une page par tôle (éprouvettes numérotées, qualités, sens de laminage) et la liste des éprouvettes ;
-- `registry.csv` : une ligne par éprouvette (numéro, type, angle, code, position, identifiant) ;
-- `README.md` : résumé et contrôles ;
-- `check/` : rapport détaillé de vérification ; `check/preview.png` montre le plan avec les **marges de la machine
-  zébrées en rouge** (zone de bridage + marges, rien n'y est découpé).
+**Results** in `cutting-sheets/runs/<name>/`:
+- `<name>.dxf`: the plan for the workshop;
+- `notice.pdf`: one page per sheet (numbered specimens, qualities, rolling direction) and the specimen list;
+- `registry.csv`: one line per specimen (number, type, angle, code, position, specimen ID);
+- `README.md`: summary and checks;
+- `check/`: detailed check report; `check/preview.png` shows the plan with the **machine margins hatched in red**
+  (clamping area + margins, nothing is cut there).
 
-Le terminal affiche les 6 étapes (`[3/6] Placement`…) et une barre de progression avec le temps restant. Pendant
-le placement, la barre montre aussi la meilleure hauteur trouvée jusque-là. À la fin viennent les contrôles : tout
-doit être `OK`.
+The terminal shows the 6 steps (`[3/6] Placement`…) and a progress bar with the remaining time. During the placement,
+the bar also shows the best height found so far. The checks come at the end: everything must be `OK`.
 
-`runs/` est **ignoré par git** : on peut relancer autant qu'on veut sans créer de conflit. Pour garder un plan dans
-le repo (par exemple celui envoyé à l'atelier), on ajoute `--final` : il va alors dans `output/<nom>/`, puis
-`git add cutting-sheets/output/<nom>`, `git commit`, `git push`.
+`runs/` is **ignored by git**: runs can be repeated without git conflicts. To keep a plan in the repository (for
+example the one sent to the workshop), add `--final`: it then goes to `output/<name>/`; then
+`git add cutting-sheets/output/<name>`, `git commit`, `git push`.
 
-## Écrire une commande
+## Writing an order
 
-Copier `orders/exemple.yaml` sous un nouveau nom et modifier les lignes :
+Copy `orders/example.yaml` under a new name and edit the lines:
 
 ```yaml
-nom: ETH_350x250mm_SHEET_v20261102_UT30
-tole: 350x250
-marges: {gauche: 40, bas: 40, droite: 5, haut: 5}
-eprouvettes:
-  - {type: UTUT, angle: 30, nombre: 5}
-  - {type: NT20, angle: 45, nombre: 3}
+name: ETH_350x250mm_SHEET_v20261102_UT30
+sheet: 350x250
+margins: {left: 40, bottom: 40, right: 5, top: 5}
+specimens:
+  - {type: UTUT, angle: 30, count: 5}
+  - {type: NT20, angle: 45, count: 3}
 ```
 
-| Champ | Sens | Défaut |
+| Field | Meaning | Default |
 |---|---|---|
-| `nom` | nom du plan, du dossier de sortie et du DXF | nom du fichier |
-| `gabarits` | dossier des gabarits sans code | `templates/CTLG_261102` (catalogue du labo + `MNAK_RECT`) |
-| `tole` | largeur × hauteur en mm ; la hauteur est le sens de laminage | `500x600` |
-| `ecart` | écart minimal entre deux pièces (mm) | 5 |
-| `marges` | marge au bord de la tôle **par côté** (mm) : `{gauche, bas, droite, haut}` ; aucune pièce n'y est placée. Sert aussi de **zone de bridage** (ex. en L : 40 mm à gauche et en bas). Le bas est le début du sens de laminage | 5 partout |
-| `marge` | raccourci : la même marge sur les 4 côtés (un côté absent de `marges` prend cette valeur) | 5 |
-| `temps` | secondes de calcul de sparrow, par tôle (et par essai) ; plus long = un peu plus compact (programme CT de 63 éprouvettes : 514 mm en 60 s, 505 mm en 180 s) | 60 |
-| `ajouts` | essais de **remplissage** par tôle : une fois le groupe d'une tôle placé, on essaie d'y ajouter des éprouvettes des tôles suivantes (arrêt après 3 échecs d'affilée) ; 0 = pas de remplissage, plus rapide | 8 |
-| `temps_ajout` | secondes de sparrow par essai d'ajout | `temps` / 2 |
-| `graine` | graine du tirage aléatoire de sparrow (changer pour essayer une autre solution) | 1 |
-| `identifiant` | facultatif : `lot`, `geometrie_echantillon`, `supplement`, `geometrie_essai` (par type), pour l'identifiant complet dans le registre | – |
-| `eprouvettes` | une ligne par groupe : `type`, `angle`, `nombre`, et en option `premier_index` | – |
+| `name` | name of the plan, of the output folder and of the DXF | file name |
+| `templates` | folder of the templates without code | `templates/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
+| `sheet` | width × height in mm; the height is the rolling direction | `500x600` |
+| `gap` | minimum gap between two pieces (mm) | 5 |
+| `margins` | margin to the sheet edge **per side** (mm): `{left, bottom, right, top}`; no piece is placed there. Also the **clamping area** (e.g. L-shaped: 40 mm on the left and at the bottom). Bottom = start of the rolling direction | 5 everywhere |
+| `margin` | shortcut: the same margin on the 4 sides (a side missing from `margins` takes this value) | 5 |
+| `time` | seconds of sparrow per sheet (and per try); longer = slightly more compact | 60 |
+| `fill_tries` | **filling** tries per sheet: once the group of a sheet is placed, specimens of the next sheets are tried on it (stop after 3 failures in a row); 0 = no filling, faster | 8 |
+| `fill_time` | seconds of sparrow per filling try | `time` / 2 |
+| `seed` | seed of sparrow's random draws (change it to try another solution) | 1 |
+| `max_sheets` | maximum number of sheets | 20 |
+| `specimen_id` | optional: `batch`, `sample_geometry`, `additional`, `test_geometry` (per type), for the full specimen ID in the registry | – |
+| `specimens` | one line per group: `type`, `angle`, `count`, and optionally `first_index` | – |
 
-**Types** = familles du catalogue du labo (`input/specimen_templates_261029_barcoded.dxf`) :
+The order files of the first version (French keys `nom`, `tole`, `ecart`, `marges`, `eprouvettes`, `nombre`…) are
+still accepted.
 
-| Type | Raccourci | Éprouvette |
+**Types** = families of the lab catalogue (`input/specimen_templates_261029_barcoded.dxf`) and of the complementary
+catalogue `MNAK_RECT`:
+
+| Type | Short name | Specimen |
 |---|---|---|
-| `UTUT` | `UT` | traction uniaxiale, 106 mm |
-| `NT20` / `NT06` | `NT6.67` pour NT06 | traction entaillée, rayon 20 / 6,67 mm, 106 mm |
-| `CHCH` | `CH` | trou central Ø 4,8 mm, 106 mm |
-| `UTST` | – | traction uniaxiale courte, 81 mm |
-| `SHLD` / `SHMD` / `SHHD` | – | cisaillement court, 81 mm ; même contour, seul le coin à côté du code change |
-| `MNAK_FULL` | `DISC0` | disque sans trou |
-| `MNAK_HOLE` | `DISC2` | disque à 2 trous ; trous à **angle + 90°** (angle 90° = trous dans le sens de laminage) |
-| `MNAK_RECT_HOLE` | `MNAK_RECT` | Mini-Nakajima **rectangulaire** 80 × 54 mm à 2 trous (proposition d'Erik, 02/11/2026) : code sur un **bout** (côté court), chanfrein à gauche du code ; **angle = même orientation des trous que le disque `MNAK_HOLE` de même angle** (90° = trous dans le sens de laminage) : le bout codé est donc posé à angle − 90° |
-| `MNAK_RECT_FULL` | – | le même **sans trous** (équivalent de `MNAK_FULL`) |
-| `TENS_FULL` | `STRIP` | bande 140 × 30 mm sans code |
+| `UTUT` | `UT` | uniaxial tension, 106 mm |
+| `NT20` / `NT06` | `NT6.67` for NT06 | notched tension, radius 20 / 6.67 mm, 106 mm |
+| `CHCH` | `CH` | central hole Ø 4.8 mm, 106 mm |
+| `UTST` | – | short uniaxial tension, 81 mm |
+| `SHLD` / `SHMD` / `SHHD` | – | short shear, 81 mm; same outline, only the corner next to the code differs |
+| `MNAK_FULL` | `DISC0` | disc without holes |
+| `MNAK_HOLE` | `DISC2` | disc with 2 holes; holes at **angle + 90°** (angle 90° = holes along the rolling direction) |
+| `MNAK_RECT_HOLE` | `MNAK_RECT` | **rectangular** Mini-Nakajima 80 × 54 mm with 2 holes (proposal of Erik, 02/11/2026): code on an **end** (short side), chamfer on the left of the code; **angle = same hole orientation as the disc `MNAK_HOLE` with the same angle** (90° = holes along the rolling direction), so the coded end is placed at angle − 90° |
+| `MNAK_RECT_FULL` | – | the same **without holes** (equivalent of `MNAK_FULL`) |
+| `TENS_FULL` | `STRIP` | strip 140 × 30 mm without code |
 
-- **Angle** : direction de la tête qui porte le code, comptée depuis le sens de laminage (+Y), dans le sens
-  trigonométrique. De 0° à 135° par pas de 15°, pour tous les types.
-  Seule exception : `MNAK_RECT` / `MNAK_RECT_FULL`, posés avec le bout codé à angle − 90° pour que leurs trous
-  soient orientés comme ceux du disque de même angle (le code gravé reste l'angle demandé).
-- **Index** : 0, 1, 2… pour chaque type et angle, comme dans le catalogue (0 à 9, donc 10 éprouvettes au maximum par
-  type et par angle). `premier_index: 1` fait commencer à 1.
-- Le programme refuse une commande fausse, avec un message, sans rien écrire :
-  - angle non codable (150°, 20°…) ;
-  - plus de 10 éprouvettes au même angle ;
-  - deux fois le même code sur le même type ;
-  - type inconnu.
+- **Angle**: direction of the coded head, measured from the rolling direction (+Y), counter-clockwise. 0° to 135° in
+  steps of 15°, for all types. Only exception: `MNAK_RECT` / `MNAK_RECT_FULL`, placed with the coded end at
+  angle − 90° so that their holes are oriented as on the disc of the same angle (the code still carries the ordered
+  angle).
+- **Index**: 0, 1, 2… per type and angle, as in the catalogue (0 to 9, so at most 10 specimens per type and angle).
+  `first_index: 1` starts at 1.
+- A wrong order is rejected with a message, and nothing is written:
+  - angle that cannot be coded (150°, 20°…);
+  - more than 10 specimens at the same angle;
+  - the same code twice on the same type;
+  - unknown type.
 
-## Ce que fait le programme
+## What the program does
 
-1. **Lit la commande** et la contrôle.
-2. **Prend le gabarit** de chaque type (sans code), le tourne de l'angle demandé et **grave le code**.
-3. **Place** toutes les éprouvettes :
-   - angle commandé ou demi-tour (+180°), jamais de miroir ;
-   - 5 mm entre pièces, 5 mm au bord ;
-   - moteur **sparrow** (voir ci-dessous) ;
-   - plusieurs tôles, tôle par tôle : les éprouvettes restantes sont **réparties en groupes de surface égale**, un
-     par tôle restante, et sparrow compacte le premier groupe sur la tôle ; puis on **remplit** la tôle en essayant
-     d'y ajouter des éprouvettes des groupes suivants (de la plus grande à la plus petite ; gardée si tout tient) ;
-     on part du nombre minimal de tôles (surface des pièces / surface utile) et on ajoute une tôle tant qu'un groupe
-     ne tient pas.
-4. **Écrit le DXF** : mm, calques `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`.
-5. **Vérifie le DXF final** sans rien supposer :
-   - contours fermés, couleurs, écarts, marges, chevauchements (`check_sheet.py`) ;
-   - **contour** de chaque éprouvette = gabarit avec son code, tourné de l'angle de pose (≤ 0,02 mm) ;
-   - **code relu** = code commandé, et direction de la tête codée = angle commandé.
-6. Écrit la **notice** et le **registre**.
+1. **Reads the order** and checks it.
+2. **Takes the template** of each type (without code), turns it by the placement angle and **adds the code**.
+3. **Places** all the specimens:
+   - ordered angle or half turn (+180°), never mirrored;
+   - gap between pieces and margins per side;
+   - engine **sparrow** (see below);
+   - several sheets, sheet by sheet: the remaining specimens are **split into groups of equal area**, one per
+     remaining sheet, and sparrow packs the first group on the sheet; the sheet is then **filled** with specimens of
+     the next groups (largest first; kept if everything fits); the starting number of sheets is the minimum (area of
+     the pieces / usable area), and one sheet more is tried as long as a group does not fit.
+4. **Writes the DXF**: mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`.
+5. **Checks the final DXF** without assumptions:
+   - closed contours, colours, gaps, margins, overlaps (`check_sheet.py`);
+   - **outline** of each specimen = template with its code, turned by the placement angle (≤ 0.02 mm);
+   - **code read back** = code ordered, and direction of the coded head = placement angle.
+6. Writes the **notice** and the **registry**.
 
-## Le moteur de placement : sparrow
+## The placement engine: sparrow
 
-[sparrow](https://arxiv.org/abs/2509.13329) est un logiciel libre (licence MIT) de l'université KU Leuven (2025). Il
-est publié comme meilleur que l'état de l'art pour placer des formes quelconques sur une bande de hauteur minimale.
-On l'utilise par son interface Python `spyrrow`.
+[sparrow](https://arxiv.org/abs/2509.13329) is open-source software (MIT licence) from KU Leuven (2025). It is
+published as better than the state of the art for packing arbitrary shapes on a strip of minimum length. It is used
+through its Python interface `spyrrow`.
 
-| Ce qu'on lui donne | Valeur |
+| What it is given | Value |
 |---|---|
-| Bande | la tôle couchée : hauteur fixe = largeur de la tôle ; longueur à minimiser = sens de laminage |
-| Formes | contour extérieur de chaque gabarit (sans encoches, donc un peu plus grand que la pièce) |
-| Angles permis | pour chaque éprouvette, l'angle commandé et l'angle + 180° seulement (pas de miroir) |
-| Écart minimal | `ecart` + 0,05 mm, car sparrow tolère environ 0,01 mm de moins ; il garde aussi cet écart avec le bord |
-| Temps | `temps` secondes par tôle |
+| Strip | the sheet lying on its side: fixed height = sheet width; length to minimise = rolling direction |
+| Shapes | outer outline of each template (without notches, so slightly larger than the piece) |
+| Allowed angles | for each specimen, the placement angle and the angle + 180° only (no mirror) |
+| Minimum gap | `gap` + 0.05 mm, since sparrow allows about 0.01 mm less; it also keeps this distance to the border |
+| Time | `time` seconds per sheet |
 
-Sur le programme CT de 63 éprouvettes (500 × 600 mm), le placement occupe **514 mm** de hauteur en 60 s ; notre
-ancien moteur maison, abandonné le 30/10/2026, arrivait à 564–571 mm. Avec les 68 éprouvettes de `feuille_CT.yaml` :
-574 mm, 1 tôle.
+Measured results:
 
-Sur des tôles de 350 × 250 mm avec bridage en L de 40 mm, `feuille_CT.yaml` prend **5 tôles** (essai à 4 tôles :
-la première dépasse d'environ 25 mm). Avec le remplissage, les tôles 1 à 4 ont 14, 14, 15 et 15 éprouvettes,
-remplies jusqu'à 230–239 mm sur 245, et la dernière en a 10 (176 mm) ; sans remplissage, 13 à 14 par tôle,
-215–230 mm. Durée : environ 11 à 13 min avec `temps: 40` et `ajouts: 8` ; environ 4 min 30 s avec `ajouts: 0`.
+| Order | Sheets | Duration |
+|---|---|---|
+| CT programme, 63 specimens, one 500 × 600 sheet | 1 sheet, 514 mm high in 60 s (old in-house engine, dropped on 30/10/2026: 564–571 mm) | 1 min |
+| CT programme, 68 specimens, 350 × 250 sheets, L-shaped 40 mm, without filling | 5 sheets of 13–14 specimens, 215–230 mm used of 245 | ~4 min 30 s |
+| same, with filling (`fill_tries: 8`) | 5 sheets: 14, 14, 15, 15, then 10 specimens; 230–239 mm used on sheets 1–4 | ~11–13 min |
 
-## Contenu du dossier
+## Folder content
 
-| Dossier | Contenu |
+| Folder | Content |
 |---|---|
-| `orders/` | les commandes : `exemple.yaml`, `feuille_CT.yaml` |
-| `templates/CTLG_261102/` | gabarits sans code tirés du catalogue du labo et du catalogue complémentaire `MNAK_RECT` : `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `scripts/` | `make_plan.py` (commande → plan), `sparrow_place.py` (placement avec sparrow + DXF), `progress.py` (barre de progression), `notchcode.py` (code à encoches), `make_templates.py` (gabarits depuis le catalogue), `build_mnak_rect.py` (catalogue complémentaire du Mini-Nakajima rectangulaire), `check_sheet.py` (vérification d'un DXF), `sheetlib.py` (lecture des DXF) |
-| `input/` | fichiers reçus du labo : catalogue `specimen_templates_261029_barcoded.dxf`, plan CT `…v20260901_CT_bardcode.dxf`, modèles de 2025 (`.dxf` + notices `.pptx` / `.pdf`) |
-| `runs/` | **ignoré par git** : tout ce qu'on lance |
+| `orders/` | the orders: `example.yaml`, `CT_sheet.yaml` |
+| `templates/CTLG_261102/` | templates without code, from the lab catalogue and the complementary catalogue `MNAK_RECT`: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
+| `scripts/` | `make_plan.py` (order → plan), `sparrow_place.py` (placement with sparrow + DXF), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
+| `input/` | files received from the lab: catalogue `specimen_templates_261029_barcoded.dxf`, CT drawing `…v20260901_CT_bardcode.dxf`, 2025 drawings (`.dxf` + notices `.pptx` / `.pdf`), SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`, and the complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` |
+| `runs/` | **ignored by git**: everything that is run |
 
-## Autres outils
+## Other tools
 
-**Vérifier n'importe quel DXF** (par exemple un plan reçu) :
+**Check any DXF** (for example a drawing received):
 
 ```bash
 py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf
 ```
 
-- Le rapport va dans `runs/reports/<plan>/`.
-- Options : `--min-gap 5` (écart minimal, ERREUR en dessous), `--warn-gap 5`, `--min-margin 5` (même marge partout)
-  ou `--margins 40 40 5 5` (gauche, bas, droite, haut).
-- Contrôles : unités, cadre de tôle, contours fermés, traits en double, couleurs, pièces hors tôle ou qui se
-  chevauchent, écarts, marges, codes.
+- The report goes to `runs/reports/<plan>/`.
+- Options: `--min-gap 5` (minimum gap, ERROR below), `--warn-gap 5`, `--min-margin 5` (same margin everywhere) or
+  `--margins 40 40 5 5` (left, bottom, right, top).
+- Checks: units, sheet frame, closed contours, duplicate lines, colours, pieces outside a sheet or overlapping, gaps,
+  margins, codes.
 
-**Refaire les gabarits** (seulement si le labo envoie un nouveau catalogue) :
+**Rebuild the templates** (only if the lab sends a new catalogue):
 
 ```bash
 py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
 ```
 
-On peut donner plusieurs catalogues ; le dernier argument est le nom des gabarits.
+Several catalogues can be given; the last argument is the name of the template set.
 
-**Catalogue complémentaire `MNAK_RECT`** : `build_mnak_rect.py` lit l'export SolidWorks d'Erik
-(`input/RoundSample_Dual_Hole_rectange.dxf`) et écrit `input/specimen_templates_extra_MNAK_RECT.dxf` dans le format du
-catalogue du labo : 30 blocs `MNAK_RECT_HOLE_<angle><index>` (2 trous) et 30 blocs `MNAK_RECT_FULL_<angle><index>`
-(sans trous), angles 0, 45, 90°, index 0–9 ; contour Q3, trous Q5, code sur le **bout** de 49 mm (départ en x = −6 mm,
-comme les barreaux). La pièce d'Erik étant symétrique, le coin arrondi à gauche du bout codé (code en haut) est
-remplacé par un **chanfrein 4 × 4 mm à 45°**, comme le coin chanfreiné des autres éprouvettes (il indique la face pour
-lire le code).
+- The type of each specimen is the name of its block family (`CTLG_UTUT_21` → `CTLG_UTUT`).
+- Block `_00` is the model. Its 19 code lines and the Q3 line after the code are removed: the length of that line
+  depends on the code, which is 12 or 13 mm long.
+- **Validation:** every block of the catalogue is rebuilt from the template and the code read on it, then compared
+  with the original. The code read must be the block number (`_21` = angle 2 × 15° = 30°, index 1).
+- For `CTLG_261102`: 410 / 410 blocks of the lab catalogue + 60 / 60 `MNAK_RECT` blocks correct; code lines within
+  0.012 mm, outline within 0.017 mm.
 
-- Le type de chaque éprouvette est le nom de sa famille de blocs (`CTLG_UTUT_21` → `CTLG_UTUT`).
-- Le bloc `_00` sert de modèle. On lui retire les 19 traits du code et le trait Q3 qui le suit : sa longueur dépend
-  du code, qui fait 12 ou 13 mm.
-- **Validation :** chaque bloc du catalogue est reconstruit à partir du gabarit et du code lu dessus, puis comparé
-  à l'original. Le code lu doit être le numéro du bloc (`_21` = angle 2 × 15° = 30°, index 1).
-- Pour `CTLG_261102` :
-  - 410 / 410 blocs du catalogue du labo + 60 / 60 blocs `MNAK_RECT` corrects ;
-  - traits du code à moins de 0,012 mm ;
-  - contour à moins de 0,017 mm.
+**Complementary catalogue `MNAK_RECT`**: `build_mnak_rect.py` reads Erik's SolidWorks export
+(`input/RoundSample_Dual_Hole_rectange.dxf`) and writes `input/specimen_templates_extra_MNAK_RECT.dxf` in the format of
+the lab catalogue: 30 blocks `MNAK_RECT_HOLE_<angle><index>` (2 holes) and 30 blocks `MNAK_RECT_FULL_<angle><index>`
+(no holes), angles 0, 45, 90°, index 0–9; outline Q3, holes Q5, code on the 49 mm **end** (starting at x = −6 mm, as on
+the bars). Erik's part is symmetric, so the rounded corner on the left of the coded end (code on top) is replaced by a
+**4 × 4 mm 45° chamfer**, like the chamfered corner of the other specimens (it tells the face from which the code is
+read).
 
-## Conventions des plans du labo
+## Conventions of the lab drawings
 
-| Élément | Dans le DXF | Sens |
+| Element | In the DXF | Meaning |
 |---|---|---|
-| Unités | millimètres (`$INSUNITS = 4`) | – |
-| Cadre noir (couleur 7) | rectangle | la tôle brute (dimensions minimales) |
-| Vert (couleur 3) | contour général : têtes, côtés | qualité **Q3** (normale) |
-| Cyan (couleur 4) | congés de raccordement | qualité **Q4** (moyenne) |
-| Bleu (couleur 5) | zone utile, entailles, trous, code | qualité **Q5** (maximale) |
-| Sens de laminage | axe +Y | l'angle de chaque éprouvette est compté depuis +Y |
-| Coin chanfreiné | un coin à 45° | repère d'orientation et de face |
-| *Mikrosteg* | ni dans le DXF, ni sur la notice | gérés par l'atelier |
+| Units | millimetres (`$INSUNITS = 4`) | – |
+| Black frame (colour 7) | rectangle | the raw sheet (minimum size) |
+| Green (colour 3) | general outline: heads, sides | quality **Q3** (normal) |
+| Cyan (colour 4) | fillets | quality **Q4** (medium) |
+| Blue (colour 5) | gauge section, notches, holes, code | quality **Q5** (highest) |
+| Rolling direction | +Y axis | the angle of each specimen is measured from +Y |
+| Chamfered corner | one 45° corner | orientation and face marker |
+| *Mikrosteg* | neither in the DXF nor on the notice | handled by the workshop |
 
-C'est la **couleur** qui donne la qualité, pas le nom du calque.
+The **colour** gives the quality, not the layer name.
 
-**Règles des encadrants (29/10/2026) :**
-- 5 mm entre pièces ;
-- marge au bord : zone de bridage, en L de 40 mm pour le jet d'eau (C. 02/11/2026 ; valeur EDM à confirmer) ;
-- zone de coupe de l'EDM ≈ 350 × 250 mm (à confirmer) ;
-- pas de miroir ;
-- pas de Mikrosteg.
+**Rules of the supervisors (29/10/2026, 02/11/2026):**
+- 5 mm between pieces;
+- margin to the edge: clamping area, L-shaped 40 mm for the waterjet (EDM value to confirm);
+- EDM cutting area ≈ 350 × 250 mm (to confirm);
+- no mirror;
+- no Mikrosteg.
 
-## Le code à encoches
+## The notch code
 
-Code-barres **« Interleaved 2 of 5 »** gravé dans le bord d'une tête (document « Specimen ID » du labo) :
+**"Interleaved 2 of 5"** barcode cut in the edge of a head (lab document "Specimen ID"):
 
-| Élément | Largeur | Lecture |
+| Element | Width | Reading |
 |---|---|---|
-| 5 encoches (blanches à contre-jour), 3 mm de profondeur | 1 mm ou 2 mm, toujours **2 larges** | **index** = somme des poids 1-2-4-7-0 des 2 encoches larges (4 + 7 → 0) |
-| 4 pleins (noirs) entre les encoches, + 1 implicite (bord de la tête) | 1 mm ou 2 mm, **2 larges** en comptant l'implicite | **angle** = (somme des poids 1-2-4-7-0 des 2 pleins larges) × 15° |
+| 5 notches (white when backlit), 3 mm deep | 1 mm or 2 mm, always **2 wide** | **index** = sum of the weights 1-2-4-7-0 of the 2 wide notches (4 + 7 → 0) |
+| 4 lands (black) between the notches, + 1 implicit (edge of the head) | 1 mm or 2 mm, **2 wide** counting the implicit one | **angle** = (sum of the weights 1-2-4-7-0 of the 2 wide lands) × 15° |
 
-- On lit le code en haut, de gauche à droite, le coin chanfreiné à gauche.
-- Exemple : encoches larges n° 2 et 5 → 2 + 0 = index 2 ; un seul plein large visible, le n° 2 (l'autre est
-  l'implicite) → 2 × 15° = 30°.
-- Le code mesure 12 ou 13 mm de visible, 14 mm avec la barre implicite.
-- Angles codables : 0° à 135° par pas de 15° (150° et 165° ne le sont pas).
-- L'identifiant complet (lot, géométries, angle, index…) n'est pas gravé : il sert au QR code du labo.
+- The code is read on top, left to right, with the chamfered corner on the left.
+- Example: wide notches no. 2 and 5 → 2 + 0 = index 2; only one wide visible land, no. 2 (the other is the implicit
+  one) → 2 × 15° = 30°.
+- The visible code is 12 or 13 mm long, 14 mm with the implicit bar.
+- Codable angles: 0° to 135° in steps of 15° (150° and 165° are not).
+- The full specimen ID (batch, geometries, angle, index…) is not cut: it is used for the lab QR code.

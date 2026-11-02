@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-check_sheet.py -- Verifie un plan de decoupe EDM (DXF) avant envoi a l'atelier.
+check_sheet.py -- Checks an EDM cutting plan (DXF) before it is sent to the workshop.
 
-Lancement (Python 3 + ezdxf, shapely, matplotlib), depuis la racine du repo :
-    py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/<plan>.dxf [--min-gap 3] [--warn-gap 5] [--min-margin 5]
+Run (Python 3 + ezdxf, shapely, matplotlib), from the repository root:
+    py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/<plan>.dxf [--min-gap 5] [--warn-gap 5]
+        [--min-margin 5 | --margins LEFT BOTTOM RIGHT TOP]
 
-Sorties dans cutting-sheets/runs/reports/<plan>/ (ignore par git), ou reports/<plan>/ avec --final :
-    report.md      rapport (anglais) : verdict, controles, inventaire des eprouvettes, details des problemes
-    preview.png    plan complet, problemes entoures
-    issues.png     zooms sur chaque probleme bloquant
-    pieces.csv     une ligne par eprouvette (tole, type, orientation / laminage, position, code)
+Outputs in cutting-sheets/runs/reports/<plan>/ (ignored by git), or reports/<plan>/ with --final:
+    report.md      report: verdict, checks, inventory of the specimens, details of the problems
+    preview.png    full plan, machine margins hatched in red, problems circled
+    issues.png     zoom on each blocking problem
+    pieces.csv     one line per specimen (sheet, type, orientation to the rolling direction, position, code)
 
-Controles (ERROR = bloquant, WARNING = a verifier, INFO) : voir CHECKS ci-dessous et README.md.
-Ecart minimal entre pieces : 5 mm (regle donnee par les encadrants le 29/10/2026). Marge au bord : 5 mm,
-valeur provisoire (non precisee). Pas de Mikrosteg dans le DXF (geres par l'atelier).
+Checks (ERROR = blocking, WARNING = to check, INFO): see analyse() below and README.md.
+Minimum gap between pieces: 5 mm (rule given by the supervisors on 29/10/2026). Margins to the sheet edge: per side
+(clamping area). No Mikrosteg in the DXF (handled by the workshop).
 """
 import argparse
 import collections
@@ -32,8 +33,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sheetlib as sl                    # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPORTS = os.path.abspath(os.path.join(HERE, '..', 'reports'))              # --final : suivi par git
-RUNS_REPORTS = os.path.abspath(os.path.join(HERE, '..', 'runs', 'reports'))  # defaut : ignore par git
+REPORTS = os.path.abspath(os.path.join(HERE, '..', 'reports'))              # --final: tracked by git
+RUNS_REPORTS = os.path.abspath(os.path.join(HERE, '..', 'runs', 'reports'))  # default: ignored by git
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#333333'}
 QUALITY_LAYERS = {'3': 3, '4': 4, '5': 5, 'NORMAL_QUALITY': 3, 'MEDIUM_QUALITY': 4, 'HIGH_QUALITY': 5}
 
@@ -42,8 +43,8 @@ SIDES = (('left', 'gauche'), ('bottom', 'bas'), ('right', 'droite'), ('top', 'ha
 
 
 def side_margins(min_margin):
-    """Marges par cote {'left', 'bottom', 'right', 'top'} (mm) a partir d'un nombre ou d'un dict (cles anglaises ou
-    francaises gauche / bas / droite / haut)."""
+    """Margins per side {'left', 'bottom', 'right', 'top'} (mm) from a number or a dict (English keys, or the French
+    keys gauche / bas / droite / haut of the first version)."""
     if isinstance(min_margin, dict):
         return {en: float(min_margin.get(en, min_margin.get(fr, 0.0))) for en, fr in SIDES}
     return {en: float(min_margin) for en, _ in SIDES}
@@ -57,7 +58,7 @@ def fmt_margins(min_margin):
 
 
 def piece_side_margins(frame, poly):
-    """Distance de la piece a chaque bord du cadre rectangulaire de la tole."""
+    """Distance of the piece to each edge of the rectangular sheet frame."""
     fb, pb = frame.bounds, poly.bounds
     return {'left': pb[0] - fb[0], 'bottom': pb[1] - fb[1], 'right': fb[2] - pb[2], 'top': fb[3] - pb[3]}
 
@@ -73,16 +74,16 @@ def analyse(path, min_gap, warn_gap, min_margin):
     def check(name, status, detail):
         R['checks'].append((name, status, detail))
 
-    # 1. unites
+    # 1. units
     check('Units', 'OK' if d.units == 4 else ('WARNING' if d.units == 0 else 'ERROR'),
           '$INSUNITS = %d (%s)%s' % (d.units, sl.unit_name(d.units),
                                      '' if d.units == 4 else '; the lab drawings use millimetres (4): set it so that the '
                                                              'workshop software does not guess'))
-    # 2. toles
+    # 2. sheets
     check('Sheets', 'OK' if frs else 'ERROR', '%d sheet frame(s): %s' % (len(frs), ', '.join(
         '%.0f × %.0f mm' % (f.bounds[2] - f.bounds[0], f.bounds[3] - f.bounds[1]) for f in frs)) if frs else
           'no closed rectangle of colour 7 found')
-    # 3. contours fermes
+    # 3. closed contours
     pairs, lone = sl.pair_open_ends(sl.open_ends(cut))
     comp_of = {}
     for comp in sl.components(cut):
@@ -117,14 +118,14 @@ def analyse(path, min_gap, warn_gap, min_margin):
           'all cutting contours are closed' if not n_open and not n_stray else
           '%d open contour(s) (the wire cannot follow them; the specimens concerned are not counted below) and %d '
           'stray fragment(s) connected to nothing' % (n_open, n_stray))
-    # 4. doublons
+    # 4. duplicates
     dup = sl.duplicates(cut)
     for s, first in dup:
         m = s.line.interpolate(0.5, normalized=True)
         R['issues'].append(('WARNING', 'duplicate line', (m.x, m.y), '%s drawn twice' % s.kind, 0))
     check('Duplicate lines', 'OK' if not dup else 'WARNING',
           'none' if not dup else '%d line(s) drawn twice (the wire may cut twice)' % len(dup))
-    # 5. couleurs
+    # 5. colours
     bad = [s for s in cut if s.color not in sl.CUT_COLORS]
     mism = [s for s in cut if QUALITY_LAYERS.get(s.layer.upper()) not in (None, s.color)]
     check('Colours = EDM quality', 'OK' if not bad else 'ERROR',
@@ -133,14 +134,14 @@ def analyse(path, min_gap, warn_gap, min_margin):
     if mism:
         check('Layer name vs colour', 'WARNING', '%d line(s) on a quality layer with another colour (%s); the colour is '
               'what counts' % (len(mism), dict(collections.Counter((s.layer, s.color) for s in mism))))
-    # 6. pieces hors tole / a cheval
+    # 6. pieces outside a sheet / across its edge
     for p in pcs:
         f = frs[p.sheet - 1] if p.sheet else None
         if f is None:
             R['issues'].append(('ERROR', 'outside sheet', p.center, 'piece %d (%s) outside every sheet' % (p.k, p.kind), 0))
         elif not f.contains(p.poly):
             R['issues'].append(('ERROR', 'crosses sheet edge', p.center, 'piece %d (%s)' % (p.k, p.kind), p.sheet))
-    # 7-8. chevauchements, ecarts, marges
+    # 7-8. overlaps, gaps, margins
     gaps, overl = [], []
     for i in range(len(pcs)):
         for j in range(i + 1, len(pcs)):
@@ -168,7 +169,7 @@ def analyse(path, min_gap, warn_gap, min_margin):
     check('Gap between pieces', 'ERROR' if n_err_gap else ('WARNING' if n_warn_gap else 'OK'),
           'smallest gap %.2f mm; %d pair(s) below %.1f mm, %d more below %.1f mm'
           % (min(g[0] for g in gaps) if gaps else float('nan'), n_err_gap, min_gap, n_warn_gap, warn_gap))
-    # marges par cote (bord gauche / bas / droit / haut de la tole ; le bas est le debut du sens de laminage)
+    # margins per side (left / bottom / right / top edge of the sheet; bottom = start of the rolling direction)
     lim = side_margins(min_margin)
     margins, smallest, n_bad = [], {en: float('inf') for en, _ in SIDES}, 0
     for p in pcs:
@@ -195,8 +196,8 @@ def analyse(path, min_gap, warn_gap, min_margin):
     for p in pcs:
         if p.code:
             sigs[sl.code_signature(p)].append(p)
-    # meme code sur deux eprouvettes du MEME type : impossibles a distinguer apres decoupe (WARNING) ;
-    # meme code sur des types differents : elles se distinguent par leur forme (INFO, convention des plans 2025)
+    # same code on two specimens of the SAME type: impossible to tell apart after cutting (WARNING);
+    # same code on different types: told apart by their shape (INFO, convention of the 2025 drawings)
     same_type, other_type = [], []
     for v in sigs.values():
         if len(v) < 2:
@@ -241,9 +242,9 @@ def fig_preview(R, out):
     xs = [x for s in d.segs for x, _ in s.pts]
     ys = [y for s in d.segs for _, y in s.pts]
     w, h = max(xs) - min(xs), max(ys) - min(ys)
-    fw = min(16.0, 4 + 10 * w / max(h, 1))                  # largeur (pouces), puis hauteur a l'echelle du dessin
+    fw = min(16.0, 4 + 10 * w / max(h, 1))                  # width (inches), then height to the drawing's scale
     fig, ax = plt.subplots(figsize=(fw, min(10.0, max(3.0, fw * h / max(w, 1) + 0.8))))
-    # marges de la machine (zone de bridage + marges) : zebrures rouges, rien ne doit y etre decoupe
+    # machine margins (clamping area + margins): red hatching, nothing may be cut there
     m = R.get('margin_limits')
     if m:
         for f in frs:
@@ -301,7 +302,7 @@ def fig_issues(R, out, maxn=12):
 
 
 # ============================================================
-# RAPPORT
+# REPORT
 # ============================================================
 def write_outputs(R, outdir, args):
     os.makedirs(outdir, exist_ok=True)
@@ -375,22 +376,23 @@ def write_outputs(R, outdir, args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('dxf')
-    ap.add_argument('--min-gap', type=float, default=5.0, help='ecart minimal entre pieces (mm), sinon ERROR (encadrants, 29/10/2026 : 5 mm)')
-    ap.add_argument('--warn-gap', type=float, default=5.0, help='ecart en dessous duquel on signale (mm)')
-    ap.add_argument('--min-margin', type=float, default=5.0, help='marge minimale au bord de la tole, la meme sur les 4 cotes (mm)')
-    ap.add_argument('--margins', type=float, nargs=4, metavar=('GAUCHE', 'BAS', 'DROITE', 'HAUT'),
-                    help='marges par cote en mm (remplace --min-margin), ex. --margins 40 40 5 5')
-    ap.add_argument('--out', default=None, help='dossier de sortie (defaut : cutting-sheets/runs/reports/<plan>/)')
-    ap.add_argument('--final', action='store_true', help='ecrire dans reports/ (suivi par git) au lieu de runs/reports/')
+    ap.add_argument('--min-gap', type=float, default=5.0, help='minimum gap between pieces (mm), ERROR below '
+                    '(supervisors, 29/10/2026: 5 mm)')
+    ap.add_argument('--warn-gap', type=float, default=5.0, help='gap below which a warning is given (mm)')
+    ap.add_argument('--min-margin', type=float, default=5.0, help='minimum margin to the sheet edge, same on the 4 sides (mm)')
+    ap.add_argument('--margins', type=float, nargs=4, metavar=('LEFT', 'BOTTOM', 'RIGHT', 'TOP'),
+                    help='margins per side in mm (replaces --min-margin), e.g. --margins 40 40 5 5')
+    ap.add_argument('--out', default=None, help='output folder (default: cutting-sheets/runs/reports/<plan>/)')
+    ap.add_argument('--final', action='store_true', help='write to reports/ (tracked by git) instead of runs/reports/')
     args = ap.parse_args()
     if args.margins:
-        args.min_margin = dict(zip(('gauche', 'bas', 'droite', 'haut'), args.margins))
+        args.min_margin = dict(zip(('left', 'bottom', 'right', 'top'), args.margins))
     R = analyse(args.dxf, args.min_gap, args.warn_gap, args.min_margin)
     out = args.out or os.path.join(REPORTS if args.final else RUNS_REPORTS, os.path.splitext(os.path.basename(args.dxf))[0])
     write_outputs(R, out, args)
     for c in R['checks']:
         print('%-24s %-8s %s' % c)
-    print('Rapport : %s' % os.path.join(out, 'report.md'))
+    print('Report: %s' % os.path.join(out, 'report.md'))
 
 
 if __name__ == '__main__':

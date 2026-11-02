@@ -1,25 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-sparrow_place.py -- Placement des eprouvettes sur les toles avec sparrow, puis ecriture du DXF (utilise par make_plan.py).
+sparrow_place.py -- Placement of the specimens on the sheets with sparrow, then DXF output (used by make_plan.py).
 
-Moteur : sparrow (Gardeyn, Vanden Berghe, Wauters, KU Leuven, 2025 ; licence MIT), via son interface Python spyrrow :
+Engine: sparrow (Gardeyn, Vanden Berghe, Wauters, KU Leuven, 2025; MIT licence), through its Python interface spyrrow:
     py -m pip install spyrrow==0.9.0
-sparrow resout le "strip packing" irregulier : une bande de hauteur fixe, longueur a minimiser. Ici la bande est la
-tole couchee : sa hauteur fixe est la largeur W de la tole, et sa longueur est le sens de laminage (+Y), a minimiser.
+sparrow solves irregular "strip packing": a strip of fixed height whose length is minimised. Here the strip is the
+sheet lying on its side: its fixed height is the sheet width W, its length is the rolling direction (+Y), minimised.
 
-Regles (encadrants, 29/10/2026) :
-    - ecart entre pieces >= gap (5 mm) : parametre min_items_separation de sparrow (+ 0,05 mm de securite, car
-      sparrow tolere ~0,01 mm de moins) ; sparrow garde aussi cet ecart avec le bord de la bande ;
-    - marges au bord de la tole, une par cote (gauche, bas, droite, haut ; ex. zone de bridage en L de 40 mm a gauche
-      et en bas) : la bande est placee entre x = gauche - gap et x = W - droite + gap, et commence a y = bas - gap ;
-      sparrow gardant l'ecart (gap + 0,05) avec les bords de la bande, chaque piece est a >= marge + 0,05 du bord ;
-      en haut, une piece n'est gardee sur la tole que si elle est a >= haut du bord ;
-    - angle impose : chaque eprouvette ne peut etre posee qu'a son angle de pose ou a cet angle + 180 deg ; angle de
-      pose = angle commande + decalage du type (0, sauf MNAK_RECT : -90, voir make_templates.ANGLE_OFFSET) ;
-      sparrow ne fait jamais de miroir quand on lui donne une liste d'angles.
+Rules (supervisors, 29/10/2026):
+    - gap between pieces >= gap (5 mm): sparrow's min_items_separation (+ 0.05 mm of safety, since sparrow allows
+      ~0.01 mm less); sparrow also keeps this distance to the strip borders;
+    - margins to the sheet edge, one per side (left, bottom, right, top; e.g. L-shaped clamping area of 40 mm on the
+      left and at the bottom): the strip lies between x = left - gap and x = W - right + gap and starts at
+      y = bottom - gap; since sparrow keeps the separation (gap + 0.05) to the strip borders, every piece is at least
+      margin + 0.05 from the edge; at the top, a piece stays on the sheet only if it is at least "top" from the edge;
+    - fixed angle: each specimen can only be placed at its placement angle or that angle + 180 deg; placement
+      angle = ordered angle + offset of the type (0, except MNAK_RECT: -90, see make_templates.ANGLE_OFFSET);
+      sparrow never mirrors a piece when it is given a list of angles.
 
-Plusieurs toles (voir place) : les eprouvettes sont d'abord reparties en groupes de surface egale, un par tole,
-puis sparrow compacte chaque groupe sur sa tole ; si un groupe ne tient pas, on recommence avec une tole de plus.
+Several sheets (see place): the specimens are split into groups of equal area, sparrow packs one group per sheet,
+each sheet is then filled with specimens of the next groups; if a group does not fit, one sheet more is tried.
 """
 import collections
 import math
@@ -29,8 +29,8 @@ import time
 import ezdxf
 from shapely import affinity
 
-SAFETY = 0.05           # mm ajoutes a l'ecart demande a sparrow
-SHEET_SPACING = 40.0    # mm entre deux toles dans le DXF (comme les plans du labo)
+SAFETY = 0.05           # mm added to the separation asked from sparrow
+SHEET_SPACING = 40.0    # mm between two sheets in the DXF (as in the lab drawings)
 
 
 class PlacementError(Exception):
@@ -38,21 +38,21 @@ class PlacementError(Exception):
 
 
 def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
-    """Une bande : renvoie [(spec, rotation_deg, x, y, contour_place)] dans le repere de la tole (y depuis le bas).
-    m : marges par cote {'gauche', 'bas', 'droite', 'haut'} en mm."""
+    """One strip: returns [(spec, rotation_deg, x, y, placed_outline)] in the sheet frame (y from the bottom).
+    m: margins per side {'left', 'bottom', 'right', 'top'} in mm."""
     import spyrrow
     sep = gap + SAFETY
-    x0, x1 = m['gauche'] - gap, W - m['droite'] + gap       # bords de la bande, en x sur la tole
-    y0 = m['bas'] - gap                                     # debut de la bande, en y sur la tole
+    x0, x1 = m['left'] - gap, W - m['right'] + gap          # strip borders, x on the sheet
+    y0 = m['bottom'] - gap                                  # start of the strip, y on the sheet
     strip_h = x1 - x0
     if strip_h <= 2 * sep:
-        raise PlacementError('marges gauche + droite trop grandes pour une tole de %g mm de large' % W)
+        raise PlacementError('left + right margins too large for a sheet %g mm wide' % W)
     groups = collections.OrderedDict()
     for s in specs:
         groups.setdefault('%s|%g' % (s['T'].kind, s['angle']), []).append(s)
     items = []
     for gid, ss in groups.items():
-        g = affinity.rotate(polys[ss[0]['T'].kind], -90, origin=(0, 0))     # notre +Y = +X de la bande
+        g = affinity.rotate(polys[ss[0]['T'].kind], -90, origin=(0, 0))     # our +Y = +X of the strip
         a = ss[0]['rot']
         items.append(spyrrow.Item(gid, list(g.exterior.coords)[:-1], demand=len(ss),
                                   allowed_orientations=[a, (a + 180.0) % 360.0]))
@@ -65,7 +65,7 @@ def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
     def work():
         try:
             box['sol'] = inst.solve(conf, progress=queue)
-        except Exception as e:              # remonte l'erreur au fil principal
+        except Exception as e:              # passed back to the main thread
             box['err'] = e
     th = threading.Thread(target=work, daemon=True)
     t0 = time.time()
@@ -84,26 +84,30 @@ def _solve_strip(specs, polys, W, gap, m, seconds, seed, workers, on_progress):
     sol = box['sol']
     placed = []
     pool = {gid: list(ss) for gid, ss in groups.items()}
-    # bas -> haut puis gauche -> droite, pour que les index montent dans l'ordre de lecture
+    # bottom -> top, then left -> right, so that the indices increase in reading order
     for pi in sorted(sol.placed_items, key=lambda p: (round(p.translation[0], 1), -p.translation[1])):
         s = pool[pi.id].pop(0)
-        a = s['rot']                                        # angle exact : a ou a + 180 (sparrow calcule en float32)
+        a = s['rot']                                        # exact angle: a or a + 180 (sparrow works in float32)
         r = min((a % 360.0, (a + 180.0) % 360.0), key=lambda c: abs((pi.rotation - c + 180.0) % 360.0 - 180.0))
         tx, ty = pi.translation
-        x, y = x1 - ty, y0 + tx                             # bande -> tole (rotation +90 deg, puis decalage)
+        x, y = x1 - ty, y0 + tx                             # strip -> sheet (rotation +90 deg, then offset)
         poly = affinity.translate(affinity.rotate(polys[s['T'].kind], r, origin=(0, 0)), x, y)
         placed.append((s, r, x, y, poly))
     return placed
 
 
+def _area(polys, s, gap):
+    return polys[s['T'].kind].buffer(gap / 2.0, join_style=1).area
+
+
 def _split(specs, polys, n, gap):
-    """Repartit les eprouvettes en n groupes de surface (piece + demi-ecart) a peu pres egale : la plus grande
-    eprouvette restante va dans le groupe le moins charge (methode "LPT"), ce qui melange aussi les types."""
+    """Splits the specimens into n groups of about equal area (piece + half the gap): the largest remaining specimen
+    goes to the least loaded group ("LPT" rule), which also mixes the types."""
     area = {}
     for s in specs:
         k = s['T'].kind
         if k not in area:
-            area[k] = polys[k].buffer(gap / 2.0, join_style=1).area
+            area[k] = _area(polys, s, gap)
     groups, load = [[] for _ in range(n)], [0.0] * n
     for s in sorted(specs, key=lambda s: (-area[s['T'].kind], s['block'])):
         i = load.index(min(load))
@@ -112,38 +116,34 @@ def _split(specs, polys, n, gap):
     return [g for g in groups if g]
 
 
-def _area(polys, s, gap):
-    return polys[s['T'].kind].buffer(gap / 2.0, join_style=1).area
-
-
 def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_sheets=20, on_progress=None,
           log=None, fill_tries=8, fill_seconds=None, fill_max=0.85, fill_fails=3):
-    """Toutes les eprouvettes sur des toles W x H. margins : {'gauche', 'bas', 'droite', 'haut'} en mm.
+    """All the specimens on sheets W x H. margins: {'left', 'bottom', 'right', 'top'} in mm.
 
-    Methode :
-      1. nombre de toles de depart n = surface des pieces (+ demi-ecart) / surface utile d'une tole, arrondi au-dessus
-         (c'est un minimum : on ne peut pas faire moins) ;
-      2. tole par tole : les eprouvettes restantes sont reparties en autant de groupes de surface egale qu'il reste de
-         toles (_split) ; sparrow compacte le premier groupe sur la tole (temps "seconds") ;
-      3. REMPLISSAGE : on essaie d'ajouter des eprouvettes des groupes suivants, de la plus grande a la plus petite ;
-         sparrow recompacte la tole avec l'eprouvette en plus (temps "fill_seconds") ; si tout tient, elle reste,
-         sinon on n'essaie plus cette forme sur cette tole ; on s'arrete apres "fill_fails" echecs d'affilee ou
-         "fill_tries" essais, et on n'essaie que si la surface occupee resterait <= fill_max x surface utile ;
-      4. si les eprouvettes sont toutes placees avant la derniere tole prevue, on s'arrete (moins de toles) ;
-         si un groupe ne tient pas dans sa tole, on recommence avec n + 1 toles.
-    Renvoie une liste de toles, chacune une liste (spec, rotation_deg, x, y, contour_place).
-    on_progress(libelle, secondes_ecoulees, meilleure_hauteur, duree_prevue) ; log(message).
+    Method:
+      1. starting number of sheets n = area of the pieces (+ half the gap) / usable area of a sheet, rounded up
+         (a lower bound: fewer sheets are impossible);
+      2. sheet by sheet: the remaining specimens are split into as many groups of equal area as there are sheets
+         left (_split); sparrow packs the first group on the sheet ("seconds");
+      3. FILLING: specimens of the next groups are tried, from the largest to the smallest; sparrow packs the sheet
+         again with one specimen more ("fill_seconds"); if everything fits, it stays, otherwise that shape is not
+         tried again on this sheet; stop after "fill_fails" failures in a row or "fill_tries" tries, and only try
+         while the occupied area would stay <= fill_max x usable area;
+      4. if all specimens are placed before the last planned sheet, stop (fewer sheets);
+         if a group does not fit on its sheet, start again with n + 1 sheets.
+    Returns a list of sheets, each a list of (spec, rotation_deg, x, y, placed_outline).
+    on_progress(label, elapsed_seconds, best_height, planned_duration); log(message).
     """
-    uw = W - margins['gauche'] - margins['droite']
-    uh = H - margins['bas'] - margins['haut']
-    lim = H - margins['haut'] + 1e-6
-    for s in specs:                                          # chaque piece doit tenir seule dans la zone utile
+    uw = W - margins['left'] - margins['right']
+    uh = H - margins['bottom'] - margins['top']
+    lim = H - margins['top'] + 1e-6
+    for s in specs:                                          # each piece must fit alone in the usable area
         T = s['T']
         b = affinity.rotate(polys[T.kind], s['rot'], origin=(0, 0)).bounds
         if b[2] - b[0] > uw + 1e-6 or b[3] - b[1] > uh + 1e-6:
-            raise PlacementError('%s a %g deg (%.0f x %.0f mm une fois tournee) ne tient pas dans la zone utile de la '
-                                 'tole (%g x %g mm, marges deduites)' % (T.alias, s['angle'], b[2] - b[0], b[3] - b[1],
-                                                                        uw, uh))
+            raise PlacementError('%s at %g deg (%.0f x %.0f mm once turned) does not fit in the usable area of the '
+                                 'sheet (%g x %g mm, margins excluded)' % (T.alias, s['angle'], b[2] - b[0],
+                                                                         b[3] - b[1], uw, uh))
     fill_seconds = fill_seconds or max(5, seconds / 2.0)
     U = (uw + gap) * (uh + gap)
     total = sum(_area(polys, s, gap) for s in specs)
@@ -162,14 +162,14 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_s
             if left <= 0:
                 break
             group = list(_split(remaining, polys, left, gap)[0]) if left > 1 else list(remaining)
-            placed, t = solve(group, '%d toles : %d/%d' % (n, k, n), seconds)
+            placed, t = solve(group, '%d sheets: %d/%d' % (n, k, n), seconds)
             if t > lim:
                 if log:
-                    log('tole %d sur %d : depasse de %.1f mm -> essai avec %d toles' % (k, n, t - lim, n + 1))
+                    log('sheet %d of %d: %.1f mm too high -> trying %d sheets' % (k, n, t - lim, n + 1))
                 break
             ids = set(id(x) for x in group)
             rest = [x for x in remaining if id(x) not in ids]
-            # remplissage avec les eprouvettes des groupes suivants
+            # filling with specimens of the next groups
             used, failed, tries, streak = sum(_area(polys, x, gap) for x in group), set(), 0, 0
             while rest and tries < fill_tries and streak < fill_fails:
                 cands = sorted((x for x in rest if (x['T'].kind, x['angle']) not in failed
@@ -180,7 +180,7 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_s
                 c = cands[0]
                 tries += 1
                 name = '%s %g deg' % (c['T'].alias, c['angle'])
-                trial, tt = solve(group + [c], 'tole %d : +%s' % (k, c['T'].alias), fill_seconds)
+                trial, tt = solve(group + [c], 'sheet %d: +%s' % (k, c['T'].alias), fill_seconds)
                 if tt <= lim:
                     group.append(c)
                     placed, t = trial, tt
@@ -188,18 +188,18 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, workers=None, max_s
                     rest = [x for x in rest if x is not c]
                     streak = 0
                     if log:
-                        log('tole %d : + %s ajoutee (%d eprouvettes)' % (k, name, len(group)))
+                        log('sheet %d: + %s added (%d specimens)' % (k, name, len(group)))
                 else:
                     failed.add((c['T'].kind, c['angle']))
                     streak += 1
                     if log:
-                        log('tole %d : + %s ne rentre pas' % (k, name))
+                        log('sheet %d: + %s does not fit' % (k, name))
             sheets.append(placed)
             remaining = rest
         if not remaining:
             return sheets
         n += 1
-    raise PlacementError('les eprouvettes ne tiennent pas sur %d toles' % min(max_sheets, len(specs)))
+    raise PlacementError('the specimens do not fit on %d sheets' % min(max_sheets, len(specs)))
 
 
 def top(sheet):
@@ -207,7 +207,7 @@ def top(sheet):
 
 
 def write_dxf(path, sheets, libdoc, W, H):
-    """Plan DXF : un cadre par tole (couleur 7) et un bloc par eprouvette (geometrie exacte), en mm."""
+    """DXF plan: one frame per sheet (colour 7) and one block per specimen (exact geometry), in mm."""
     doc = ezdxf.new('R2000', setup=True)
     doc.header['$INSUNITS'] = 4
     for name, c in (('Q3_NORMAL', 3), ('Q4_MEDIUM', 4), ('Q5_HIGH', 5), ('SHEET', 7)):
@@ -225,7 +225,8 @@ def write_dxf(path, sheets, libdoc, W, H):
         for spec, r, x, y, poly in s:
             msp.add_blockref(spec['block'], (ox + x, y), dxfattribs={'rotation': r, 'layer': '0'})
             rows.append({'sheet': k + 1, 'block': spec['block'], 'type': spec['T'].kind,
-                         'orientation_to_RD_deg': '%g' % (spec['angle'] % 180), 'rotation_deg': round(r, 4),  # angle commande / angle de pose
+                         'orientation_to_RD_deg': '%g' % (spec['angle'] % 180),     # ordered angle
+                         'rotation_deg': round(r, 4),                                # placement angle
                          'insert_x_mm': round(ox + x, 4), 'insert_y_mm': round(y, 4)})
     doc.saveas(path)
     return rows

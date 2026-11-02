@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-sheetlib.py -- Lecture d'un plan de decoupe EDM (DXF) : traits, toles, pieces, codes, types d'eprouvettes.
+sheetlib.py -- Reading of an EDM cutting plan (DXF): lines, sheets, pieces, codes, specimen types.
 
-Module commun a check_sheet.py (verification) et extract_library.py (bibliotheque d'eprouvettes).
+Module shared by check_sheet.py (checks), make_templates.py (templates) and make_plan.py (final check).
 
-Conventions des plans du labo (voir README.md) :
-    - unites : mm ;
-    - cadre de tole : rectangle de couleur 7 (blanc/noir) ;
-    - traits de coupe : couleur = qualite EDM, 3 = Q3 normale (vert), 4 = Q4 moyenne (cyan), 5 = Q5 maximale (bleu) ;
-    - sens de laminage (RD) : axe +Y du dessin ;
-    - code d'identification : "peigne" d'encoches bleues (Q5) dans le bord d'une tete, ~13 x 3 mm.
+Conventions of the lab drawings (see README.md):
+    - units: mm;
+    - sheet frame: rectangle of colour 7 (white/black);
+    - cutting lines: colour = EDM quality, 3 = Q3 normal (green), 4 = Q4 medium (cyan), 5 = Q5 highest (blue);
+    - rolling direction (RD): +Y axis of the drawing;
+    - identification code: "comb" of blue (Q5) notches in the edge of a head, ~13 x 3 mm.
 
-Dependances : ezdxf, shapely (pip install ezdxf shapely).
+Dependencies: ezdxf, shapely (pip install ezdxf shapely).
 """
 import collections
 import math
@@ -23,22 +23,22 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import polygonize, unary_union
 from shapely.strtree import STRtree
 
-SNAP = 3                 # arrondi des coordonnees (1e-3 mm)
-JOIN_TOL = 0.005         # mm : deux extremites plus proches que ca sont le meme point (fusionnees a la lecture)
-FLAT_TOL = 0.01          # tolerance de discretisation des arcs (mm)
-FRAME_MIN_AREA = 1e4     # un cadre de tole fait au moins 100 x 100 mm
-PIECE_MIN_AREA = 300.0   # mm2 : en dessous, contour interieur (trou) ou debris
-CODE_SEG_MAX = 3.2       # mm : longueur max d'un trait du code a encoches
-CODE_MIN_SEGS = 8        # nombre min de petits traits bleus pour reconnaitre un code
+SNAP = 3                 # rounding of the coordinates (1e-3 mm)
+JOIN_TOL = 0.005         # mm: two end points closer than this are the same point (merged on reading)
+FLAT_TOL = 0.01          # tolerance of the arc discretisation (mm)
+FRAME_MIN_AREA = 1e4     # a sheet frame is at least 100 x 100 mm
+PIECE_MIN_AREA = 300.0   # mm2: below, inner contour (hole) or debris
+CODE_SEG_MAX = 3.2       # mm: max length of a line of the notch code
+CODE_MIN_SEGS = 8        # min number of short blue lines to recognise a code
 QUALITY = {3: 'Q3 normal', 4: 'Q4 medium', 5: 'Q5 highest'}
 CUT_COLORS = (3, 4, 5)
 
 
 # ============================================================
-# LECTURE
+# READING
 # ============================================================
 class Seg:
-    """Un trait du dessin (entite DXF a plat, coordonnees du dessin)."""
+    """A line of the drawing (flat DXF entity, drawing coordinates)."""
     __slots__ = ('i', 'kind', 'layer', 'color', 'raw_color', 'pts', 'line', 'length', 'radius', 'center',
                  'entity', 'source')
 
@@ -53,8 +53,8 @@ class Seg:
         self.length = self.line.length
         self.radius = e.dxf.radius if self.kind in ('ARC', 'CIRCLE') else None
         self.center = (e.dxf.center.x, e.dxf.center.y) if self.kind in ('ARC', 'CIRCLE') else None
-        self.entity = e          # entite virtuelle (deja dans le repere du dessin) : sert a recopier la geometrie exacte
-        self.source = source     # nom du bloc d'origine (ou 'modelspace')
+        self.entity = e          # virtual entity (already in the drawing frame): used to copy the exact geometry
+        self.source = source     # name of the source block (or 'modelspace')
 
     @property
     def closed(self):
@@ -65,7 +65,7 @@ class Seg:
 
 
 def _flat(e, source='modelspace'):
-    """Entites a plat : les INSERT (blocs, y compris imbriques) sont eclates."""
+    """Flat entities: INSERTs (blocks, nested ones included) are exploded."""
     if e.dxftype() == 'INSERT':
         for v in e.virtual_entities():
             yield from _flat(v, e.dxf.name if source == 'modelspace' else source)
@@ -74,7 +74,7 @@ def _flat(e, source='modelspace'):
 
 
 def resolve_color(doc, e):
-    """Couleur ACI effective : 256 (DUCALQUE) -> couleur du calque ; 0 (DUBLOC) -> couleur du calque (approximation)."""
+    """Effective ACI colour: 256 (BYLAYER) -> layer colour; 0 (BYBLOCK) -> layer colour (approximation)."""
     c = e.dxf.get('color', 256)
     if c in (0, 256):
         lay = doc.layers.get(e.dxf.layer)
@@ -83,7 +83,7 @@ def resolve_color(doc, e):
 
 
 class Drawing:
-    """Contenu d'un DXF : traits, textes, en-tete."""
+    """Content of a DXF: lines, texts, header."""
 
     def __init__(self, path):
         self.path = path
@@ -112,7 +112,7 @@ class Drawing:
                 self.segs.append(Seg(len(self.segs), e, resolve_color(self.doc, e), pts, src))
 
     def _vertex(self, p):
-        """Fusionne les extremites a moins de JOIN_TOL : renvoie le premier sommet deja vu dans ce rayon."""
+        """Merges end points within JOIN_TOL: returns the first vertex already seen within that radius."""
         gx, gy = int(math.floor(p[0] / 0.01)), int(math.floor(p[1] / 0.01))
         for i in (gx - 1, gx, gx + 1):
             for j in (gy - 1, gy, gy + 1):
@@ -132,16 +132,16 @@ class Drawing:
 
 
 # ============================================================
-# TOLES, EXTREMITES LIBRES, DOUBLONS
+# SHEETS, FREE ENDS, DUPLICATES
 # ============================================================
 def frames(drawing):
-    """Cadres de tole (rectangles de couleur 7), tries de gauche a droite puis de haut en bas."""
+    """Sheet frames (rectangles of colour 7), sorted left to right, then top to bottom."""
     polys = [p for p in polygonize(unary_union([s.line for s in drawing.black])) if p.area > FRAME_MIN_AREA]
     return sorted(polys, key=lambda p: (round(p.bounds[0] / 50), -round(p.bounds[3] / 50)))
 
 
 def open_ends(segs):
-    """Extremites libres : points touches par un nombre impair d'extremites de traits (contour non ferme)."""
+    """Free ends: points touched by an odd number of line ends (open contour)."""
     c = collections.Counter()
     for s in segs:
         if not s.closed:
@@ -152,7 +152,7 @@ def open_ends(segs):
 
 
 def pair_open_ends(ends):
-    """Regroupe les extremites libres deux a deux (plus proches voisines) : chaque paire = un trou dans un contour."""
+    """Pairs the free ends (nearest neighbours): each pair = a gap in a contour."""
     left, pairs = list(ends), []
     while len(left) > 1:
         a = left.pop(0)
@@ -163,7 +163,7 @@ def pair_open_ends(ends):
 
 
 def components(segs):
-    """Composantes connexes des traits (deux traits sont relies s'ils partagent une extremite)."""
+    """Connected components of the lines (two lines are connected if they share an end point)."""
     parent = list(range(len(segs)))
 
     def find(i):
@@ -191,7 +191,7 @@ def seg_key(s):
 
 
 def duplicates(segs):
-    """Traits dessines plusieurs fois (memes extremites, meme milieu). Retourne les doublons (pas le premier)."""
+    """Lines drawn several times (same ends, same midpoint). Returns the duplicates (not the first one)."""
     seen, dup = {}, []
     for s in segs:
         k = seg_key(s)
@@ -206,7 +206,7 @@ def duplicates(segs):
 # PIECES
 # ============================================================
 class Piece:
-    """Une eprouvette : contour exterieur ferme (Polygon avec trous) et ses traits."""
+    """A specimen: closed outer contour (Polygon with holes) and its lines."""
 
     def __init__(self, k, poly, segs):
         self.k = k
@@ -219,7 +219,7 @@ class Piece:
 
     @property
     def center(self):
-        """Centre du rectangle englobant minimal (insensible aux encoches du code, contrairement au centroide)."""
+        """Centre of the minimum bounding rectangle (unaffected by the code notches, unlike the centroid)."""
         c = self.poly.minimum_rotated_rectangle.centroid
         return c.x, c.y
 
@@ -228,7 +228,7 @@ class Piece:
 
 
 def pieces(drawing, segs=None):
-    """Pieces = polygones fermes formes par les traits de coupe ; les contours inclus dans un autre sont des trous."""
+    """Pieces = closed polygons formed by the cutting lines; contours inside another one are holes."""
     segs = drawing.cut if segs is None else segs
     polys = sorted(polygonize(unary_union([s.line for s in segs])), key=lambda p: -p.area)
     outer = []
@@ -244,7 +244,7 @@ def pieces(drawing, segs=None):
     for k, p in enumerate(outer):
         zone = Polygon(p.exterior).buffer(0.02)
         mine = [segs[i] for i in tree.query(zone, predicate='contains')]
-        # trous : contours fermes a l'interieur du contour exterieur
+        # holes: closed contours inside the outer contour
         holes = [q for q in polys if q.area < p.area and Polygon(p.exterior).contains(q.representative_point())
                  and not any(o is q for o in outer) and q.area < 0.5 * p.area]
         holes = [h for h in holes if not any(h2 is not h and h2.contains(h.representative_point()) and h2.area > h.area
@@ -261,16 +261,16 @@ def assign_sheets(pcs, frs):
 
 
 # ============================================================
-# CODE A ENCOCHES
+# NOTCH CODE
 # ============================================================
 def code_info(piece):
-    """Code d'identification : petits traits Q5 droits sur le bord. Retourne None ou un dict (centre, signature)."""
+    """Identification code: short straight Q5 lines on the edge. Returns None or a dict (centre, signature)."""
     cs = [s for s in piece.segs if s.color == 5 and s.kind == 'LINE' and s.length <= CODE_SEG_MAX
           and piece_boundary(piece).distance(s.line) < 0.01]
     if len(cs) < CODE_MIN_SEGS:
         return None
     g = unary_union([s.line for s in cs])
-    # garde le plus gros amas (le code), au cas ou d'autres petits traits bleus existent
+    # keep the largest cluster (the code), in case other short blue lines exist
     c = g.centroid
     return {'segs': cs, 'center': (c.x, c.y), 'bounds': g.bounds, 'geom': g}
 
@@ -280,8 +280,8 @@ def piece_boundary(piece):
 
 
 def code_signature(piece, step=0.05):
-    """Signature du code, independante de la piece : traits du code tournes pour que l'axe de la piece (vers le
-    code) soit +Y, puis exprimes par rapport au coin du rectangle englobant du code, arrondis a 0,05 mm."""
+    """Signature of the code, independent of the piece: code lines turned so that the piece axis (towards the code)
+    is +Y, then expressed relative to the corner of the code's bounding box, rounded to 0.05 mm."""
     if not piece.code:
         return None
     g = affinity.rotate(piece.code['geom'], -(piece.axis_deg or 0.0), origin=(0, 0))
@@ -293,19 +293,19 @@ def code_signature(piece, step=0.05):
 
 
 # ============================================================
-# ORIENTATION ET TYPE
+# ORIENTATION AND TYPE
 # ============================================================
 def axis_angle(piece):
-    """Angle (degres, sens trigonometrique, depuis +Y = sens de laminage) de l'axe long de la piece, oriente vers
-    la tete qui porte le code ; plus longueur et largeur du rectangle englobant minimal."""
+    """Angle (degrees, counter-clockwise, from +Y = rolling direction) of the long axis of the piece, pointing to the
+    head with the code; plus length and width of the minimum bounding rectangle."""
     r = piece.poly.minimum_rotated_rectangle
     xs = list(r.exterior.coords)
     e1 = (xs[1][0] - xs[0][0], xs[1][1] - xs[0][1])
     e2 = (xs[2][0] - xs[1][0], xs[2][1] - xs[1][1])
     l1, l2 = math.hypot(*e1), math.hypot(*e2)
     L, W = max(l1, l2), min(l1, l2)
-    if L / W < 1.25:                               # disque ou piece presque carree : pas d'axe long
-        if piece.code:                             # axe = du centre vers le code
+    if L / W < 1.25:                               # disc or nearly square piece: no long axis
+        if piece.code:                             # axis = from the centre to the code
             cx, cy = piece.poly.centroid.x, piece.poly.centroid.y
             dx, dy = piece.code['center'][0] - cx, piece.code['center'][1] - cy
             return _deg(-dx, dy), L, W
@@ -321,32 +321,32 @@ def axis_angle(piece):
 
 
 def _deg(sx, cy):
-    """Angle de la direction (-sx, cy) mesure depuis +Y, sens trigonometrique, dans ]-180, 180]."""
+    """Angle of the direction (-sx, cy) measured from +Y, counter-clockwise, in ]-180, 180]."""
     a = math.degrees(math.atan2(sx, cy))
     return 180.0 if abs(a + 180.0) < 1e-9 else a
 
 
 def fold_rd(angle):
-    """Orientation par rapport au laminage pour un materiau orthotrope : |angle| ramene dans [0, 90]."""
+    """Orientation to the rolling direction for an orthotropic material: |angle| folded into [0, 90]."""
     a = abs(angle) % 180.0
     return min(a, 180.0 - a)
 
 
 def pose_angle(piece):
-    """Rotation qui ramene la piece dans son repere canonique : axe vers le code = +Y pour les barreaux ; aucune
-    pour les disques (leur orientation par rapport au laminage est donnee par les trous, on la conserve)."""
+    """Rotation bringing the piece into its canonical frame: axis towards the code = +Y for bars; none for discs
+    (their orientation to the rolling direction is given by the holes and is kept)."""
     return 0.0 if piece.L / piece.W < 1.25 else piece.axis_deg
 
 
 def canonical(piece, geom):
-    """Geometrie exprimee dans le repere canonique de la piece (centre a l'origine, voir pose_angle)."""
+    """Geometry expressed in the canonical frame of the piece (centre at the origin, see pose_angle)."""
     cx, cy = piece.center
     g = affinity.translate(geom, -cx, -cy)
     return affinity.rotate(g, -pose_angle(piece), origin=(0, 0))
 
 
 def classify(piece):
-    """Type d'eprouvette d'apres la geometrie (noms provisoires, a confirmer avec le labo)."""
+    """Specimen type from the geometry (provisional names, used in check reports; plans use the catalogue names)."""
     L, W = piece.L, piece.W
     f = {'L': round(L, 1), 'W': round(W, 1), 'holes': len(piece.poly.interiors),
          'colors': dict(sorted(piece.colors().items()))}
@@ -354,7 +354,7 @@ def classify(piece):
     if L / W < 1.25:
         if f['holes'] == 2:
             h0, h1 = [Polygon(h).centroid for h in piece.poly.interiors]
-            ab = fold_rd(_deg(-(h1.x - h0.x), h1.y - h0.y))       # axe des deux trous par rapport au laminage
+            ab = fold_rd(_deg(-(h1.x - h0.x), h1.y - h0.y))       # axis of the two holes relative to the rolling direction
             f['holes_rd'] = round(ab, 1)
             return 'DISC_2H_%02d' % (int(round(ab / 15.0)) * 15), f
         return 'DISC_%dH' % f['holes'], f
@@ -362,13 +362,13 @@ def classify(piece):
     code_ids = set(id(s) for s in piece.code['segs']) if piece.code else set()
     q5_other = [s for s in piece.segs if s.color == 5 and id(s) not in code_ids]
     if not cols.get(4) and not q5_other:
-        # pas de zone utile decoupee en Q4/Q5 : bande ou ebauche (le code eventuel ne compte pas)
+        # no gauge section cut in Q4/Q5: strip or blank (a code, if any, does not count)
         return ('BLANK_%.0fx%.0f' if piece.code else 'STRIP_%.0fx%.0f') % (L, W), f
     if f['holes'] >= 1:
         d = 2 * math.sqrt(Polygon(piece.poly.interiors[0]).area / math.pi)
         f['hole_d'] = round(d, 2)
         return 'CH_D%.1f_%s' % (d, tag), f
-    # entailles : arcs Q5 dont le centre est pres du milieu de la piece (le long de l'axe)
+    # notches: Q5 arcs whose centre is near the middle of the piece (along the axis)
     notch = []
     for s in piece.segs:
         if s.kind == 'ARC' and s.color == 5 and s.radius > 1.0:
@@ -383,7 +383,7 @@ def classify(piece):
 
 
 # ============================================================
-# PETITS OUTILS
+# SMALL TOOLS
 # ============================================================
 def unit_name(code):
     return {0: 'unitless (not set)', 1: 'inches', 2: 'feet', 4: 'millimetres', 5: 'centimetres', 6: 'metres'}.get(code, str(code))

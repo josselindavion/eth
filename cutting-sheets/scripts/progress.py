@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-progress.py -- Etapes numerotees et barre de progression dans le terminal (sans dependance).
+progress.py -- Numbered steps and progress bar in the terminal (no dependency).
 
     step(3, 6, 'Placement')          ->  [3/6] Placement
-    bar = Bar('Recuit', 120)         ->      Recuit         [#########-----------]  45 %   54/120  reste ~1 min 10 s
-    bar.update(54) ... bar.done()    ->      Recuit         [####################] 100 %  120/120  en 2 min 30 s
+    bar = Bar('Sheet 1', 60)         ->      Sheet 1        [#########-----------]  45 %  27/60  ~33 s left
+    bar.update(27) ... bar.done()    ->      Sheet 1        [####################] 100 %  60/60  in 1 min 00 s
 """
 import shutil
 import sys
@@ -27,7 +27,7 @@ def step(k, n, label):
 
 
 class Bar:
-    """Barre de progression sur une ligne (rafraichie au plus toutes les 0,2 s)."""
+    """Progress bar on one line (refreshed at most every 0.2 s)."""
 
     def __init__(self, label, total):
         self.label, self.total = label, max(1, total)
@@ -47,9 +47,9 @@ class Bar:
             return
         self.last = now
         el = now - self.t0
-        tail = ('reste ~%s' % _fmt(el / n * (self.total - n))) if 0 < n < self.total and el > 1 else ''
+        tail = ('~%s left' % _fmt(el / n * (self.total - n))) if 0 < n < self.total and el > 1 else ''
         tail = ('%s   %s' % (tail, self.info)).strip()
-        # jamais plus large que le terminal : sinon la ligne passe a la ligne et le retour chariot ne l'efface plus
+        # never wider than the terminal: otherwise the line wraps and the carriage return no longer erases it
         cols = shutil.get_terminal_size((80, 24)).columns - 1
         sys.stdout.write('\r' + self._line(n, tail)[:cols].ljust(cols))
         sys.stdout.flush()
@@ -61,7 +61,7 @@ class Bar:
     def done(self, note=''):
         el = time.time() - self.t0
         cols = shutil.get_terminal_size((80, 24)).columns - 1
-        sys.stdout.write('\r' + ' ' * cols + '\r' + self._line(self.total, ('en %s   %s' % (_fmt(el), self.info)).strip())
+        sys.stdout.write('\r' + ' ' * cols + '\r' + self._line(self.total, ('in %s   %s' % (_fmt(el), self.info)).strip())
                          + '\n')
         if note:
             sys.stdout.write('    %s\n' % note)

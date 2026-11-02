@@ -1,25 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-make_templates.py -- Gabarits d'eprouvettes SANS code, a partir du catalogue du labo.
+make_templates.py -- Specimen templates WITHOUT notch code, from the lab catalogue(s).
 
-Lancement (depuis la racine du repo ; une fois par nouveau catalogue) :
-    py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf CTLG_261029
+Run (from the repository root; once per new catalogue):
+    py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf \
+        cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
+One or more catalogue .dxf files, then the name of the template set.
 
-Le catalogue a un bloc par eprouvette, nomme <famille>_<nn> (ex. CTLG_UTUT_21 : angle 2 x 15 = 30 deg, index 1).
-Le type d'une eprouvette est le NOM DE SA FAMILLE (lu dans le fichier) ; le modele de chaque famille est son bloc _00.
+A catalogue has one block per specimen, named <family>_<nn> (e.g. CTLG_UTUT_21: angle 2 x 15 = 30 deg, index 1).
+The type of a specimen is the NAME OF ITS FAMILY (read from the file); the model of each family is its block _00.
 
-Pour chaque type d'eprouvette :
-    1. le bloc _00 sert de modele ; son code est lu (notchcode.read_piece) ;
-    2. le gabarit = ses traits, SANS les 19 traits du code ni le trait Q3 qui suit le code (sa longueur depend du
-       code : le code fait 12 ou 13 mm) ; on garde la position du code et le point ou ce trait se termine ;
-    3. repere du gabarit : centre du rectangle englobant minimal a l'origine, code en haut (+Y) ;
-       angle de l'eprouvette = direction du code depuis le sens de laminage (+Y).
+For each specimen type:
+    1. block _00 is the model; its code is read (notchcode.read_piece);
+    2. template = its lines WITHOUT the 19 lines of the code and the Q3 line after the code (its length depends on
+       the code: the code is 12 or 13 mm long); the code position and the end point of that line are kept;
+    3. template frame: centre of the minimum bounding rectangle at the origin, code towards +Y;
+       direction of the coded end = angle of the specimen + ANGLE_OFFSET of the type, from the rolling direction (+Y).
 
-Validation : CHAQUE eprouvette du catalogue est regeneree a partir du gabarit et de son code lu (angle, index),
-puis comparee a l'originale : traits du code (ecart max) et contour complet ; le code lu doit aussi etre le numero
-du bloc (CTLG_UTUT_21 -> angle 2 x 15 = 30 deg, index 1).
+Validation: EVERY specimen of the catalogue is rebuilt from the template and the code read on it (angle, index), then
+compared with the original: code lines (max deviation) and full outline; the code read must also be the block
+number (CTLG_UTUT_21 -> angle 2 x 15 = 30 deg, index 1).
 
-Sorties dans cutting-sheets/templates/<nom>/ : templates.dxf (un bloc T__<type> par type), templates.csv,
+Outputs in cutting-sheets/templates/<name>/: templates.dxf (one block T__<type> per type), templates.csv,
 validation.csv, templates.png, README.md.
 """
 import collections
@@ -47,33 +49,32 @@ import sheetlib as sl                    # noqa: E402
 ROOT = os.path.abspath(os.path.join(HERE, '..', 'templates'))
 LAYERS = {3: 'Q3_NORMAL', 4: 'Q4_MEDIUM', 5: 'Q5_HIGH'}
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#444444'}
-# noms courts utilisables dans le fichier de commande
-# catalogue du labo : famille (nom de bloc sans _nn) -> noms utilisables dans la commande (le premier est affiche)
+# lab catalogue: family (block name without _nn) -> names accepted in the order file (the first one is displayed)
 CATALOGUE_ALIASES = {
     'CTLG_UTUT': ['UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'], 'CTLG_CHCH': ['CHCH', 'CH'],
     'CTST_UTST': ['UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
     'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP'],
-    'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT'],    # catalogue complementaire (build_mnak_rect.py)
+    'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT'],    # complementary catalogue (build_mnak_rect.py)
     'MNAK_RECT_FULL': ['MNAK_RECT_FULL']}
 BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')
-# decalage entre l'angle de l'eprouvette (ecrit dans le code) et la direction de son bout code, en degres :
-# MNAK_RECT : meme orientation des trous que le disque MNAK_HOLE de meme angle (decide le 02/11/2026) ; sur le
-# rectangle les trous sont dans la direction du code, sur le disque perpendiculaires -> bout code a angle - 90 deg
+# offset between the angle of the specimen (written in the code) and the direction of its coded end, in degrees:
+# MNAK_RECT: same hole orientation as the disc MNAK_HOLE with the same angle (decided on 02/11/2026); on the
+# rectangle the holes lie along the code direction, on the disc perpendicular to it -> coded end at angle - 90 deg
 ANGLE_OFFSET = {'MNAK_RECT_HOLE': -90.0, 'MNAK_RECT_FULL': -90.0}
 
 
 # ============================================================
-# GABARIT
+# TEMPLATE
 # ============================================================
 class Template:
-    """Gabarit d'un type : entites (repere du gabarit), position du code, fin du trait qui suit le code."""
+    """Template of a type: entities (template frame), code position, end of the line after the code."""
 
     def __init__(self, kind, alias, ents, code_origin=None, tail_end_x=None, tail_color=3,
                  L=0.0, W=0.0, holes=0, depth=nc.DEPTH, source='', aliases=None, angles=None, angle_offset=0.0):
-        self.kind, self.alias, self.ents = kind, alias, ents         # ents : liste (entite ezdxf, couleur)
-        self.aliases = aliases or [alias]                            # noms acceptes dans la commande
-        self.angles = angles or []                                   # angles presents dans le catalogue (info)
-        self.angle_offset = angle_offset                             # direction du bout code = angle + angle_offset
+        self.kind, self.alias, self.ents = kind, alias, ents         # ents: list of (ezdxf entity, colour)
+        self.aliases = aliases or [alias]                            # names accepted in the order file
+        self.angles = angles or []                                   # angles present in the catalogue (info)
+        self.angle_offset = angle_offset                             # direction of the coded end = angle + offset
         self.code_origin, self.tail_end_x, self.tail_color = code_origin, tail_end_x, tail_color
         self.L, self.W, self.holes, self.depth, self.source = L, W, holes, depth, source
 
@@ -82,7 +83,7 @@ class Template:
         return self.code_origin is not None
 
     def code_prims(self, a_digit, index):
-        """Traits a ajouter au gabarit pour un code : liste ((x0, y0), (x1, y1), couleur)."""
+        """Lines to add to the template for a code: list of ((x0, y0), (x1, y1), colour)."""
         ox, oy = self.code_origin
         lines, length = nc.code_lines(a_digit, index, self.depth)
         prims = [((ox + a[0], oy + a[1]), (ox + b[0], oy + b[1]), 5) for a, b in lines]
@@ -90,13 +91,13 @@ class Template:
         return prims
 
     def closing_prim(self):
-        """Trait droit qui ferme le gabarit a la place du code (contour exterieur pour le placement)."""
+        """Straight line closing the template instead of the code (outer outline for the placement)."""
         ox, oy = self.code_origin
         return ((ox, oy), (self.tail_end_x, oy), self.tail_color)
 
 
 def piece_transform(p, code):
-    """Matrice qui amene la piece dans le repere du gabarit : centre a l'origine, code (ou axe) vers +Y."""
+    """Matrix bringing the piece into the template frame: centre at the origin, code (or axis) towards +Y."""
     ang = code['direction_deg'] if code else sl.pose_angle(p)
     cx, cy = p.center
     return Matrix44.chain(Matrix44.translate(-cx, -cy, 0), Matrix44.z_rotate(math.radians(-ang))), ang, (cx, cy)
@@ -125,7 +126,7 @@ def build_template(p, alias, kind):
                     tail = s
                     tail_end = apply(m, far)
         if tail is None:
-            raise SystemExit('%s : trait qui suit le code introuvable' % p.kind)
+            raise SystemExit('%s: line after the code not found' % p.kind)
         origin = apply(m, o)
     ents = []
     for s in p.segs:
@@ -147,7 +148,7 @@ def flatten(e):
 
 
 def polygon_from_lines(lines):
-    """Polygone (avec trous) forme par des polylignes ; extremites fusionnees a sheetlib.JOIN_TOL."""
+    """Polygon (with holes) formed by polylines; end points merged within sheetlib.JOIN_TOL."""
     verts = []
 
     def snap(q):
@@ -163,7 +164,7 @@ def polygon_from_lines(lines):
         ls.append(LineString(pts))
     polys = sorted(polygonize(unary_union(ls)), key=lambda q: -q.area)
     if not polys:
-        raise ValueError('contour non ferme')
+        raise ValueError('open contour')
     outer = polys[0]
     shell = Polygon(outer.exterior)
     holes = [h for h in polys[1:] if shell.contains(h.representative_point()) and h.area < 0.5 * outer.area]
@@ -173,7 +174,7 @@ def polygon_from_lines(lines):
 
 
 def template_polygon(T, a_digit=None, index=None, closed=False):
-    """Contour de l'eprouvette : gabarit + code (a_digit, index), ou gabarit ferme par un trait droit."""
+    """Outline of the specimen: template + code (a_digit, index), or template closed by a straight line."""
     lines = [flatten(e) for e, _ in T.ents]
     if T.has_code:
         prims = [T.closing_prim()] if closed or a_digit is None else T.code_prims(a_digit, index)
@@ -182,7 +183,7 @@ def template_polygon(T, a_digit=None, index=None, closed=False):
 
 
 # ============================================================
-# ECRITURE / LECTURE
+# WRITING / READING
 # ============================================================
 FIELDS = ['type', 'alias', 'aliases', 'catalogue_angles', 'angle_offset', 'block', 'has_code', 'code_x0', 'code_y0', 'code_depth', 'tail_end_x', 'tail_color',
           'L_mm', 'W_mm', 'holes', 'source_piece']
@@ -220,7 +221,7 @@ def write_templates(out, temps):
 
 
 def load_templates(tdir):
-    """Gabarits d'un dossier templates/<nom>/ : dict type -> Template (et alias -> meme objet)."""
+    """Templates of a folder templates/<name>/: dict type -> Template (and alias -> same object)."""
     doc = ezdxf.readfile(os.path.join(tdir, 'templates.dxf'))
     out = {}
     with open(os.path.join(tdir, 'templates.csv')) as f:
@@ -246,7 +247,7 @@ def load_templates(tdir):
 # VALIDATION
 # ============================================================
 def validate(T, p):
-    """Regenere la piece p du plan a partir du gabarit T et de son code lu ; compare a l'originale."""
+    """Rebuilds the piece p from the template T and the code read on it; compares with the original."""
     code = nc.read_piece(p)
     m, ang, c = piece_transform(p, code)
     orig = affinity.rotate(affinity.translate(p.poly, -c[0], -c[1]), -ang, origin=(0, 0))
@@ -296,27 +297,27 @@ def fig_templates(temps, path):
 def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
-    libs, name = sys.argv[1:-1], sys.argv[-1]      # un ou plusieurs catalogues .dxf, puis le nom des gabarits
+    libs, name = sys.argv[1:-1], sys.argv[-1]      # one or more catalogue .dxf files, then the template set name
     out = os.path.join(ROOT, name)
     os.makedirs(out, exist_ok=True)
     if not all(x.lower().endswith('.dxf') for x in libs):
-        sys.exit('Il faut le(s) fichier(s) .dxf du catalogue, puis le nom des gabarits.')
+        sys.exit('Give the catalogue .dxf file(s), then the name of the template set.')
     by, origin = collections.defaultdict(list), {}
     for lib in libs:
-        for p in sl.pieces(sl.Drawing(lib)):   # type = nom du bloc (famille), numero = code attendu
+        for p in sl.pieces(sl.Drawing(lib)):   # type = block family name, number = expected code
             src = collections.Counter(s.source for s in p.segs).most_common(1)[0][0]
             m = BLOCK_RE.match(src)
             p.block, p.block_num = src, (int(m.group(2)) if m else None)
             fam = m.group(1) if m else src
             if fam in origin and origin[fam] != lib:
-                sys.exit('famille %s presente dans deux catalogues' % fam)
+                sys.exit('family %s present in two catalogues' % fam)
             origin[fam] = lib
             by[fam].append(p)
     lib = ' + '.join(os.path.basename(x) for x in libs)
     temps = []
     for kind in sorted(by):
         group = sorted(by[kind], key=lambda q: (q.block_num is None, q.block_num))
-        model = group[0]                       # bloc _00 (angle 0, index 0)
+        model = group[0]                       # block _00 (angle 0, index 0)
         al = CATALOGUE_ALIASES.get(kind) or [kind.split('_', 1)[1] if '_' in kind else kind]
         T = build_template(model, al[0], kind)
         T.aliases = al
@@ -326,7 +327,7 @@ def main():
         T.angles = sorted(set(c['angle_deg'] for c in codes))
         temps.append((T, group))
     write_templates(out, [T for T, _ in temps])
-    # relecture depuis le disque : la validation porte sur les gabarits ecrits
+    # read back from disk: the validation is done on the templates as written
     loaded = load_templates(out)
     rows = []
     for T0, group in temps:
@@ -350,10 +351,10 @@ def main():
         dif = max(r['outline_diff_mm2'] for r in rr)
         odev = max(r['outline_max_dev_mm'] for r in rr)
         nb = sum(1 for r in rr if r.get('code_is_block_number') == 'yes')
-        print('  %-11s %-9s %3d pieces  code : ecart max %.4f mm%s   contour : ecart max %.4f mm, difference max %.4f mm2'
-              % (T.kind, T.alias, len(rr), dev, '  (= no de bloc : %d/%d)' % (nb, len(rr)),
+        print('  %-14s %-14s %3d pieces  code: max dev. %.4f mm%s   outline: max dev. %.4f mm, max diff. %.4f mm2'
+              % (T.kind, T.alias, len(rr), dev, '  (= block number: %d/%d)' % (nb, len(rr)),
                  odev, dif))
-    print('Gabarits : %s' % out)
+    print('Templates: %s' % out)
 
 
 def write_readme(out, lib, name, temps, rows):
@@ -373,9 +374,10 @@ def write_readme(out, lib, name, temps, rows):
             ', '.join('%g°' % a for a in T.angles) or '–',
             '(%.3f, %.3f)' % T.code_origin if T.has_code else 'no code'))
     L += ['', 'Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a '
-          'specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise. '
-          'For discs with two holes, the holes are perpendicular to that direction (angle 90° = holes along the '
-          'rolling direction).', '', '![Templates](templates.png)', '',
+          'specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise, '
+          'minus the angle offset of the type (MNAK_RECT: −90°). For discs with two holes, the holes are '
+          'perpendicular to the code direction (angle 90° = holes along the rolling direction); MNAK_RECT has the same '
+          'hole orientation as the disc of the same angle.', '', '![Templates](templates.png)', '',
           '## Validation', '',
           'Every specimen of the source was rebuilt from its template and the code read on it, then compared with the '
           'original.%s' % (' For the catalogue, the code read must also be the block number (block `_21` = angle '

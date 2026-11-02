@@ -1,0 +1,37 @@
+# Example order: one line = "N specimens of this type at this angle".
+# Run:  py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/example.yaml
+
+name: ETH_350x250mm_SHEET_v20261102_example   # name of the plan (output folder, DXF, notice)
+templates: templates/CTLG_261102              # lab catalogue + rectangular Mini-Nakajima (MNAK_RECT)
+sheet: 350x250         # width x height in mm; the height is the rolling direction
+                       # (cutting area of the EDM ~350 x 250 mm: to confirm with the workshop)
+gap: 5                 # mm between two specimens (rule of the supervisors)
+margins:               # mm to the sheet edge, per side; nothing is cut in these bands
+  left: 40             #   L-shaped clamping area (waterjet example: 40 mm; EDM value to confirm)
+  bottom: 40           #   bottom = start of the rolling direction
+  right: 5
+  top: 5
+time: 20               # seconds of sparrow per sheet; longer = slightly more compact
+fill_tries: 8          # tries to fill each sheet with specimens of the next sheets (0 = fast, no filling)
+
+# Optional: fields of the full specimen ID (lab QR code), copied into registry.csv
+specimen_id:
+  batch: 240702AA
+  sample_geometry: MTS0
+  additional: AA
+  test_geometry: {UTUT: UTUT, NT20: NT20}     # 4 characters per type (to confirm with the lab)
+
+# type (names of the lab catalogue):
+#   long specimens 106 mm   : UTUT (or UT), NT20, NT06 (or NT6.67), CHCH (or CH)
+#   short specimens 81 mm   : UTST, SHLD, SHMD, SHHD
+#   discs                   : MNAK_FULL (or DISC0), MNAK_HOLE (or DISC2; holes at angle + 90 deg)
+#   rectangular Nakajima    : MNAK_RECT_FULL, MNAK_RECT_HOLE (or MNAK_RECT; holes oriented as on the disc)
+#   strip without code      : TENS_FULL (or STRIP)
+# angle: of the coded end, from the rolling direction, 0-135 deg in steps of 15
+# count: how many; index (number in the code) = 0, 1, 2... (0-9) unless first_index is given
+specimens:
+  - {type: UTUT, angle: 30,  count: 5}
+  - {type: NT20, angle: 45,  count: 3}
+  - {type: UTST, angle: 0,   count: 2}
+  - {type: SHLD, angle: 135, count: 2}
+  - {type: MNAK_HOLE, angle: 90, count: 2}
