@@ -49,6 +49,10 @@ TYPES = {
     'MNAK_RECT_FULL': dict(test_r=20.0, rect=True, label_y=[-30, 30], test_label='test zone (assumed:\ncentre, r < 20 mm)',
                  ms=[((-14.0, -40.0), 'bottom end, left of centre'),
                      ((14.0, 40.0), 'coded end, right of the code\n(point-symmetric to Mikrosteg 1)')]),
+    'TENS_FULL': dict(test=(-40.0, 40.0), test_label='test zone (assumed:\nmiddle of the strip)',
+                 grips=[(-70.0, -40.0), (40.0, 70.0)], label_y=[-66, 62],
+                 ms=[((0.0, -70.0), 'bottom end face, centred'),
+                     ((0.0, 70.0), 'top end face, centred (no code on\nthis strip)')]),
     'NT06': dict(test=(-23.0, 20.0), test_label='test zone\n(notch R 6.67 and\n20 mm wide section)',
                  grips=[(-52.94, -23.0), (20.0, 52.94)],
                  ms=[((0.0, -52.9435), 'end face of the bottom grip, centred'),
@@ -60,11 +64,12 @@ def draw(alias, out):
     temps = mt.load_templates('/home/claude/eth/cutting-sheets/templates/CTLG_261102')
     T = [v for v in temps.values() if v.alias == alias][0]
     cfg = TYPES[alias]
-    poly = mt.template_polygon(T, a_digit=2, index=1)          # example code: 30 deg, index 1
+    poly = mt.template_polygon(T, a_digit=2, index=1) if T.has_code else mt.template_polygon(T)
     for (x, y), _ in cfg['ms']:
         poly = poly.difference(Point(x, y).buffer(R, 64))
     x0, y0, x1, y1 = poly.bounds
-    fig, ax = plt.subplots(figsize=(8.5, 8.5) if cfg.get('rect') else (9.5, 6.2) if 'test_r' in cfg else (7.5, 9))
+    fig, ax = plt.subplots(figsize=(8.5, 8.5) if cfg.get('rect') else (9.5, 6.2) if 'test_r' in cfg else
+                           (7.5, 11) if alias == 'TENS_FULL' else (7.5, 9))
     if 'test_r' in cfg:                                         # disc: central test zone, clamped rim
         from matplotlib.patches import Circle
         if cfg.get('rect'):
@@ -104,8 +109,9 @@ def draw(alias, out):
     ax.set_ylim(y0 - 5, y1 + 5)
     ax.set_aspect('equal')
     ax.set_xticks(range(int(x0) - 5, int(x1) + 6, 5)); ax.grid(lw=0.3)
-    ax.set_title('%s – proposal: 2 internal Mikrostegs (recess R %.1f mm)\ncode at the top (example: 30 deg, '
-                 'index 1); rolling direction not relevant here' % (alias, R), fontsize=10, loc='left')
+    ax.set_title('%s – proposal: 2 internal Mikrostegs (recess R %.1f mm)\n%s' % (
+        alias, R, 'code at the top (example: 30 deg, index 1); rolling direction not relevant here' if T.has_code
+        else 'no notch code on this type'), fontsize=10, loc='left')
     for (x, y), _ in cfg['ms']:                                 # zoom inset on each recess
         pass
     fig.tight_layout()
