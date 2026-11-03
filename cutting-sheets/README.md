@@ -19,14 +19,21 @@ py -m pip install ezdxf shapely matplotlib scipy pyyaml spyrrow==0.9.0 packingso
 ```bash
 cd ~/Documents/eth
 git pull
-py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/example.yaml
-py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CT_sheet.yaml
+py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml
+py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET_v20250520.yaml
 ```
 
 | Order | Content |
 |---|---|
-| `orders/example.yaml` | small example on a 400 × 300 mm sheet (CUT E 350, L-shaped 40 mm clamping): 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
-| `orders/CT_sheet.yaml` | **the real sheet**: the CT programme of the lab drawing `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (same specimens and codes; discs replaced by the rectangular Mini-Nakajima; 8 `TENS_FULL` strips), on 400 × 300 mm sheets on the CUT E 350 (L-shaped 40 mm clamping, effective area 340 × 240 mm) |
+| `orders/ETH_300x300_6_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens) |
+| `orders/ETH_450x400_3_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens) |
+| `orders/ETH_600x500mm_2_SHEET_v20250220.yaml` | lab plan of the same name (64 specimens) |
+| `orders/ETH_450x380mm_ShearEDM_v20250520.yaml` | lab shear plan of the same name (24 shear specimens) |
+
+One order per lab plan of `input/` (the `.pdf` / `.dxf` of 2025), for the EDM machine (400 × 300 mm sheets on the
+CUT E 350, L-shaped 40 mm clamping, effective area 340 × 240 mm). The old models of those plans (straight grips,
+140 mm; shear blanks 93 mm) are replaced by the catalogue models with the "Christmas tree" grips; same angles and same
+notch codes as in the plans (read in their DXF). Each order file explains its correspondence in its header.
 
 **Results** in `cutting-sheets/runs/<name>/`:
 - `<name>.dxf`: the plan for the workshop;
@@ -49,7 +56,7 @@ example the one sent to the workshop), add `--final`: it then goes to `output/<n
 
 ## Writing an order
 
-Copy `orders/example.yaml` under a new name and edit the lines:
+Copy one of the orders under a new name and edit the lines:
 
 ```yaml
 name: ETH_400x300mm_SHEET_v20261103_UT30
@@ -171,14 +178,14 @@ Measured results:
 | same, with filling (`fill_tries: 8`) | 5 sheets: 14, 14, 15, 15, then 10 specimens; 230–239 mm used on sheets 1–4 | ~11–13 min |
 | CT programme with the rectangular Mini-Nakajima (02/11/2026), sparrow only, `time: 10` | 6 sheets (the last with 2 specimens) | 5 min 12 s |
 | same, **PackingSolver + sparrow** (350 × 250 sheet, L 40 inside the sheet) | 5 sheets of 13–14 specimens, 238–245 mm used of 245 | 6 min 20 s |
-| same, **400 × 300 sheet on the CUT E 350** (clamping outside the machine area, effective area 340 × 240; current `CT_sheet.yaml`) | **4 sheets** (14, 16, 19, 19 specimens) | **1 min 28 s** |
+| same, **400 × 300 sheet on the CUT E 350** (clamping outside the machine area, effective area 340 × 240; order removed on 03/11/2026) | **4 sheets** (14, 16, 19, 19 specimens) | **1 min 28 s** |
 
 ## Folder content
 
 | Folder | Content |
 |---|---|
-| `orders/` | the orders: `example.yaml`, `CT_sheet.yaml` |
-| `docs/` | `user_guide.pdf`: user guide (installation, running, writing an order, results, checks, error messages); `make_user_guide.py` rebuilds it after a run of the example order |
+| `orders/` | the orders: one per lab plan of `input/` |
+| `docs/` | `user_guide.pdf`: user guide (installation, running, writing an order, results, checks, error messages); `make_user_guide.py` rebuilds it after a run of the shear plan order |
 | `templates/CTLG_261102/` | templates without code, from the lab catalogue and the complementary catalogue `MNAK_RECT`: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
 | `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
 | `input/` | files received from the lab: catalogue `specimen_templates_261029_barcoded.dxf`, CT drawing `…v20260901_CT_bardcode.dxf`, 2025 drawings (`.dxf` + notices `.pptx` / `.pdf`), SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`, and the complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` |
