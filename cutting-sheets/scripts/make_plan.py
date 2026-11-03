@@ -21,14 +21,17 @@ Steps:
 
 Outputs in cutting-sheets/runs/<name>/ (IGNORED by git: runs can be repeated without git conflicts), or in
 cutting-sheets/output/<name>/ (tracked by git) with --final, for a plan to keep or to send to the workshop:
-<name>.dxf, notice.pdf, registry.csv, placement.csv, specimens.dxf, check/ (check report), README.md.
+<name>.dxf (plan for the workshop), notice.pdf, registry.csv and preview.png (plan with the machine margins in red).
+Intermediate files (coded specimens, check report) are written to a temporary folder and deleted.
 """
 import argparse
 import collections
 import csv
 import datetime
 import os
+import shutil
 import sys
+import tempfile
 import time
 
 import ezdxf
@@ -379,6 +382,12 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
 # PROGRAM
 # ============================================================
 def run(order_path, seconds=None, final=False):
+    """Order -> plan. Intermediate files go to a temporary folder, always deleted (also after an error)."""
+    with tempfile.TemporaryDirectory(prefix='cutting_plan_') as tmp:
+        return _run(order_path, seconds, final, tmp)
+
+
+def _run(order_path, seconds, final, tmp):
     N = 6
     t_start = time.time()
     step(1, N, 'Order and templates')
@@ -390,6 +399,12 @@ def run(order_path, seconds=None, final=False):
     W, H = cfg['W'], cfg['H']
     out = os.path.join(BASE, 'output' if final else 'runs', cfg['name'])
     os.makedirs(out, exist_ok=True)
+    for old in ('README.md', 'placement.csv', 'specimens.dxf', 'check'):     # files of older versions of the tool
+        old = os.path.join(out, old)
+        if os.path.isdir(old):
+            shutil.rmtree(old, ignore_errors=True)
+        elif os.path.exists(old):
+            os.remove(old)
     print('    %s: %d specimens, sheet %g x %g mm, gap %g mm, margins %s'
           % (os.path.basename(order_path), len(specs), W, H, cfg['gap'], fmt_margins(cfg['margins'])))
     for (alias, ang), grp in sorted(collections.Counter(
@@ -400,7 +415,7 @@ def run(order_path, seconds=None, final=False):
 
     step(2, N, 'Specimens: template + notch code')
     specs_by_block = {s['block']: s for s in specs}
-    libdoc = build_specimens(specs, os.path.join(out, 'specimens.dxf'))
+    libdoc = build_specimens(specs, os.path.join(tmp, 'specimens.dxf'))
     print('    %d coded specimens' % len(specs))
 
     step(3, N, 'Placement (PackingSolver + sparrow)')
@@ -446,8 +461,9 @@ def run(order_path, seconds=None, final=False):
     step(5, N, 'Checking the final DXF')
     t0 = time.time()
     R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'])
-    check_sheet.write_outputs(R, os.path.join(out, 'check'), argparse.Namespace(
+    check_sheet.write_outputs(R, os.path.join(tmp, 'check'), argparse.Namespace(
         min_gap=cfg['gap'], warn_gap=cfg['gap'], min_margin=cfg['margins']))
+    shutil.copyfile(os.path.join(tmp, 'check', 'preview.png'), os.path.join(out, 'preview.png'))
     print('    plan checks (contours, gaps, margins...) in %.0f s' % (time.time() - t0))
     bar = Bar('Specimens', len(rows))
     bad = code_check(R, rows, specs_by_block, on_progress=bar.update)
@@ -466,13 +482,7 @@ def run(order_path, seconds=None, final=False):
         w = csv.DictWriter(f, fieldnames=list(reg[0].keys()))
         w.writeheader()
         w.writerows(reg)
-    with open(os.path.join(out, 'placement.csv'), 'w', newline='') as f:
-        keys = ['sheet', 'block', 'type', 'orientation_to_RD_deg', 'rotation_deg', 'insert_x_mm', 'insert_y_mm']
-        w = csv.DictWriter(f, fieldnames=keys, extrasaction='ignore')
-        w.writeheader()
-        w.writerows(rows)
     notice(os.path.join(out, 'notice.pdf'), cfg, dxf, rows, reg, specs_by_block, checks)
-    write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg)
 
     status = all(c[1] in ('OK', 'INFO') for c in checks)
     print('')
@@ -481,42 +491,10 @@ def run(order_path, seconds=None, final=False):
     print('    Plan    : %s' % dxf)
     print('    Notice  : %s' % os.path.join(out, 'notice.pdf'))
     print('    Registry: %s' % os.path.join(out, 'registry.csv'))
+    print('    Preview : %s' % os.path.join(out, 'preview.png'))
     if not final:
         print('    (runs/ folder: ignored by git. To keep this plan in the repository, run again with --final)')
     return status, out
-
-
-def write_readme(out, cfg, order_path, specs, sheets, checks, bad, reg):
-    L = ['# Cutting plan `%s`' % cfg['name'], '',
-         '*Generated on %s by `cutting-sheets/scripts/make_plan.py` from the order `%s` and the templates `%s`.*'
-         % (datetime.date.today().isoformat(), os.path.basename(order_path), os.path.basename(cfg['templates'])), '',
-         '## Order', '', '| Type | Angle to RD | Number | Indices (notch code) |', '|---|---|---|---|']
-    grp = collections.OrderedDict()
-    for s in specs:
-        grp.setdefault((s['T'].alias, s['angle']), []).append(s['index'])
-    for (a, ang), idx in grp.items():
-        L.append('| %s | %g° | %d | %s |' % (a, ang, len(idx), ', '.join(map(str, idx))))
-    L += ['', '## Result', '',
-          '%d specimens on %d sheet(s) of %g × %g mm (gap ≥ %g mm, margins: %s).'
-          % (len(specs), len(sheets), cfg['W'], cfg['H'], cfg['gap'], check_sheet.fmt_margins(cfg['margins'])), '',
-          '| Sheet | Specimens | Height used (mm) |', '|---|---|---|']
-    for k, s in enumerate(sheets):
-        L.append('| %d | %d | %.1f |' % (k + 1, len(s), sp.top(s)))
-    L += ['', '## Checks of the final DXF', '', '| Check | Status | Detail |', '|---|---|---|']
-    L += ['| %s | %s | %s |' % c for c in checks]
-    if bad:
-        L += [''] + ['- ' + b for b in bad]
-    L += ['', '![Plan](check/preview.png)', '',
-          '## Files', '',
-          '- `%s.dxf`: the plan for the workshop (mm, layers `Q3_NORMAL` / `Q4_MEDIUM` / `Q5_HIGH`).'
-          % cfg['name'],
-          '- `notice.pdf`: one page per sheet (specimen numbers, qualities, rolling '
-          'direction) and the specimen list.',
-          '- `registry.csv`: one line per specimen: number, sheet, type, angle, notch code (angle digit, index), '
-          'position, specimen ID (when the batch and geometry codes are given in the order).',
-          '- `placement.csv`, `specimens.dxf`: blocks and their insertion; `check/`: report of `check_sheet.py`.']
-    with open(os.path.join(out, 'README.md'), 'w', encoding='utf-8') as f:
-        f.write('\n'.join(L) + '\n')
 
 
 def main():

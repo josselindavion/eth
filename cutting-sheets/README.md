@@ -32,9 +32,11 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CT_sheet.yaml
 - `<name>.dxf`: the plan for the workshop;
 - `notice.pdf`: one page per sheet (numbered specimens, qualities, rolling direction) and the specimen list;
 - `registry.csv`: one line per specimen (number, type, angle, code, position, specimen ID);
-- `README.md`: summary and checks;
-- `check/`: detailed check report; `check/preview.png` shows the plan with the **machine margins hatched in red**
-  (clamping area + margins, nothing is cut there).
+- `preview.png`: the plan with the **machine margins hatched in red** (clamping area + margins, nothing is cut
+  there); a problem found by the checks is circled in red.
+
+Nothing else: the intermediate files (coded specimens, detailed check report) are temporary and deleted. The result
+of the checks is shown in the terminal.
 
 The terminal shows the 6 steps (`[3/6] Placement`…) and a progress bar with the remaining time. During the placement,
 the bar also shows the best height found so far. The checks come at the end: everything must be `OK`.
