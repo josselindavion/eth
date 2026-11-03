@@ -25,15 +25,16 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET
 
 | Order | Content |
 |---|---|
-| `orders/ETH_300x300_6_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens) |
-| `orders/ETH_450x400_3_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens) |
-| `orders/ETH_600x500mm_2_SHEET_v20250220.yaml` | lab plan of the same name (64 specimens) |
-| `orders/ETH_450x380mm_ShearEDM_v20250520.yaml` | lab shear plan of the same name (24 shear specimens) |
+| `orders/ETH_300x300_6_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
+| `orders/ETH_450x400_3_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
+| `orders/ETH_600x500mm_2_SHEET_v20250220.yaml` | lab plan of the same name (64 specimens + 4 extra strips): 4 sheets |
+| `orders/ETH_450x380mm_ShearEDM_v20250520.yaml` | lab shear plan of the same name (24 shear specimens + 1 extra strip): 1 sheet |
 
 One order per lab plan of `input/` (the `.pdf` / `.dxf` of 2025), for the EDM machine (400 × 300 mm sheets on the
 CUT E 350, L-shaped 40 mm clamping, effective area 340 × 240 mm). The old models of those plans (straight grips,
 140 mm; shear blanks 93 mm) are replaced by the catalogue models with the "Christmas tree" grips; same angles and same
-notch codes as in the plans (read in their DXF). Each order file explains its correspondence in its header.
+notch codes as in the plans (read in their DXF); the discs are replaced by the rectangular Mini-Nakajima, and extra
+`TENS_FULL` strips fill the space left on the sheets. Each order file explains its correspondence in its header.
 
 **Results** in `cutting-sheets/runs/<name>/`:
 - `<name>.dxf`: the plan for the workshop;

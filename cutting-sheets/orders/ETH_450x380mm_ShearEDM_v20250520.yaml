@@ -51,3 +51,4 @@ specimens:
   - {type: SHLD,     angle: 135, count: 2, first_index: 1}
   - {type: SHMD,     angle: 135, count: 2, first_index: 4}
   - {type: SHHD,     angle: 135, count: 2, first_index: 7}
+  - {type: TENS_FULL, angle: 0,   count: 1}   # extra strips to fill the space left on the sheets (estimate)

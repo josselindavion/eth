@@ -3,7 +3,8 @@
 # grips, replaced by the lab catalogue models with the "Christmas tree" grips; same angles and same notch codes
 # (index 1, 2, 3):
 #   UT_L140 (140 mm)  -> UTUT (106 mm)     NT_R20.00 -> NT20     NT_R6.67 -> NT06     CH_D4.8 / D5.0 -> CHCH
-#   DISC_0H -> MNAK_FULL                   DISC_2H (holes at 0 / 135 / 90 deg) -> MNAK_HOLE at 90 / 45 / 0 deg
+#   DISC_0H -> MNAK_RECT_FULL              DISC_2H (holes at 0 / 135 / 90 deg) -> MNAK_RECT_HOLE at 90 / 45 / 0 deg
+#   (rectangular Mini-Nakajima instead of the discs, user 03/11/2026; holes oriented as on the disc)
 #   STRIP_140x30 -> TENS_FULL (no code)
 # Run from the repository root:
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x400_3_SHEET_v20250520.yaml
@@ -58,8 +59,9 @@ specimens:
   - {type: CHCH,     angle: 0,   count: 3, first_index: 1}
   - {type: CHCH,     angle: 45,  count: 3, first_index: 1}
   - {type: CHCH,     angle: 90,  count: 3, first_index: 1}
-  - {type: MNAK_FULL, angle: 0,   count: 3, first_index: 1}
-  - {type: MNAK_HOLE, angle: 90,  count: 3, first_index: 1}   # holes along the rolling direction
-  - {type: MNAK_HOLE, angle: 45,  count: 3, first_index: 1}   # holes at 135 deg
-  - {type: MNAK_HOLE, angle: 0,   count: 3, first_index: 1}   # holes across the rolling direction
+  - {type: MNAK_RECT_FULL, angle: 0,   count: 3, first_index: 1}
+  - {type: MNAK_RECT_HOLE, angle: 90,  count: 3, first_index: 1}   # holes along the rolling direction
+  - {type: MNAK_RECT_HOLE, angle: 45,  count: 3, first_index: 1}   # holes at 135 deg
+  - {type: MNAK_RECT_HOLE, angle: 0,   count: 3, first_index: 1}   # holes across the rolling direction
   - {type: TENS_FULL, angle: 90,  count: 6}
+  - {type: TENS_FULL, angle: 90,  count: 5}   # extra strips to fill the space left on the sheets (estimate)
