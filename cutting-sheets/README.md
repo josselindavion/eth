@@ -25,15 +25,17 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CT_sheet.yaml
 
 | Order | Content |
 |---|---|
-| `orders/example.yaml` | small example on a 350 × 250 mm sheet with an L-shaped 40 mm clamping area: 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
-| `orders/CT_sheet.yaml` | **the real sheet**: the CT programme of the lab drawing `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (same specimens and codes; discs replaced by the rectangular Mini-Nakajima; 8 `TENS_FULL` strips), on 350 × 250 mm sheets (EDM cutting area) with an L-shaped 40 mm clamping area |
+| `orders/example.yaml` | small example on a 400 × 300 mm sheet (CUT E 350, L-shaped 40 mm clamping): 5 UTUT 30°, 3 NT20 45°, 2 UTST 0°, 2 SHLD 135°, 2 MNAK_HOLE 90° |
+| `orders/CT_sheet.yaml` | **the real sheet**: the CT programme of the lab drawing `input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf` (same specimens and codes; discs replaced by the rectangular Mini-Nakajima; 8 `TENS_FULL` strips), on 400 × 300 mm sheets on the CUT E 350 (L-shaped 40 mm clamping, effective area 340 × 240 mm) |
 
 **Results** in `cutting-sheets/runs/<name>/`:
 - `<name>.dxf`: the plan for the workshop;
 - `notice.pdf`: one page per sheet (numbered specimens, qualities, rolling direction) and the specimen list;
 - `registry.csv`: one line per specimen (number, type, angle, code, position, specimen ID);
-- `preview.png`: the plan with the **machine margins hatched in red** (clamping area + margins, nothing is cut
-  there); a problem found by the checks is circled in red.
+- `preview.png`: the plan with the **zones of the sheet on the machine**: clamping (red hatching), machine area =
+  wire travel (black dashed), placement margin (orange band), **effective area** where the specimens are placed
+  (purple), part of the sheet out of reach of the wire (grey); a problem found by the checks is circled in red. The
+  notice shows the same zones.
 
 Nothing else: the intermediate files (coded specimens, detailed check report) are temporary and deleted. The result
 of the checks is shown in the terminal.
@@ -50,9 +52,11 @@ example the one sent to the workshop), add `--final`: it then goes to `output/<n
 Copy `orders/example.yaml` under a new name and edit the lines:
 
 ```yaml
-name: ETH_350x250mm_SHEET_v20261102_UT30
-sheet: 350x250
-margins: {left: 40, bottom: 40, right: 5, top: 5}
+name: ETH_400x300mm_SHEET_v20261103_UT30
+sheet: 400x300                     # complete sheet
+clamping: {left: 40, bottom: 40}   # L-shaped clamping
+machine_area: 350x250              # wire travel of the EDM (AgieCharmilles CUT E 350)
+placement_margin: 5                # tolerance on the position of the sheet in the machine
 specimens:
   - {type: UTUT, angle: 30, count: 5}
   - {type: NT20, angle: 45, count: 3}
@@ -62,10 +66,20 @@ specimens:
 |---|---|---|
 | `name` | name of the plan, of the output folder and of the DXF | file name |
 | `templates` | folder of the templates without code | `templates/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
-| `sheet` | width × height in mm; the height is the rolling direction | `500x600` |
+| `sheet` | **complete sheet**, width × height in mm; the height is the rolling direction | `500x600` |
+| `clamping` | bands of the sheet held by the clamps, per side (mm), e.g. `{left: 40, bottom: 40}` = L-shaped; bottom = start of the rolling direction | none |
+| `machine_area` | area the wire can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel) | – |
+| `machine_position` | distance from the left and bottom edges of the sheet to the machine area, `{left, bottom}` | inner corner of the clamping |
+| `placement_margin` | the sheet is not positioned to the mm in the machine: nothing is placed within this distance of the machine area edge (mm) | 5 |
+| `edge_margin` | minimum distance to a free (not clamped) edge of the sheet (mm) | 5 |
 | `gap` | minimum gap between two pieces (mm) | 5 |
-| `margins` | margin to the sheet edge **per side** (mm): `{left, bottom, right, top}`; no piece is placed there. Also the **clamping area** (e.g. L-shaped: 40 mm on the left and at the bottom). Bottom = start of the rolling direction | 5 everywhere |
+| `margins` | **instead of** the machine fields above: margin to the sheet edge per side, `{left, bottom, right, top}` (mm); no piece is placed there | 5 everywhere |
 | `margin` | shortcut: the same margin on the 4 sides (a side missing from `margins` takes this value) | 5 |
+
+**Effective area** (where the specimens are placed) = machine area minus the placement margin on each side, inside
+the sheet, outside the clamping and at least `edge_margin` from a free edge. Example: sheet 400 × 300, clamping left
+40 and bottom 40, machine area 350 × 250, placement margin 5 → machine area from (40, 40) to (390, 290), effective
+area 340 × 240 mm from (45, 45). The terminal and the notice print these numbers.
 | `assign_time` | seconds of PackingSolver to put all the specimens on sheets (step 1 of the placement) | 30 |
 | `fill_tries` | **failed** tries allowed when moving specimens to empty one sheet (step 2); a try that succeeds does not count; 0 = no reduction, faster | 8 |
 | `fill_time` | seconds of sparrow at most per try; a try that succeeds stops as soon as everything fits (often 1–3 s); a try less than 2 mm too long gets as much time again | 10 |
@@ -158,7 +172,8 @@ Measured results:
 | CT programme, 68 specimens, 350 × 250 sheets, L-shaped 40 mm, without filling | 5 sheets of 13–14 specimens, 215–230 mm used of 245 | ~4 min 30 s |
 | same, with filling (`fill_tries: 8`) | 5 sheets: 14, 14, 15, 15, then 10 specimens; 230–239 mm used on sheets 1–4 | ~11–13 min |
 | CT programme with the rectangular Mini-Nakajima (02/11/2026), sparrow only, `time: 10` | 6 sheets (the last with 2 specimens) | 5 min 12 s |
-| same, **PackingSolver + sparrow** (current method, `CT_sheet.yaml`) | **5 sheets** of 13–14 specimens, 238–245 mm used of 245 | **6 min 20 s** |
+| same, **PackingSolver + sparrow** (350 × 250 sheet, L 40 inside the sheet) | 5 sheets of 13–14 specimens, 238–245 mm used of 245 | 6 min 20 s |
+| same, **400 × 300 sheet on the CUT E 350** (clamping outside the machine area, effective area 340 × 240; current `CT_sheet.yaml`) | **4 sheets** (14, 16, 19, 19 specimens) | **1 min 28 s** |
 
 ## Folder content
 
@@ -166,7 +181,7 @@ Measured results:
 |---|---|
 | `orders/` | the orders: `example.yaml`, `CT_sheet.yaml` |
 | `templates/CTLG_261102/` | templates without code, from the lab catalogue and the complementary catalogue `MNAK_RECT`: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
+| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
 | `input/` | files received from the lab: catalogue `specimen_templates_261029_barcoded.dxf`, CT drawing `…v20260901_CT_bardcode.dxf`, 2025 drawings (`.dxf` + notices `.pptx` / `.pdf`), SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`, and the complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` |
 | `runs/` | **ignored by git**: everything that is run |
 
@@ -225,8 +240,10 @@ The **colour** gives the quality, not the layer name.
 
 **Rules of the supervisors (29/10/2026, 02/11/2026):**
 - 5 mm between pieces;
-- margin to the edge: clamping area, L-shaped 40 mm for the waterjet (EDM value to confirm);
-- EDM cutting area ≈ 350 × 250 mm (to confirm);
+- L-shaped clamping (workshop, and the lab EDM: AgieCharmilles CUT E 350); 40 mm as for the waterjet (to confirm);
+- EDM cutting area = wire travel of the CUT E 350: 350 × 250 mm (X × Y, maker's data); the sheet itself can be
+  larger (max. workpiece 820 × 680 mm);
+- placement margin inside the machine area, since the sheet is not positioned to the mm (03/11/2026);
 - no mirror;
 - no Mikrosteg.
 

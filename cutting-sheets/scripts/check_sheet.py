@@ -31,6 +31,7 @@ from shapely.ops import nearest_points           # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sheetlib as sl                    # noqa: E402
+import zones                             # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPORTS = os.path.abspath(os.path.join(HERE, '..', 'reports'))              # --final: tracked by git
@@ -246,7 +247,11 @@ def fig_preview(R, out):
     fig, ax = plt.subplots(figsize=(fw, min(10.0, max(3.0, fw * h / max(w, 1) + 0.8))))
     # machine margins (clamping area + margins): red hatching, nothing may be cut there
     m = R.get('margin_limits')
-    if m:
+    z = R.get('zones')
+    if z:                                                   # machine description given (zones.py)
+        for f in frs:
+            zones.draw(ax, z, f.bounds[0], f.bounds[1])
+    elif m:
         for f in frs:
             x0, y0, x1, y1 = f.bounds
             bands = [(x0, y0, x1 - x0, m['bottom']), (x0, y1 - m['top'], x1 - x0, m['top']),
@@ -265,10 +270,16 @@ def fig_preview(R, out):
         ax.add_patch(plt.Circle((x, y), 6, fill=False, color=col, lw=1.6))
     for i, f in enumerate(frs):
         ax.text(f.bounds[0] + 4, f.bounds[3] - 4, 'sheet %d' % (i + 1), fontsize=9, va='top')
-    ax.set_title('%s  –  red hatching: machine margins (%s), no cutting; red circle: blocking problem, '
-                 'orange: to check; small numbers: piece index'
-                 % (os.path.basename(d.path), fmt_margins({k: v for k, v in m.items()}) if m else '–'),
-                 fontsize=9, loc='left')
+    if z:
+        ax.set_title('%s  –  red circle: blocking problem, orange: to check; small numbers: piece index'
+                     % os.path.basename(d.path), fontsize=9, loc='left')
+        ax.legend(handles=zones.legend_handles(z), loc='upper left', bbox_to_anchor=(0.0, 0.0), ncol=3, fontsize=8,
+                  frameon=False)
+    else:
+        ax.set_title('%s  –  red hatching: machine margins (%s), no cutting; red circle: blocking problem, '
+                     'orange: to check; small numbers: piece index'
+                     % (os.path.basename(d.path), fmt_margins({k: v for k, v in m.items()}) if m else '–'),
+                     fontsize=9, loc='left')
     ax.axis('off')
     fig.tight_layout()
     fig.savefig(out, dpi=170)

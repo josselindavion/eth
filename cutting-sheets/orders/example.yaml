@@ -1,16 +1,17 @@
 # Example order: one line = "N specimens of this type at this angle".
 # Run:  py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/example.yaml
 
-name: ETH_350x250mm_SHEET_v20261102_example   # name of the plan (output folder, DXF, notice)
+name: ETH_400x300mm_SHEET_v20261103_example   # name of the plan (output folder, DXF, notice)
 templates: templates/CTLG_261102              # lab catalogue + rectangular Mini-Nakajima (MNAK_RECT)
-sheet: 350x250         # width x height in mm; the height is the rolling direction
-                       # (cutting area of the EDM ~350 x 250 mm: to confirm with the workshop)
-gap: 5                 # mm between two specimens (rule of the supervisors)
-margins:               # mm to the sheet edge, per side; nothing is cut in these bands
-  left: 40             #   L-shaped clamping area (waterjet example: 40 mm; EDM value to confirm)
+# Sheet on the EDM machine (AgieCharmilles CUT E 350); all in mm, see preview.png for the zones
+sheet: 400x300         # complete sheet, width x height; the height is the rolling direction
+clamping:              # L-shaped clamping: bands of the sheet held by the clamps
+  left: 40
   bottom: 40           #   bottom = start of the rolling direction
-  right: 5
-  top: 5
+machine_area: 350x250  # area the wire can reach (X x Y travel of the CUT E 350), from the inner corner of the clamping
+placement_margin: 5    # the sheet is not positioned to the mm: nothing is placed within 5 mm of the machine area edge
+edge_margin: 5         # minimum distance to a free edge of the sheet
+gap: 5                 # mm between two specimens (rule of the supervisors)
 assign_time: 30        # seconds of PackingSolver to put the specimens on sheets
 fill_tries: 8          # failed tries allowed when moving specimens to empty one sheet (0 = no reduction)
 fill_time: 10          # seconds of sparrow at most per try (a try that succeeds usually stops after 1-3 s)

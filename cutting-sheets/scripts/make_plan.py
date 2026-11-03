@@ -48,6 +48,7 @@ import check_sheet                                    # noqa: E402
 import make_templates as mt                           # noqa: E402
 import notchcode as nc                                # noqa: E402
 import placement as sp                                # noqa: E402
+import zones                                          # noqa: E402
 from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
@@ -119,6 +120,27 @@ def read_order(path):
         raise OrderError('margins: expected a dict with the keys %s, e.g. {left: 40, bottom: 40, right: 5, top: 5}'
                          % ', '.join(SIDES))
     cfg['margins'] = {k: float(mg.get(k, cfg['margin'])) for k in SIDES}
+    cfg['zones'] = None
+    if o.get('machine_area') is not None:
+        # machine description (02/11/2026): complete sheet, L-shaped clamping, wire travel, placement tolerance
+        try:
+            mw, mh = (float(v) for v in str(o['machine_area']).lower().split('x'))
+        except ValueError:
+            raise OrderError('machine_area: "%s" is not of the form 350x250' % o['machine_area'])
+        cl = o.get('clamping') or {}
+        mp = o.get('machine_position')
+        for key, d in (('clamping', cl), ('machine_position', mp or {})):
+            if not isinstance(d, dict) or set(d) - set(SIDES):
+                raise OrderError('%s: expected a dict with keys among %s, e.g. {left: 40, bottom: 40}'
+                                 % (key, ', '.join(SIDES)))
+        try:
+            cfg['zones'] = zones.compute(cfg['W'], cfg['H'], cl, (mw, mh), float(o.get('placement_margin', 5.0)),
+                                         float(o.get('edge_margin', 5.0)), mp)
+        except ValueError as e:
+            raise OrderError(str(e))
+        if o.get('margins') is not None:
+            raise OrderError('give either "margins" or "machine_area" (+ clamping, placement_margin), not both')
+        cfg['margins'] = zones.margins_from_zones(cfg['zones'])
     if cfg['W'] - cfg['margins']['left'] - cfg['margins']['right'] <= 0 or \
             cfg['H'] - cfg['margins']['bottom'] - cfg['margins']['top'] <= 0:
         raise OrderError('margins larger than the sheet %s' % cfg['sheet'])
@@ -304,25 +326,32 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 ax.text(cx, cy + (0.18 * T.L if T.L / max(T.W, 1) > 1.25 and T.holes else 0), str(r['n']),
                         ha='center', va='center', fontsize=7, color='#333333', zorder=6,
                         bbox=dict(boxstyle='round,pad=0.15', fc='white', ec='none', alpha=0.8))
+            if cfg['zones']:
+                # sheet zones: clamping, machine area, placement margin, effective area (zones.py)
+                zones.draw(ax, cfg['zones'])
+                ax.legend(handles=zones.legend_handles(cfg['zones']), loc='upper left', bbox_to_anchor=(0.0, -0.06),
+                          ncol=2, fontsize=6.5, frameon=False)
             # hatched margins (clamping area + margins): nothing is cut there
             m = cfg['margins']
             bands = [(0, 0, W, m['bottom']), (0, H - m['top'], W, m['top']),
                      (0, m['bottom'], m['left'], H - m['bottom'] - m['top']),
                      (W - m['right'], m['bottom'], m['right'], H - m['bottom'] - m['top'])]
-            for bx, by, bw, bh in bands:
+            for bx, by, bw, bh in (bands if not cfg['zones'] else []):
                 if bw > 0 and bh > 0:
                     ax.add_patch(Rectangle((bx, by), bw, bh, fill=False, hatch='////', ec='#9ca3af', lw=0, zorder=0))
-            ax.add_patch(Rectangle((m['left'], m['bottom']), W - m['left'] - m['right'], H - m['bottom'] - m['top'],
-                                   fill=False, ec='#9ca3af', lw=0.5, ls='--', zorder=0))
+            if not cfg['zones']:
+                ax.add_patch(Rectangle((m['left'], m['bottom']), W - m['left'] - m['right'],
+                                       H - m['bottom'] - m['top'], fill=False, ec='#9ca3af', lw=0.5, ls='--', zorder=0))
             fs = 6.5
-            ax.text(m['left'] / 2, H / 2, '%g mm' % m['left'], rotation=90, ha='center', va='center', fontsize=fs,
-                    color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
-            ax.text(W - m['right'] / 2, H / 2, '%g mm' % m['right'], rotation=90, ha='center', va='center',
-                    fontsize=fs, color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
-            ax.text(W / 2, m['bottom'] / 2, '%g mm' % m['bottom'], ha='center', va='center', fontsize=fs,
-                    color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
-            ax.text(W / 2, H - m['top'] / 2, '%g mm' % m['top'], ha='center', va='center', fontsize=fs,
-                    color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
+            if not cfg['zones']:                            # margin values (with zones: see the legend)
+                ax.text(m['left'] / 2, H / 2, '%g mm' % m['left'], rotation=90, ha='center', va='center', fontsize=fs,
+                        color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
+                ax.text(W - m['right'] / 2, H / 2, '%g mm' % m['right'], rotation=90, ha='center', va='center',
+                        fontsize=fs, color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
+                ax.text(W / 2, m['bottom'] / 2, '%g mm' % m['bottom'], ha='center', va='center', fontsize=fs,
+                        color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
+                ax.text(W / 2, H - m['top'] / 2, '%g mm' % m['top'], ha='center', va='center', fontsize=fs,
+                        color='#4b5563', bbox=dict(fc='white', ec='none', pad=0.5))
             ax.set_xlim(-10, W + 10)
             ax.set_ylim(-10, H + 10)
             ax.set_aspect('equal')
@@ -344,17 +373,28 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 lg.plot([0.02, 0.18], [y, y], color=ACI_RGB[c], lw=2)
                 lg.text(0.22, y, t, color=ACI_RGB[c], fontsize=7.5, va='center')
                 y -= 0.05
-            lg.add_patch(Rectangle((0.02, y - 0.015), 0.16, 0.03, fill=False, hatch='////', ec='#9ca3af', lw=0.5))
-            lg.text(0.22, y, 'Clamping area /\nmargin: no parts', fontsize=7.5, va='center', color='#4b5563')
-            y -= 0.07
+            if not cfg['zones']:                            # with zones: legend under the sheet drawing
+                lg.add_patch(Rectangle((0.02, y - 0.015), 0.16, 0.03, fill=False, hatch='////', ec='#9ca3af', lw=0.5))
+                lg.text(0.22, y, 'Clamping area /\nmargin: no parts', fontsize=7.5, va='center', color='#4b5563')
+                y -= 0.07
             lg.text(0.02, y, 'Numbers: specimen no.\n(see list). Only for\ninformation, bitte\nnicht gravieren.',
                     fontsize=7, va='top', color='#555555')
             lg.text(0.02, 0.13, '%s\n\nsheet %d / %d\n\n%s' % (cfg['name'].replace('_SHEET', '_\nSHEET'), k + 1,
                                                                 n_sheets, today),
                     fontsize=7, va='top', bbox=dict(boxstyle='square', fc='white', ec='black', lw=0.6))
             fig.suptitle('EDM cutting sheet %d / %d – %s' % (k + 1, n_sheets, cfg['name']), fontsize=10, y=0.96)
-            fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  margins: %s' % (
-                os.path.basename(dxf_path), cfg['gap'], check_sheet.fmt_margins(cfg['margins'])),
+            if cfg['zones']:
+                n = cfg['zones']['numbers']
+                ex0, ey0, ex1, ey1 = cfg['zones']['effective'].bounds
+                where = ('sheet %g × %g  ·  clamping %s\nmachine area %g × %g  ·  placement margin %g  ·  effective '
+                         'area %g × %g from (%g, %g)' % (W, H, ', '.join('%s %g' % (kk, v) for kk, v in
+                                                                         n['clamping'].items() if v) or 'none',
+                                                          n['machine_area'][0], n['machine_area'][1],
+                                                          n['placement_margin'], ex1 - ex0, ey1 - ey0, ex0, ey0))
+            else:
+                where = 'margins: %s' % check_sheet.fmt_margins(cfg['margins'])
+            fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  %s' % (
+                os.path.basename(dxf_path), cfg['gap'], where),
                      fontsize=7, color='#444444', va='top')
             pdf.savefig(fig)
             plt.close(fig)
@@ -407,6 +447,14 @@ def _run(order_path, seconds, final, tmp):
             os.remove(old)
     print('    %s: %d specimens, sheet %g x %g mm, gap %g mm, margins %s'
           % (os.path.basename(order_path), len(specs), W, H, cfg['gap'], fmt_margins(cfg['margins'])))
+    if cfg['zones']:
+        n = cfg['zones']['numbers']
+        ex0, ey0, ex1, ey1 = cfg['zones']['effective'].bounds
+        print('    clamping %s mm; machine area %g x %g mm from (%g, %g); placement margin %g mm -> effective area '
+              '%g x %g mm from (%g, %g)' % (', '.join('%s %g' % (k, v) for k, v in n['clamping'].items() if v) or 'none',
+                                           n['machine_area'][0], n['machine_area'][1], n['machine_position'][0],
+                                           n['machine_position'][1], n['placement_margin'], ex1 - ex0, ey1 - ey0,
+                                           ex0, ey0))
     for (alias, ang), grp in sorted(collections.Counter(
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
         grp_specs = [s for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
@@ -461,6 +509,7 @@ def _run(order_path, seconds, final, tmp):
     step(5, N, 'Checking the final DXF')
     t0 = time.time()
     R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'])
+    R['zones'] = cfg['zones']                               # drawn in preview.png (machine description given)
     check_sheet.write_outputs(R, os.path.join(tmp, 'check'), argparse.Namespace(
         min_gap=cfg['gap'], warn_gap=cfg['gap'], min_margin=cfg['margins']))
     shutil.copyfile(os.path.join(tmp, 'check', 'preview.png'), os.path.join(out, 'preview.png'))
