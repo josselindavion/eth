@@ -43,6 +43,12 @@ TYPES = {
     'MNAK_FULL': dict(test_r=20.0, label_y=[16, -24], test_label='test zone (assumed:\ncentre, r < 20 mm)',
                  ms=[((25.9808, 15.0000), 'rim at 30 deg (right, above the\nside notch)'),
                      ((-25.9808, -15.0000), 'rim at 210 deg, diametrically\nopposite')]),
+    'MNAK_RECT_HOLE': dict(test_r=20.0, rect=True, label_y=[-30, 30], test_label='test zone (assumed:\ncentre, r < 20 mm)',
+                 ms=[((-14.0, -40.0), 'bottom end, left of centre'),
+                     ((14.0, 40.0), 'coded end, right of the code\n(point-symmetric to Mikrosteg 1)')]),
+    'MNAK_RECT_FULL': dict(test_r=20.0, rect=True, label_y=[-30, 30], test_label='test zone (assumed:\ncentre, r < 20 mm)',
+                 ms=[((-14.0, -40.0), 'bottom end, left of centre'),
+                     ((14.0, 40.0), 'coded end, right of the code\n(point-symmetric to Mikrosteg 1)')]),
     'NT06': dict(test=(-23.0, 20.0), test_label='test zone\n(notch R 6.67 and\n20 mm wide section)',
                  grips=[(-52.94, -23.0), (20.0, 52.94)],
                  ms=[((0.0, -52.9435), 'end face of the bottom grip, centred'),
@@ -58,10 +64,14 @@ def draw(alias, out):
     for (x, y), _ in cfg['ms']:
         poly = poly.difference(Point(x, y).buffer(R, 64))
     x0, y0, x1, y1 = poly.bounds
-    fig, ax = plt.subplots(figsize=(9.5, 6.2) if 'test_r' in cfg else (7.5, 9))
+    fig, ax = plt.subplots(figsize=(8.5, 8.5) if cfg.get('rect') else (9.5, 6.2) if 'test_r' in cfg else (7.5, 9))
     if 'test_r' in cfg:                                         # disc: central test zone, clamped rim
         from matplotlib.patches import Circle
-        ax.add_patch(Circle((0, 0), 31, fc='none', hatch='////', ec='#f59e0b', lw=0, zorder=0))
+        if cfg.get('rect'):
+            ax.add_patch(Rectangle((x0 - 1, y0 - 1), x1 - x0 + 2, y1 - y0 + 2, fc='none', hatch='////', ec='#f59e0b',
+                                   lw=0, zorder=0))
+        else:
+            ax.add_patch(Circle((0, 0), 31, fc='none', hatch='////', ec='#f59e0b', lw=0, zorder=0))
         ax.add_patch(Circle((0, 0), cfg['test_r'], fc='#bfdbfe', ec='none', zorder=0))
     else:
         ax.add_patch(Rectangle((x0 - 1, cfg['test'][0]), x1 - x0 + 2, cfg['test'][1] - cfg['test'][0], fc='#bfdbfe',
@@ -83,7 +93,8 @@ def draw(alias, out):
                     arrowprops=dict(arrowstyle='->', color='#dc2626'))
     if 'test_r' in cfg:
         ax.text(x1 + 6, 2, cfg['test_label'], fontsize=9, color='#1d4ed8', va='center')
-        ax.text(x1 + 6, -9, 'clamping zone (rim)', fontsize=9, color='#b45309')
+        ax.text(x1 + 6, -9, 'clamping zone (outside the test zone)' if cfg.get('rect') else 'clamping zone (rim)',
+                fontsize=9, color='#b45309')
     else:
         ax.text(x1 + 6, sum(cfg['test']) / 2, cfg.get('test_label', 'test zone\n(parallel length)'), fontsize=9,
                 color='#1d4ed8', va='center')
