@@ -66,20 +66,13 @@ specimens:
 |---|---|---|
 | `name` | name of the plan, of the output folder and of the DXF | file name |
 | `templates` | folder of the templates without code | `templates/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
-| `sheet` | **complete sheet**, width × height in mm; the height is the rolling direction | `500x600` |
+| `sheet` | **complete sheet**, width × height in mm; the height is the rolling direction | **required** |
 | `clamping` | bands of the sheet held by the clamps, per side (mm), e.g. `{left: 40, bottom: 40}` = L-shaped; bottom = start of the rolling direction | none |
-| `machine_area` | area the wire can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel) | – |
+| `machine_area` | area the wire can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel) | **required** |
 | `machine_position` | distance from the left and bottom edges of the sheet to the machine area, `{left, bottom}` | inner corner of the clamping |
 | `placement_margin` | the sheet is not positioned to the mm in the machine: nothing is placed within this distance of the machine area edge (mm) | 5 |
 | `edge_margin` | minimum distance to a free (not clamped) edge of the sheet (mm) | 5 |
 | `gap` | minimum gap between two pieces (mm) | 5 |
-| `margins` | **instead of** the machine fields above: margin to the sheet edge per side, `{left, bottom, right, top}` (mm); no piece is placed there | 5 everywhere |
-| `margin` | shortcut: the same margin on the 4 sides (a side missing from `margins` takes this value) | 5 |
-
-**Effective area** (where the specimens are placed) = machine area minus the placement margin on each side, inside
-the sheet, outside the clamping and at least `edge_margin` from a free edge. Example: sheet 400 × 300, clamping left
-40 and bottom 40, machine area 350 × 250, placement margin 5 → machine area from (40, 40) to (390, 290), effective
-area 340 × 240 mm from (45, 45). The terminal and the notice print these numbers.
 | `assign_time` | seconds of PackingSolver to put all the specimens on sheets (step 1 of the placement) | 30 |
 | `fill_tries` | **failed** tries allowed when moving specimens to empty one sheet (step 2); a try that succeeds does not count; 0 = no reduction, faster | 8 |
 | `fill_time` | seconds of sparrow at most per try; a try that succeeds stops as soon as everything fits (often 1–3 s); a try less than 2 mm too long gets as much time again | 10 |
@@ -89,8 +82,13 @@ area 340 × 240 mm from (45, 45). The terminal and the notice print these number
 | `specimen_id` | optional: `batch`, `sample_geometry`, `additional`, `test_geometry` (per type), for the full specimen ID in the registry | – |
 | `specimens` | one line per group: `type`, `angle`, `count`, and optionally `first_index` | – |
 
-The order files of the first version (French keys `nom`, `tole`, `ecart`, `marges`, `eprouvettes`, `nombre`…) are
-still accepted.
+There is **one order format**: any other field (a typo, or an old field such as `margins` or the French keys of the
+first version) is rejected with the list of allowed fields.
+
+**Effective area** (where the specimens are placed) = machine area minus the placement margin on each side, inside
+the sheet, outside the clamping and at least `edge_margin` from a free edge. Example: sheet 400 × 300, clamping left
+40 and bottom 40, machine area 350 × 250, placement margin 5 → machine area from (40, 40) to (390, 290), effective
+area 340 × 240 mm from (45, 45). The terminal and the notice print these numbers.
 
 **Types** = families of the lab catalogue (`input/specimen_templates_261029_barcoded.dxf`) and of the complementary
 catalogue `MNAK_RECT`:
