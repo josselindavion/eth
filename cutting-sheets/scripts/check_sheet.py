@@ -14,7 +14,7 @@ Outputs in cutting-sheets/runs/reports/<plan>/ (ignored by git), or reports/<pla
 
 Checks (ERROR = blocking, WARNING = to check, INFO): see analyse() below and README.md.
 Minimum gap between pieces: 5 mm (rule given by the supervisors on 29/10/2026). Margins to the sheet edge: per side
-(clamping area). No Mikrosteg in the DXF (handled by the workshop).
+(clamping area). Mikrostegs: half-circle recesses in the outline (mikrosteg.py), no gap in the cutting lines.
 """
 import argparse
 import collections

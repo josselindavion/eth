@@ -233,7 +233,7 @@ read).
 | Blue (colour 5) | gauge section, notches, holes, code | quality **Q5** (highest) |
 | Rolling direction | +Y axis | the angle of each specimen is measured from +Y |
 | Chamfered corner | one 45° corner | orientation and face marker |
-| *Mikrosteg* | neither in the DXF nor on the notice | handled by the workshop |
+| *Mikrosteg* | half-circle recess R 1 mm in the outline (2 per specimen); red square on the notice | the workshop leaves the bridge at the bottom of the recess (internal Mikrosteg, see below) |
 
 The **colour** gives the quality, not the layer name.
 
@@ -244,7 +244,26 @@ The **colour** gives the quality, not the layer name.
   larger (max. workpiece 820 × 680 mm);
 - placement margin inside the machine area, since the sheet is not positioned to the mm (03/11/2026);
 - no mirror;
-- no Mikrosteg.
+- 2 internal Mikrostegs per specimen (03/11/2026, see below).
+
+## Mikrostegs (internal micro-joints)
+
+Each specimen gets **2 half-circle recesses** (radius 1 mm) in its outline (`scripts/mikrosteg.py`). The workshop
+stops the wire at the **bottom of each recess**, marked by a red square on the notice: the specimen stays attached by
+this small bridge, and after breaking it out the rest of the bridge stays inside the recess, never beyond the specimen
+edge. The recesses are part of the closed contour (really cut); there is no gap in the cutting line.
+
+| Type | Mikrosteg 1 | Mikrosteg 2 |
+|---|---|---|
+| UTUT, NT20, NT06, CHCH (106 mm) | end face of the bottom grip, centred | right side of the top grip (top end = code, left = chamfer) |
+| UTST, SHLD, SHMD, SHHD (81 mm) | same | same |
+| MNAK_HOLE, MNAK_FULL (disc) | rim at 30° | rim at 210° (diametrically opposite) |
+| MNAK_RECT_HOLE, MNAK_RECT_FULL | bottom end, 14 mm left of centre | coded end, 14 mm right of centre |
+| TENS_FULL | bottom end face, centred | top end face, centred |
+
+Positions chosen with the user on 03/11/2026: opposite places, in the clamping zones, as far as possible from the test
+zone (figures in `journal/2026-11-03.md`). The final check compares every specimen of the DXF with its template
+**including the recesses**.
 
 ## The notch code
 

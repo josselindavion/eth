@@ -111,7 +111,7 @@ def build():
            table([['Step', 'What happens'],
                   ['1. Order and templates', 'reads and checks the order; takes the template of each specimen type '
                                              'from the lab catalogue'],
-                  ['2. Specimens', 'turns each specimen to its angle and adds its notch code (angle + index)'],
+                  ['2. Specimens', 'turns each specimen to its angle, adds its notch code (angle + index) and its 2 Mikrosteg recesses'],
                   ['3. Placement', 'places all the specimens on as few sheets as possible: 5 mm gap, inside the '
                                    'effective area of the machine, never mirrored'],
                   ['4. DXF', 'writes the cutting plan (mm, colours = EDM quality Q3 / Q4 / Q5)'],
@@ -231,12 +231,15 @@ specimens:
                                                   'notch code; mm; colour = EDM quality (3 = Q3 normal, 4 = Q4 medium, '
                                                   '5 = Q5 high)'],
                   ['notice.pdf', 'workshop', 'one page per sheet (numbered specimens, rolling direction, qualities, '
-                                             'zones) and the list of specimens'],
+                                             'zones, Mikrostegs as red squares) and the list of specimens'],
                   ['registry.csv', 'lab', 'one line per specimen: number, sheet, type, angle, notch code, position, '
                                           'specimen ID'],
                   ['preview.png', 'you', 'all the sheets with the zones, to check the plan at a glance']],
                  [0.18, 0.12, 0.7]),
            Spacer(1, 4),
+           P('<b>Mikrostegs</b>: every specimen has 2 small half-circle recesses (radius 1 mm) in its outline. The '
+             'workshop stops the wire at the bottom of each recess (red square on the notice), so the specimen stays '
+             'attached; after breaking it out, the rest of the bridge stays inside the recess.'),
            P('Send the <b>DXF and notice.pdf</b> to the workshop; keep <b>registry.csv</b> for the lab.'),
            KeepTogether([picture(os.path.join(RUN, 'preview.png'), W),
                          P('preview.png of the example order. Red hatching: clamping; black dashed: machine area '

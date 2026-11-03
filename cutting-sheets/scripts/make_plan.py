@@ -29,6 +29,7 @@ import argparse
 import collections
 import csv
 import datetime
+import math
 import os
 import shutil
 import sys
@@ -47,6 +48,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import check_sheet                                    # noqa: E402
 import make_templates as mt                           # noqa: E402
+import mikrosteg as ms                                # noqa: E402
 import notchcode as nc                                # noqa: E402
 import placement as sp                                # noqa: E402
 import zones                                          # noqa: E402
@@ -193,13 +195,8 @@ def build_specimens(specs, path):
     for s in specs:
         T = s['T']
         blk = doc.blocks.new(s['block'])
-        for e, c in T.ents:
-            x = e.copy()
-            x.dxf.layer, x.dxf.color = mt.LAYERS.get(c, '0'), c
-            blk.add_foreign_entity(x, copy=False)
-        if T.has_code:
-            for a, b, c in T.code_prims(s['a_digit'], s['index']):
-                blk.add_line(a, b, dxfattribs={'layer': mt.LAYERS[c], 'color': c})
+        # template + notch code + half-circle recesses of the Mikrostegs (mikrosteg.py)
+        ms.add_to_block(blk, ms.specimen_prims(T, s['a_digit'], s['index']), mt.LAYERS)
     doc.saveas(path)
     return doc
 
@@ -221,7 +218,7 @@ def code_check(R, rows, specs_by_block, on_progress=None):
         msg = []
         key = (T.kind, s['a_digit'], s['index'])
         if key not in cache:
-            cache[key] = mt.template_polygon(T, s['a_digit'], s['index']) if T.has_code else mt.template_polygon(T)
+            cache[key] = ms.specimen_polygon(T, s['a_digit'], s['index'])         # with the Mikrosteg recesses
         want = affinity.translate(affinity.rotate(cache[key], r['rotation_deg'], origin=(0, 0)),
                                   r['insert_x_mm'], r['insert_y_mm'])
         if len(want.interiors) != len(p.poly.interiors):
@@ -309,6 +306,11 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 ax.text(cx, cy + (0.18 * T.L if T.L / max(T.W, 1) > 1.25 and T.holes else 0), str(r['n']),
                         ha='center', va='center', fontsize=7, color='#333333', zorder=6,
                         bbox=dict(boxstyle='round,pad=0.15', fc='white', ec='none', alpha=0.8))
+                # Mikrosteg: red square at the bottom of each half-circle recess (bridge left by the workshop)
+                ca, sa = math.cos(math.radians(r['rotation_deg'])), math.sin(math.radians(r['rotation_deg']))
+                for mx, my in ms.mark_points(T):
+                    ax.plot(cx + mx * ca - my * sa, cy + mx * sa + my * ca, 's', ms=3.2, mfc='#dc2626', mec='#dc2626',
+                            zorder=7)
             # sheet zones: clamping, machine area, placement margin, effective area (zones.py)
             zones.draw(ax, cfg['zones'])
             ax.legend(handles=zones.legend_handles(cfg['zones']), loc='upper left', bbox_to_anchor=(0.0, -0.06),
@@ -334,6 +336,10 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                 lg.plot([0.02, 0.18], [y, y], color=ACI_RGB[c], lw=2)
                 lg.text(0.22, y, t, color=ACI_RGB[c], fontsize=7.5, va='center')
                 y -= 0.05
+            lg.plot([0.10], [y], 's', ms=5, mfc='#dc2626', mec='#dc2626')
+            lg.text(0.22, y, 'Mikrosteg: leave a\nbridge at the bottom\nof the half-circle\nrecess (2 per part)',
+                    color='#dc2626', fontsize=7.5, va='center')
+            y -= 0.10
             lg.text(0.02, y, 'Numbers: specimen no.\n(see list). Only for\ninformation, bitte\nnicht gravieren.',
                     fontsize=7, va='top', color='#555555')
             lg.text(0.02, 0.13, '%s\n\nsheet %d / %d\n\n%s' % (cfg['name'].replace('_SHEET', '_\nSHEET'), k + 1,
