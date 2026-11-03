@@ -178,6 +178,7 @@ Measured results:
 | Folder | Content |
 |---|---|
 | `orders/` | the orders: `example.yaml`, `CT_sheet.yaml` |
+| `docs/` | `user_guide.pdf`: user guide (installation, running, writing an order, results, checks, error messages); `make_user_guide.py` rebuilds it after a run of the example order |
 | `templates/CTLG_261102/` | templates without code, from the lab catalogue and the complementary catalogue `MNAK_RECT`: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
 | `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
 | `input/` | files received from the lab: catalogue `specimen_templates_261029_barcoded.dxf`, CT drawing `…v20260901_CT_bardcode.dxf`, 2025 drawings (`.dxf` + notices `.pptx` / `.pdf`), SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`, and the complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` |
