@@ -31,7 +31,7 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET
 | `orders/ETH_450x380mm_ShearEDM_v20250520.yaml` | lab shear plan of the same name (24 shear specimens + 1 extra strip): 1 sheet |
 | `orders/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.yaml` | CT drawing of 2026 of the same name (68 specimens, already Christmas tree models; discs replaced by the rectangular Mini-Nakajima): 4 sheets |
 
-One order per lab plan of `input/` (the `.pdf` / `.dxf` of 2025, and the CT drawing of 2026), for the EDM machine (400 × 300 mm sheets on the
+One order per lab plan (the `.pdf` / `.dxf` of 2025, and the CT drawing of 2026; the plans themselves are no longer kept in the repository), for the EDM machine (400 × 300 mm sheets on the
 CUT E 350, L-shaped 40 mm clamping, effective area 340 × 240 mm). The old models of those plans (straight grips,
 140 mm; shear blanks 93 mm) are replaced by the catalogue models with the "Christmas tree" grips; same angles and same
 notch codes as in the plans (read in their DXF); the discs are replaced by the rectangular Mini-Nakajima, and extra
@@ -74,7 +74,7 @@ specimens:
 | Field | Meaning | Default |
 |---|---|---|
 | `name` | name of the plan, of the output folder and of the DXF | file name |
-| `templates` | folder of the templates without code | `templates/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
+| `templates` | folder of the templates without code | `catalogue/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
 | `sheet` | **complete sheet**, width × height in mm; the height is the rolling direction | **required** |
 | `clamping` | bands of the sheet held by the clamps, per side (mm), e.g. `{left: 40, bottom: 40}` = L-shaped; bottom = start of the rolling direction | none |
 | `machine_area` | area the wire can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel) | **required** |
@@ -99,7 +99,7 @@ the sheet, outside the clamping and at least `edge_margin` from a free edge. Exa
 40 and bottom 40, machine area 350 × 250, placement margin 5 → machine area from (40, 40) to (390, 290), effective
 area 340 × 240 mm from (45, 45). The terminal and the notice print these numbers.
 
-**Types** = families of the lab catalogue (`input/specimen_templates_261029_barcoded.dxf`) and of the complementary
+**Types** = families of the lab catalogue (`catalogue/specimen_templates_261029_barcoded.dxf`) and of the complementary
 catalogue `MNAK_RECT`:
 
 | Type | Short name | Specimen |
@@ -186,19 +186,19 @@ Measured results:
 
 | Folder | Content |
 |---|---|
-| `orders/` | the orders: one per lab plan of `input/` |
-| `docs/` | `user_guide.pdf`: user guide (installation, running, writing an order, results, checks, error messages); `make_user_guide.py` rebuilds it after a run of the shear plan order |
-| `templates/CTLG_261102/` | templates without code, from the lab catalogue and the complementary catalogue `MNAK_RECT`: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png`, `README.md` |
-| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading) |
-| `input/` | files received from the lab: catalogue `specimen_templates_261029_barcoded.dxf`, CT drawing `…v20260901_CT_bardcode.dxf`, 2025 drawings (`.dxf` + notices `.pptx` / `.pdf`), SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`, and the complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` |
+| `orders/` | the orders: one per lab plan |
+| `catalogue/` | the catalogues in DXF: lab catalogue `specimen_templates_261029_barcoded.dxf`, complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` and its source (Erik's SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`) |
+| `catalogue/CTLG_261102/` | the templates used by the program (without code), made from both catalogues: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png` (every type with its code and its Mikrosteg recesses), `README.md` |
+| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading), `mikrosteg.py` (Mikrosteg recesses), `make_user_guide.py` (rebuilds `user_guide.pdf` after a run of the shear plan order) |
 | `runs/` | **ignored by git**: everything that is run |
+| `user_guide.pdf` | user guide (installation, running, writing an order, results, checks, error messages) |
 
 ## Other tools
 
 **Check any DXF** (for example a drawing received):
 
 ```bash
-py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf
+py cutting-sheets/scripts/check_sheet.py path/to/drawing.dxf
 ```
 
 - The report goes to `runs/reports/<plan>/`.
@@ -210,7 +210,7 @@ py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/ETH_600x500mm_2_SH
 **Rebuild the templates** (only if the lab sends a new catalogue):
 
 ```bash
-py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
+py cutting-sheets/scripts/make_templates.py cutting-sheets/catalogue/specimen_templates_261029_barcoded.dxf cutting-sheets/catalogue/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
 ```
 
 Several catalogues can be given; the last argument is the name of the template set.
@@ -224,7 +224,7 @@ Several catalogues can be given; the last argument is the name of the template s
   0.012 mm, outline within 0.017 mm.
 
 **Complementary catalogue `MNAK_RECT`**: `build_mnak_rect.py` reads Erik's SolidWorks export
-(`input/RoundSample_Dual_Hole_rectange.dxf`) and writes `input/specimen_templates_extra_MNAK_RECT.dxf` in the format of
+(`catalogue/RoundSample_Dual_Hole_rectange.dxf`) and writes `catalogue/specimen_templates_extra_MNAK_RECT.dxf` in the format of
 the lab catalogue: 30 blocks `MNAK_RECT_HOLE_<angle><index>` (2 holes) and 30 blocks `MNAK_RECT_FULL_<angle><index>`
 (no holes), angles 0, 45, 90°, index 0–9; outline Q3, holes Q5, code on the 49 mm **end** (starting at x = −6 mm, as on
 the bars). Erik's part is symmetric, so the rounded corner on the left of the coded end (code on top) is replaced by a

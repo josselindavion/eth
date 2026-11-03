@@ -1,5 +1,6 @@
 # Order for the EDM machine (AgieCharmilles CUT E 350) made from the lab plan ETH_300x300_6_SHEET_v20250520.
-# Specimens read in the 2025 drawing (input/ETH_300x300_6_SHEET_v20250520.dxf / .pdf), old models with straight
+# Specimens read in the 2025 drawing (ETH_300x300_6_SHEET_v20250520.dxf / .pdf, not kept in the repository), old
+# models with straight
 # grips, replaced by the lab catalogue models with the "Christmas tree" grips; same angles and same notch codes
 # (index 1, 2, 3):
 #   UT_L140 (140 mm)  -> UTUT (106 mm)     NT_R20.00 -> NT20     NT_R6.67 -> NT06     CH_D4.8 / D5.0 -> CHCH
@@ -10,7 +11,7 @@
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET_v20250520.yaml
 
 name: ETH_300x300_6_SHEET_v20250520_EDM         # name of the plan: output folder, DXF and notice
-templates: templates/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
+templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the EDM machine (AgieCharmilles CUT E 350); all lengths in mm; see preview.png ----------
 sheet: 400x300         # complete sheet, width x height; the height is the rolling direction (required)

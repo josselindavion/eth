@@ -3,8 +3,8 @@
 make_templates.py -- Specimen templates WITHOUT notch code, from the lab catalogue(s).
 
 Run (from the repository root; once per new catalogue):
-    py cutting-sheets/scripts/make_templates.py cutting-sheets/input/specimen_templates_261029_barcoded.dxf \
-        cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
+    py cutting-sheets/scripts/make_templates.py cutting-sheets/catalogue/specimen_templates_261029_barcoded.dxf \
+        cutting-sheets/catalogue/specimen_templates_extra_MNAK_RECT.dxf CTLG_261102
 One or more catalogue .dxf files, then the name of the template set.
 
 A catalogue has one block per specimen, named <family>_<nn> (e.g. CTLG_UTUT_21: angle 2 x 15 = 30 deg, index 1).
@@ -21,7 +21,7 @@ Validation: EVERY specimen of the catalogue is rebuilt from the template and the
 compared with the original: code lines (max deviation) and full outline; the code read must also be the block
 number (CTLG_UTUT_21 -> angle 2 x 15 = 30 deg, index 1).
 
-Outputs in cutting-sheets/templates/<name>/: templates.dxf (one block T__<type> per type), templates.csv,
+Outputs in cutting-sheets/catalogue/<name>/: templates.dxf (one block T__<type> per type), templates.csv,
 validation.csv, templates.png, README.md.
 """
 import collections
@@ -46,7 +46,7 @@ sys.path.insert(0, HERE)
 import notchcode as nc                   # noqa: E402
 import sheetlib as sl                    # noqa: E402
 
-ROOT = os.path.abspath(os.path.join(HERE, '..', 'templates'))
+ROOT = os.path.abspath(os.path.join(HERE, '..', 'catalogue'))
 LAYERS = {3: 'Q3_NORMAL', 4: 'Q4_MEDIUM', 5: 'Q5_HIGH'}
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#444444'}
 # lab catalogue: family (block name without _nn) -> names accepted in the order file (the first one is displayed)
@@ -221,7 +221,7 @@ def write_templates(out, temps):
 
 
 def load_templates(tdir):
-    """Templates of a folder templates/<name>/: dict type -> Template (and alias -> same object)."""
+    """Templates of a folder catalogue/<name>/: dict type -> Template (and alias -> same object)."""
     doc = ezdxf.readfile(os.path.join(tdir, 'templates.dxf'))
     out = {}
     with open(os.path.join(tdir, 'templates.csv')) as f:
@@ -276,19 +276,20 @@ def validate(T, p):
 def fig_templates(temps, path):
     n = len(temps)
     fig, axs = plt.subplots(1, n, figsize=(2.2 * n, 4.6))
+    import mikrosteg as ms
     for ax, T in zip(axs, temps):
-        for e, c in T.ents:
-            xs, ys = zip(*flatten(e))
-            ax.plot(xs, ys, color=ACI_RGB.get(c, 'k'), lw=0.7)
+        for p in ms.specimen_prims(T, 0, 1):               # template + code + Mikrosteg recesses
+            xs, ys = zip(*ms.points(p))
+            ax.plot(xs, ys, color=ACI_RGB.get(p[-1], 'k'), lw=0.7)
         if T.has_code:
-            for a, b, c in T.code_prims(0, 1):
-                ax.plot([a[0], b[0]], [a[1], b[1]], color=ACI_RGB[c], lw=0.7)
             ax.plot(*T.code_origin, 'o', ms=3, color='#d97706')
+        for x, y in ms.mark_points(T):                      # Mikrostegs
+            ax.plot(x, y, 'o', ms=7, mfc='none', mec='#dc2626', mew=1.2)
         ax.set_aspect('equal')
         ax.axis('off')
         ax.set_title('%s\n(%s)' % (T.alias, T.kind), fontsize=6.5)
     fig.suptitle('Templates in their own frame (code up = +Y), shown with code "angle 0°, index 1". '
-                 'Orange dot: code origin.', fontsize=8)
+                 'Orange dot: code origin; red circles: Mikrostegs (half-circle recesses, mikrosteg.py).', fontsize=8)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
@@ -377,7 +378,10 @@ def write_readme(out, lib, name, temps, rows):
           'specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise, '
           'minus the angle offset of the type (MNAK_RECT: −90°). For discs with two holes, the holes are '
           'perpendicular to the code direction (angle 90° = holes along the rolling direction); MNAK_RECT has the same '
-          'hole orientation as the disc of the same angle.', '', '![Templates](templates.png)', '',
+          'hole orientation as the disc of the same angle.', '',
+          'Every specimen also gets 2 internal Mikrostegs: half-circle recesses of radius 1 mm in its outline, added by '
+          '`mikrosteg.py` when the specimens are built (red circles in the figure); the templates themselves stay '
+          'without recesses.', '', '![Templates](templates.png)', '',
           '## Validation', '',
           'Every specimen of the source was rebuilt from its template and the code read on it, then compared with the '
           'original.%s' % (' For the catalogue, the code read must also be the block number (block `_21` = angle '

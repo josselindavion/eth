@@ -8,7 +8,7 @@ Run (Python 3 + ezdxf, shapely, matplotlib, scipy, pyyaml, spyrrow, packingsolve
 Steps:
     1. read the order (YAML, see cutting-sheets/orders/) and check it: known type, angle multiple of 15 deg and
        codable (0-135 deg), index 0-9, never the same code twice on the same type;
-    2. one specimen = template without code (templates/<name>/) + its notch code (notchcode.py);
+    2. one specimen = template without code (catalogue/<name>/) + its notch code (notchcode.py);
        angle = direction of the coded end from the rolling direction (+Y), counter-clockwise;
     3. automatic placement (placement.py): PackingSolver assigns the specimens to sheets, sparrow moves specimens to
        empty the least filled sheet, then compacts each sheet; ordered angle or half turn (+180 deg), never
@@ -56,7 +56,7 @@ from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
 BASE = os.path.abspath(os.path.join(HERE, '..'))       # cutting-sheets folder
-DEFAULT_TEMPLATES = os.path.join(BASE, 'templates', 'CTLG_261102')     # lab catalogue + MNAK_RECT
+DEFAULT_TEMPLATES = os.path.join(BASE, 'catalogue', 'CTLG_261102')     # lab catalogue + MNAK_RECT
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#222222'}
 
 SIDES = ('left', 'bottom', 'right', 'top')       # bottom = start of the rolling direction (+Y)

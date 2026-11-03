@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-make_user_guide.py -- Builds docs/user_guide.pdf (how to use the cutting-plan tool).
+make_user_guide.py -- Builds cutting-sheets/user_guide.pdf (how to use the cutting-plan tool).
 
 Run from the repository root, after a run of the shear plan order (the guide shows its preview and notice):
     py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml
-    py cutting-sheets/docs/make_user_guide.py
+    py cutting-sheets/scripts/make_user_guide.py
 Needs reportlab and pdftoppm (poppler) for the notice picture.
 """
 import datetime
@@ -25,7 +25,7 @@ from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, Prefo
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.dirname(HERE)
-OUT = os.path.join(HERE, 'user_guide.pdf')
+OUT = os.path.join(BASE, 'user_guide.pdf')
 RUN = os.path.join(BASE, 'runs', 'ETH_450x380mm_ShearEDM_v20250520_EDM')     # run of the shear plan order
 
 for name, f in (('Sans', 'DejaVuSans.ttf'), ('Sans-Bold', 'DejaVuSans-Bold.ttf'), ('Mono', 'DejaVuSansMono.ttf')):

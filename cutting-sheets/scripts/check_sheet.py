@@ -3,7 +3,7 @@
 check_sheet.py -- Checks an EDM cutting plan (DXF) before it is sent to the workshop.
 
 Run (Python 3 + ezdxf, shapely, matplotlib), from the repository root:
-    py cutting-sheets/scripts/check_sheet.py cutting-sheets/input/<plan>.dxf [--min-gap 5] [--warn-gap 5]
+    py cutting-sheets/scripts/check_sheet.py <plan>.dxf [--min-gap 5] [--warn-gap 5]
         [--min-margin 5 | --margins LEFT BOTTOM RIGHT TOP]
 
 Outputs in cutting-sheets/runs/reports/<plan>/ (ignored by git), or reports/<plan>/ with --final:

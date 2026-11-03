@@ -6,8 +6,8 @@ build_mnak_rect.py -- Complementary catalogue: RECTANGULAR Mini-Nakajima, with a
 Run (from the repository root):
     py cutting-sheets/scripts/build_mnak_rect.py
 
-Input : cutting-sheets/input/RoundSample_Dual_Hole_rectange.dxf (SolidWorks export of the part, mm, all colour 7)
-Output: cutting-sheets/input/specimen_templates_extra_MNAK_RECT.dxf, in the format of the lab catalogue:
+Input : cutting-sheets/catalogue/RoundSample_Dual_Hole_rectange.dxf (SolidWorks export of the part, mm, all colour 7)
+Output: cutting-sheets/catalogue/specimen_templates_extra_MNAK_RECT.dxf, in the format of the lab catalogue:
         one block per specimen, named MNAK_RECT_HOLE_<angle digit><index> (2 holes) or MNAK_RECT_FULL_<...>
         (no holes), placed at its angle (0, 45, 90 deg; index 0 to 9, as MNAK_HOLE / MNAK_FULL), qualities by
         colour (3 = Q3, 5 = Q5).
@@ -37,8 +37,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import notchcode as nc                   # noqa: E402
 
-SRC = os.path.join(HERE, '..', 'input', 'RoundSample_Dual_Hole_rectange.dxf')
-OUT = os.path.join(HERE, '..', 'input', 'specimen_templates_extra_MNAK_RECT.dxf')
+SRC = os.path.join(HERE, '..', 'catalogue', 'RoundSample_Dual_Hole_rectange.dxf')
+OUT = os.path.join(HERE, '..', 'catalogue', 'specimen_templates_extra_MNAK_RECT.dxf')
 ANGLE_OFFSET = -90.0                     # coded end at angle - 90 deg: holes oriented as on the disc MNAK_HOLE
 ROT_DEG = 0.0                            # rotation of Erik's part: none (the end y = +40 carries the code)
 FAMILIES = (('MNAK_RECT_HOLE', True), ('MNAK_RECT_FULL', False))     # (family, with holes)

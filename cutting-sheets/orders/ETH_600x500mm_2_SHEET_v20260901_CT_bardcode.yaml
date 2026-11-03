@@ -1,12 +1,12 @@
 # Order for the EDM machine (AgieCharmilles CUT E 350) made from the lab drawing of 2026
-# input/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf (CT programme, no PDF): same specimens and notch codes as that drawing (index 1, 2, 3), already the catalogue
-# models with the "Christmas tree" grips; discs replaced by the rectangular Mini-Nakajima (holes oriented as on
-# the disc). Order first written on 02/11/2026 (CT_sheet.yaml), restored on 03/11/2026 under the drawing's name.
+# ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.dxf (CT programme, no PDF; not kept in the repository): same specimens
+# and notch codes as that drawing (index 1, 2, 3), already the catalogue models with the "Christmas tree" grips;
+# discs replaced by the rectangular Mini-Nakajima (holes oriented as on the disc). Order first written on 02/11/2026 (CT_sheet.yaml), restored on 03/11/2026 under the drawing's name.
 # Run from the repository root:
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.yaml
 
 name: ETH_600x500mm_2_SHEET_v20260901_CT_bardcode_EDM # name of the plan: output folder, DXF and notice
-templates: templates/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
+templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the EDM machine (AgieCharmilles CUT E 350); all lengths in mm; see preview.png ----------
 sheet: 400x300         # complete sheet, width x height; the height is the rolling direction (required)

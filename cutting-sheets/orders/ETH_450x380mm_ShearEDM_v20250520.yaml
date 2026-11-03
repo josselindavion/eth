@@ -1,12 +1,13 @@
 # Order for the EDM machine (AgieCharmilles CUT E 350) made from the lab plan ETH_450x380mm_ShearEDM_v20250520.
-# Specimens read in the 2025 drawing (input/ETH_450x380mm_ShearEDM_v20250520.dxf / .pdf): old shear blanks
+# Specimens read in the 2025 drawing (ETH_450x380mm_ShearEDM_v20250520.dxf / .pdf, not kept in the repository): old
+# shear blanks
 # 93 x 30 mm (labels SHxx-LD1/2, -MD1/2, -HD1/2), replaced by the lab catalogue shear specimens with the
 # "Christmas tree" grips (81 mm); same angles and same notch codes: LD = index 1, 2; MD = index 4, 5; HD = index 7, 8.
 # Run from the repository root:
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml
 
 name: ETH_450x380mm_ShearEDM_v20250520_EDM      # name of the plan: output folder, DXF and notice
-templates: templates/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
+templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the EDM machine (AgieCharmilles CUT E 350); all lengths in mm; see preview.png ----------
 sheet: 400x300         # complete sheet, width x height; the height is the rolling direction (required)
