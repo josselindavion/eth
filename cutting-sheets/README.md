@@ -29,8 +29,9 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET
 | `orders/ETH_450x400_3_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
 | `orders/ETH_600x500mm_2_SHEET_v20250220.yaml` | lab plan of the same name (64 specimens + 4 extra strips): 4 sheets |
 | `orders/ETH_450x380mm_ShearEDM_v20250520.yaml` | lab shear plan of the same name (24 shear specimens + 1 extra strip): 1 sheet |
+| `orders/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.yaml` | CT drawing of 2026 of the same name (68 specimens, already Christmas tree models; discs replaced by the rectangular Mini-Nakajima): 4 sheets |
 
-One order per lab plan of `input/` (the `.pdf` / `.dxf` of 2025), for the EDM machine (400 × 300 mm sheets on the
+One order per lab plan of `input/` (the `.pdf` / `.dxf` of 2025, and the CT drawing of 2026), for the EDM machine (400 × 300 mm sheets on the
 CUT E 350, L-shaped 40 mm clamping, effective area 340 × 240 mm). The old models of those plans (straight grips,
 140 mm; shear blanks 93 mm) are replaced by the catalogue models with the "Christmas tree" grips; same angles and same
 notch codes as in the plans (read in their DXF); the discs are replaced by the rectangular Mini-Nakajima, and extra
