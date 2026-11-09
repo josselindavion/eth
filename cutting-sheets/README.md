@@ -243,7 +243,7 @@ read).
 | Blue (colour 5) | gauge section, notches, holes, code | quality **Q5** (highest) |
 | Rolling direction | +Y axis | the angle of each specimen is measured from +Y |
 | Chamfered corner | one 45° corner | orientation and face marker |
-| *Mikrosteg* | half-circle recess R 1 mm in the outline (2 per specimen); red square on the notice | the workshop leaves the bridge at the bottom of the recess (internal Mikrosteg, see below) |
+| *Mikrosteg* | half-circle recess of diameter 1.5 mm in the outline (2 per specimen); red square on the notice | the workshop leaves the bridge at the bottom of the recess (internal Mikrosteg, see below) |
 
 The **colour** gives the quality, not the layer name.
 
@@ -258,7 +258,7 @@ The **colour** gives the quality, not the layer name.
 
 ## Mikrostegs (internal micro-joints)
 
-Each specimen gets **2 half-circle recesses** (radius 1 mm) in its outline (`scripts/mikrosteg.py`). The workshop
+Each specimen gets **2 half-circle recesses** (diameter 1.5 mm, `R` in `mikrosteg.py`) in its outline (`scripts/mikrosteg.py`). The workshop
 stops the wire at the **bottom of each recess**, marked by a red square on the notice: the specimen stays attached by
 this small bridge, and after breaking it out the rest of the bridge stays inside the recess, never beyond the specimen
 edge. The recesses are part of the closed contour (really cut); there is no gap in the cutting line.

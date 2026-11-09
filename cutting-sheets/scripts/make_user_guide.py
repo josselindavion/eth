@@ -26,7 +26,9 @@ from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, Prefo
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.dirname(HERE)
 OUT = os.path.join(BASE, 'user_guide.pdf')
-RUN = os.path.join(BASE, 'runs', 'ETH_450x380mm_ShearEDM_v20250520_EDM')     # run of the shear plan order
+RUN = os.path.join(BASE, 'output', 'ETH_450x380mm_ShearEDM_v20250520_EDM')   # run of the shear plan order (--final)
+if not os.path.isdir(RUN):
+    RUN = os.path.join(BASE, 'runs', 'ETH_450x380mm_ShearEDM_v20250520_EDM')
 
 for name, f in (('Sans', 'DejaVuSans.ttf'), ('Sans-Bold', 'DejaVuSans-Bold.ttf'), ('Mono', 'DejaVuSansMono.ttf')):
     for d in ('/usr/share/fonts/truetype/dejavu', 'C:/Windows/Fonts'):
@@ -237,7 +239,7 @@ specimens:
                   ['preview.png', 'you', 'all the sheets with the zones, to check the plan at a glance']],
                  [0.18, 0.12, 0.7]),
            Spacer(1, 4),
-           P('<b>Mikrostegs</b>: every specimen has 2 small half-circle recesses (radius 1 mm) in its outline. The '
+           P('<b>Mikrostegs</b>: every specimen has 2 small half-circle recesses (diameter 1.5 mm) in its outline. The '
              'workshop stops the wire at the bottom of each recess (red square on the notice), so the specimen stays '
              'attached; after breaking it out, the rest of the bridge stays inside the recess.'),
            P('Send the <b>DXF and notice.pdf</b> to the workshop; keep <b>registry.csv</b> for the lab.'),

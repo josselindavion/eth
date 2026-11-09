@@ -15,7 +15,7 @@ import math
 
 from shapely.geometry import LineString, Point
 
-R = 1.0     # radius of the recess (mm), validated 03/11/2026
+R = 0.75    # radius of the recess (mm): diameter 1.5 mm (user, 09/11/2026; was R 1.0 on 03/11)
 
 _LONG = [(0.0, -52.94), (10.0, 49.6)]       # 106 mm specimens: bottom end face centre; top grip, right side
 _SHORT = [(0.0, -40.39), (10.0, 37.0)]      # 81 mm specimens: same places
