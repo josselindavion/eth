@@ -239,7 +239,7 @@ specimens:
                   ['preview.png', 'you', 'all the sheets with the zones, to check the plan at a glance']],
                  [0.18, 0.12, 0.7]),
            Spacer(1, 4),
-           P('<b>Mikrostegs</b>: every specimen has 2 small half-circle recesses (diameter 1.5 mm) in its outline. The '
+           P('<b>Mikrostegs</b>: every specimen has 2 small half-circle recesses (radius 1.5 mm) in its outline. The '
              'workshop stops the wire at the bottom of each recess (red square on the notice), so the specimen stays '
              'attached; after breaking it out, the rest of the bridge stays inside the recess.'),
            P('Send the <b>DXF and notice.pdf</b> to the workshop; keep <b>registry.csv</b> for the lab.'),

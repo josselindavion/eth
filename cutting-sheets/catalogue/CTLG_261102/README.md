@@ -22,7 +22,7 @@ One template per specimen type, **without notch code**. The code (angle + index)
 
 Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise, minus the angle offset of the type (MNAK_RECT: −90°). For discs with two holes, the holes are perpendicular to the code direction (angle 90° = holes along the rolling direction); MNAK_RECT has the same hole orientation as the disc of the same angle.
 
-Every specimen also gets 2 internal Mikrostegs: half-circle recesses of diameter 1.5 mm in its outline, added by `mikrosteg.py` when the specimens are built (red circles in the figure); the templates themselves stay without recesses.
+Every specimen also gets 2 internal Mikrostegs: half-circle recesses of radius 1.5 mm in its outline, added by `mikrosteg.py` when the specimens are built (red circles in the figure); the templates themselves stay without recesses.
 
 ![Templates](templates.png)
 
