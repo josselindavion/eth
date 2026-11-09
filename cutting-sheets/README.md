@@ -25,6 +25,7 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET
 
 | Order | Content |
 |---|---|
+| `orders/CAMPAIGN_<W>x<H>mm_WATERJET.yaml` | complete testing campaign of one material (no shear: EDM) for waterjet cutting, one per sheet size of the supervisors (300 × 300, 380 × 450, 400 × 450, 500 × 600): L margin 40 mm, 5 mm on the other edges, 5 mm placement margin |
 | `orders/ETH_300x300_6_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
 | `orders/ETH_450x400_3_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
 | `orders/ETH_600x500mm_2_SHEET_v20250220.yaml` | lab plan of the same name (64 specimens + 4 extra strips): 4 sheets |
