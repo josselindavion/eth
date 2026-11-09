@@ -23,9 +23,9 @@ gap: 5                 # minimum distance between two specimens (rule of the sup
 # ---------- Placement (time budget) ----------
 assign_time: 30        # seconds of PackingSolver to put all the specimens on sheets (step 1)
 fill_tries: 8          # failed tries allowed when moving specimens to empty one sheet (step 2; 0 = no reduction)
-fill_time: 10          # seconds of sparrow at most per try (a try that succeeds usually stops after 1-3 s)
+fill_time: 40          # seconds of sparrow at most per try (40 here, not 10: needed to fit everything on 2 sheets)
 time: 10               # seconds of sparrow at most per sheet for the final compaction (step 3; 0 = no compaction)
-seed: 1                # seed of the random draws of sparrow (change it to get another layout)
+seed: 3                # seed of the random draws of sparrow (3 here: gives 2 sheets; 1 and 2 left one NT06 alone)
 max_sheets: 20         # the order is rejected if it needs more sheets than this
 
 # ---------- Specimens: one line = "count specimens of this type at this angle" ----------
@@ -59,4 +59,4 @@ specimens:
   - {type: MNAK_RECT_HOLE, angle: 90,  count: 3, first_index: 1}   # holes along the rolling direction
   - {type: MNAK_RECT_HOLE, angle: 45,  count: 3, first_index: 1}   # holes at 135 deg
   - {type: MNAK_RECT_HOLE, angle: 0,   count: 3, first_index: 1}   # holes across the rolling direction
-  - {type: TENS_FULL,      angle: 0,   count: 4}   # speckle contrast tests
+  - {type: TENS_FULL,      angle: 0,   count: 3}   # speckle contrast tests
