@@ -91,6 +91,8 @@ specimens:
 | `time` | seconds of sparrow at most per sheet for the compaction (step 3; stopped earlier when it no longer improves); 0 = no compaction | 15 |
 | `seed` | seed of sparrow's random draws (change it to try another solution) | 1 |
 | `max_sheets` | maximum number of sheets | 20 |
+| `spread_distance` | two **repeats** (same type and same angle, e.g. UT40 0° index 1 and 2) closer than this are "side by side" (mm; supervisors: avoid it). After the placement, specimens of other types placed at the same rotation and with the same outer shape swap places to separate them (no space lost); the pairs left are a **warning** (check "Repeats side by side", orange circles on the preview) | 10 |
+| `spread_tries` | placements tried to keep the repeats apart (seed, seed + 1, …; swaps on each); the best is kept: fewest sheets, then fewest pairs side by side; stops as soon as no pair is left. Time up to × tries. Command line: `--spread-tries N` | 1 |
 | `specimen_id` | optional: `batch`, `sample_geometry`, `additional`, `test_geometry` (per type), for the full specimen ID in the registry | – |
 | `specimens` | one line per group: `type`, `angle`, `count`, and optionally `first_index` | – |
 

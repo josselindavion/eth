@@ -12,10 +12,12 @@ Steps:
        angle = direction of the coded end from the rolling direction (+Y), counter-clockwise;
     3. automatic placement (placement.py): PackingSolver assigns the specimens to sheets, sparrow moves specimens to
        empty the least filled sheet, then compacts each sheet; ordered angle or half turn (+180 deg), never
-       mirrored, gap and margins;
+       mirrored, gap and margins; then repeats of the same type and angle side by side are separated by swaps
+       (spread.py); with spread_tries > 1, other placements (seed + 1, + 2...) are tried and the best one is kept
+       (fewest sheets, then fewest repeats side by side);
     4. DXF plan (mm, layers Q3_NORMAL / Q4_MEDIUM / Q5_HIGH);
     5. checks: check_sheet.py (contours, gaps, margins...), then every specimen is READ BACK from the final DXF
-       (outline, code, direction) and compared with the order;
+       (outline, code, direction) and compared with the order; repeats side by side (warning, orange circles);
     6. specimen registry (registry.csv) and notice for the workshop (notice.pdf: numbered plan, qualities, rolling
        direction).
 
@@ -52,6 +54,8 @@ import mikrosteg as ms                                # noqa: E402
 import notchcode as nc                                # noqa: E402
 import placement as sp                                # noqa: E402
 import zones                                          # noqa: E402
+import spread                                         # noqa: E402
+from shapely.ops import nearest_points                # noqa: E402
 from progress import Bar, step, _fmt as progress_fmt  # noqa: E402
 import sheetlib as sl                                 # noqa: E402
 
@@ -64,7 +68,7 @@ SIDES = ('left', 'bottom', 'right', 'top')       # bottom = start of the rolling
 # the only keys an order may contain (anything else is rejected, so that a typo or an old key is not ignored)
 ORDER_KEYS = ('name', 'templates', 'sheet', 'clamping', 'clamps', 'clamp_margin', 'machine_area', 'machine_position',
               'placement_margin', 'edge_margin', 'gap', 'assign_time', 'fill_tries', 'fill_time', 'time', 'seed', 'max_sheets',
-              'specimen_id', 'specimens')
+              'spread_distance', 'spread_tries', 'specimen_id', 'specimens')
 
 
 class OrderError(Exception):
@@ -137,6 +141,8 @@ def read_order(path):
         'fill_tries': int(o.get('fill_tries', 8)),          # tries to move specimens off the least filled sheet
         'fill_time': float(o.get('fill_time', 10)),         # sparrow, per try to move a specimen (s, at most)
         'max_sheets': int(o.get('max_sheets', 20)),
+        'spread_distance': float(o.get('spread_distance', 10)),   # repeats closer than this = side by side (mm)
+        'spread_tries': max(1, int(o.get('spread_tries', 1))),    # placements tried to keep the repeats apart
         'specimen_id': o.get('specimen_id') or {},
         'lines': list(o['specimens']),
     }
@@ -388,7 +394,7 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                       '%s, %s' % (r['angle_digit'], r['index']) if r['notch_code'] else '–',
                       r['specimen_id'] or '–'] for r in reg[p0:p0 + per]]
             tb = ax.table(cellText=cells, colLabels=cols, loc='upper center', cellLoc='center',
-                          colWidths=[0.07, 0.07, 0.12, 0.13, 0.22, 0.30])
+                          colWidths=[0.07, 0.07, 0.19, 0.12, 0.20, 0.26])
             tb.auto_set_font_size(False)
             tb.set_fontsize(7.5)
             tb.scale(1, 1.25)
@@ -400,17 +406,19 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
 # ============================================================
 # PROGRAM
 # ============================================================
-def run(order_path, seconds=None, final=False):
+def run(order_path, seconds=None, final=False, spread_tries=None):
     """Order -> plan. Intermediate files go to a temporary folder, always deleted (also after an error)."""
     with tempfile.TemporaryDirectory(prefix='cutting_plan_') as tmp:
-        return _run(order_path, seconds, final, tmp)
+        return _run(order_path, seconds, final, tmp, spread_tries)
 
 
-def _run(order_path, seconds, final, tmp):
+def _run(order_path, seconds, final, tmp, spread_tries=None):
     N = 6
     t_start = time.time()
     step(1, N, 'Order and templates')
     cfg = read_order(order_path)
+    if spread_tries is not None:
+        cfg['spread_tries'] = max(1, spread_tries)
     if seconds is not None:
         cfg['time'] = seconds
     temps = mt.load_templates(cfg['templates'])
@@ -467,17 +475,38 @@ def _run(order_path, seconds, final, tmp):
             state['bar'].done()
             state['bar'], state['label'], state['t'] = None, None, 0
         print('    ' + msg)
-    try:
-        sheets = sp.place(specs, polys, W, H, cfg['gap'], cfg['margins'], cfg['time'], cfg['seed'],
+    place_fn = lambda s, r, x, y: sp._placed(s, r, x, y, polys)             # noqa: E731
+    best = None
+    for t in range(cfg['spread_tries']):
+        seed = cfg['seed'] + t
+        if cfg['spread_tries'] > 1:
+            log('placement %d / %d (seed %d)' % (t + 1, cfg['spread_tries'], seed))
+        try:
+            sh = sp.place(specs, polys, W, H, cfg['gap'], cfg['margins'], cfg['time'], seed,
                           max_sheets=cfg['max_sheets'], on_progress=on_progress, log=log,
                           assign_seconds=cfg['assign_time'], fill_tries=cfg['fill_tries'],
                           fill_seconds=cfg['fill_time'], keepouts=cfg['zones']['keepouts'])
-    except sp.PlacementError as e:
-        raise OrderError(str(e))
+        except sp.PlacementError as e:
+            raise OrderError(str(e))
+        # repeats of the same type and angle side by side: swaps (spread.py)
+        n0 = len(spread.conflicts(sh, cfg['spread_distance']))
+        sh, n_sw = spread.improve(sh, place_fn, W, H, cfg['gap'], cfg['margins'], cfg['zones']['keepouts'],
+                                  cfg['spread_distance'])
+        n1 = len(spread.conflicts(sh, cfg['spread_distance']))
+        log('%d sheet(s); repeats side by side: %d pair(s), %d after %d swap(s)' % (len(sh), n0, n1, n_sw))
+        key = (len(sh), n1, sp.top(sh[-1]))
+        if best is None or key < best[0]:
+            best = (key, sh, seed)
+        if n1 == 0:
+            break
+    sheets = best[1]
     if state['bar']:
         state['bar'].done()
-    print('    %d sheet(s) in %.0f s: %s' % (len(sheets), time.time() - t0, '; '.join(
-        'sheet %d = %d specimens, %.0f mm' % (k + 1, len(s), sp.top(s)) for k, s in enumerate(sheets))))
+    print('    %d sheet(s) in %.0f s%s: %s' % (len(sheets), time.time() - t0,
+                                           (' (placement with seed %d kept)' % best[2]) if cfg['spread_tries'] > 1
+                                           else '', '; '.join('sheet %d = %d specimens, %.0f mm'
+                                                              % (k + 1, len(s), sp.top(s))
+                                                              for k, s in enumerate(sheets))))
 
     step(4, N, 'Writing the DXF')
     dxf = os.path.join(out, '%s.dxf' % cfg['name'])
@@ -490,6 +519,20 @@ def _run(order_path, seconds, final, tmp):
     t0 = time.time()
     R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'], keepouts=cfg['zones']['keepouts'])
     R['zones'] = cfg['zones']                               # drawn in preview.png
+    pairs = spread.conflicts(sheets, cfg['spread_distance'])
+    for k, i, j, d in pairs:                                # orange circles on the preview, between the two repeats
+        a, b = nearest_points(sheets[k][i][4], sheets[k][j][4])
+        ox = k * (W + sp.SHEET_SPACING)
+        g = spread.group(sheets[k][i][0])
+        R['issues'].append(('WARNING', 'repeats side by side', (ox + (a.x + b.x) / 2, (a.y + b.y) / 2),
+                            '%s %g deg, index %d and %d, %.1f mm apart' % (g[0], g[1], sheets[k][i][0]['index'],
+                                                                          sheets[k][j][0]['index'], d), k + 1))
+    R['checks'].append(('Repeats side by side', 'OK' if not pairs else 'WARNING',
+                        'no two repeats of the same type and angle closer than %g mm' % cfg['spread_distance']
+                        if not pairs else '%d pair(s) closer than %g mm (orange circles on the preview): %s'
+                        % (len(pairs), cfg['spread_distance'], '; '.join(
+                            '%s %g deg sheet %d' % (spread.group(sheets[k][i][0]) + (k + 1,))
+                            for k, i, j, d in pairs))))
     check_sheet.write_outputs(R, os.path.join(tmp, 'check'), argparse.Namespace(
         min_gap=cfg['gap'], warn_gap=cfg['gap'], min_margin=cfg['margins']))
     shutil.copyfile(os.path.join(tmp, 'check', 'preview.png'), os.path.join(out, 'preview.png'))
@@ -513,10 +556,11 @@ def _run(order_path, seconds, final, tmp):
         w.writerows(reg)
     notice(os.path.join(out, 'notice.pdf'), cfg, dxf, rows, reg, specs_by_block, checks)
 
-    status = all(c[1] in ('OK', 'INFO') for c in checks)
+    status = not any(c[1] == 'ERROR' for c in checks)       # a WARNING (e.g. repeats side by side) does not block
+    warn = any(c[1] == 'WARNING' for c in checks)
     print('')
-    print('%s in %s' % ('DONE, all checks OK,' if status else 'DONE WITH ERRORS (see above)',
-                        progress_fmt(time.time() - t_start)))
+    print('%s in %s' % (('DONE WITH WARNINGS (see above),' if warn else 'DONE, all checks OK,') if status
+                        else 'DONE WITH ERRORS (see above)', progress_fmt(time.time() - t_start)))
     print('    Plan    : %s' % dxf)
     print('    Notice  : %s' % os.path.join(out, 'notice.pdf'))
     print('    Registry: %s' % os.path.join(out, 'registry.csv'))
@@ -530,11 +574,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('order', help='YAML order file')
     ap.add_argument('--time', type=float, default=None, help='overrides "time" of the order (compaction seconds per sheet)')
+    ap.add_argument('--spread-tries', type=int, default=None,
+                    help='overrides "spread_tries" of the order (placements tried to keep the repeats apart)')
     ap.add_argument('--final', action='store_true',
                     help='write to output/ (tracked by git) instead of runs/ (ignored by git)')
     args = ap.parse_args()
     try:
-        ok, out = run(args.order, args.time, args.final)
+        ok, out = run(args.order, args.time, args.final, args.spread_tries)
     except OrderError as e:
         print('ORDER REJECTED:\n' + str(e))
         sys.exit(2)

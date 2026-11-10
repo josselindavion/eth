@@ -198,7 +198,12 @@ specimens:
                   ['fill_time', 'seconds at most per try (a try that succeeds stops after 1–3 s)', '10'],
                   ['time', 'seconds at most of final compaction per sheet (0 = none)', '15'],
                   ['seed', 'random seed: change it to get another layout', '1'],
-                  ['max_sheets', 'the order is rejected if it needs more sheets', '20']],
+                  ['max_sheets', 'the order is rejected if it needs more sheets', '20'],
+                  ['spread_distance', 'two repeats (same type and angle) closer than this (mm) are "side by side": '
+                                      'swaps after the placement separate them; the pairs left are a warning '
+                                      '(orange circles on the preview)', '10'],
+                  ['spread_tries', 'placements tried (seed, seed + 1, ...) to keep the repeats apart; the best is '
+                                   'kept (fewest sheets, then fewest pairs); time up to x tries', '1']],
                  [0.2, 0.62, 0.18]),
            P('4.3 Specimens', 'h2'),
            P('One line = <i>count</i> specimens of one <i>type</i> at one <i>angle</i>.'),
