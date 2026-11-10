@@ -31,6 +31,7 @@ from shapely.ops import nearest_points           # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sheetlib as sl                    # noqa: E402
+from shapely import affinity             # noqa: E402
 import zones                             # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -64,7 +65,7 @@ def piece_side_margins(frame, poly):
     return {'left': pb[0] - fb[0], 'bottom': pb[1] - fb[1], 'right': fb[2] - pb[2], 'top': fb[3] - pb[3]}
 
 
-def analyse(path, min_gap, warn_gap, min_margin):
+def analyse(path, min_gap, warn_gap, min_margin, keepouts=None):
     d = sl.Drawing(path)
     frs = sl.frames(d)
     pcs = sl.pieces(d)
@@ -190,6 +191,23 @@ def analyse(path, min_gap, warn_gap, min_margin):
           ('smallest margin per side: %s (limits: %s)%s' % (
               ', '.join('%s %.1f' % (en, smallest[en]) for en, _ in SIDES), fmt_margins(min_margin),
               '; %d piece(s) too close' % n_bad if n_bad else '')) if margins else 'no piece on a sheet')
+    # keep-out zones of the single clamps (sheet coordinates, same on every sheet)
+    if keepouts:
+        n_ko = 0
+        for p in pcs:
+            if not p.sheet:
+                continue
+            x0, y0 = frs[p.sheet - 1].bounds[:2]
+            for k in keepouts:
+                kk = affinity.translate(k, x0, y0)
+                if p.poly.intersection(kk).area > 1e-3:
+                    n_ko += 1
+                    c = p.poly.intersection(kk).representative_point()
+                    R['issues'].append(('ERROR', 'clamp', (c.x, c.y), 'piece %d (%s) in the keep-out zone of a clamp'
+                                        % (p.k, p.kind), p.sheet))
+                    break
+        check('Clamps (keep-out zones)', 'OK' if not n_ko else 'ERROR',
+              '%d clamp zone(s) per sheet; %d piece(s) inside' % (len(keepouts), n_ko))
     # 9. codes
     need = [p for p in pcs if not p.kind.startswith('STRIP')]
     nocode = [p for p in need if not p.code]

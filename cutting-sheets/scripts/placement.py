@@ -151,16 +151,37 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
 # ============================================================
 # PACKINGSOLVER (assignment to sheets)
 # ============================================================
-def packingsolver(specs, polys, W, H, gap, m, seconds, on_progress=None):
-    """Bin packing of all specs on sheets W x H with margins m. Returns a list of sheets (lists of placed)."""
+def _ps_shape(poly):
+    import packingsolver.irregular as pi
+    p = poly.simplify(0.01)
+    pts = [list(q) for q in p.exterior.coords[:-1]]
+    if not p.exterior.is_ccw:
+        pts = pts[::-1]
+    return pi.build_shape(pts)
+
+
+def packingsolver(specs, polys, W, H, gap, m, seconds, on_progress=None, keepouts=None, fixed=None, copies=-1):
+    """Bin packing of all specs on sheets W x H with margins m. keepouts: forbidden zones (sheet coordinates, on
+    every sheet, already with their margins); fixed: outlines already placed (one sheet only, copies=1), kept at
+    gap mm. Returns a list of sheets (lists of placed), or None if copies is limited and not everything fits."""
     import packingsolver.irregular as pi
     from packingsolver import Objective
+    from shapely.geometry import box as sbox
     uw = W - m['left'] - m['right'] - 2 * SAFETY
     uh = H - m['bottom'] - m['top'] - 2 * SAFETY
+    ox, oy = m['left'] + SAFETY, m['bottom'] + SAFETY
     b = pi.InstanceBuilder()
     b.set_objective(Objective.BinPacking)
-    b.add_bin_type(pi.build_rectangle(uw, uh), copies=-1)
+    bt = b.add_bin_type(pi.build_rectangle(uw, uh), copies=copies)
     b.set_item_item_minimum_spacing(gap + SAFETY)
+    frame = sbox(0, 0, uw, uh)
+    for k_list, spacing in ((keepouts or [], 0.0), (fixed or [], gap + SAFETY)):
+        for g in k_list:
+            g = affinity.translate(g, -ox, -oy).intersection(frame)
+            for part in (g.geoms if hasattr(g, 'geoms') else [g]):
+                if part.geom_type == 'Polygon' and part.area > 1e-6:
+                    d = b.add_defect(bt, 0, pi.ShapeWithHoles(_ps_shape(part)))
+                    b.set_item_defect_minimum_spacing(bt, d, spacing)
     groups = collections.OrderedDict()
     for s in specs:
         groups.setdefault((s['T'].kind, s['rot']), []).append(s)
@@ -186,8 +207,9 @@ def packingsolver(specs, polys, W, H, gap, m, seconds, on_progress=None):
             on_progress(time.time() - t0, None)
     sol = box['out'].solution
     if not sol.feasible():
+        if copies != -1:
+            return None
         raise PlacementError('PackingSolver found no complete solution')
-    ox, oy = m['left'] + SAFETY, m['bottom'] + SAFETY
     sheets = []
     for k in range(sol.number_of_bins()):
         sheet = []
@@ -202,8 +224,25 @@ def packingsolver(specs, polys, W, H, gap, m, seconds, on_progress=None):
 # ============================================================
 # PLACEMENT
 # ============================================================
+def repair(layout, keepouts, specs_polys, W, H, gap, m, seconds=10):
+    """A sparrow layout (sparrow knows no forbidden zones) made valid for the keep-out zones of the clamps: the
+    specimens that touch a zone are taken out and PackingSolver puts them back in the free space of the same sheet
+    (zones + other specimens as obstacles). Returns the new layout, or None if they do not all fit."""
+    if layout is None or not keepouts:
+        return layout
+    bad = [p for p in layout if any(p[4].intersection(k).area > 1e-6 for k in keepouts)]
+    if not bad:
+        return layout
+    keep = [p for p in layout if p not in bad]
+    out = packingsolver([p[0] for p in bad], specs_polys, W, H, gap, m, seconds, keepouts=keepouts,
+                        fixed=[p[4] for p in keep], copies=1)
+    if not out or len(out) != 1 or len(out[0]) != len(bad):
+        return None
+    return keep + out[0]
+
+
 def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_progress=None, log=None,
-          assign_seconds=30, fill_tries=8, fill_seconds=10, fill_max=0.85):
+          assign_seconds=30, fill_tries=8, fill_seconds=10, fill_max=0.85, keepouts=None):
     """All the specimens on sheets W x H (margins: {'left', 'bottom', 'right', 'top'} in mm). See the module docstring.
     Returns a list of sheets, each a list of (spec, rotation_deg, x, y, placed_outline).
     on_progress(label, elapsed_seconds, best_height_or_None, planned_duration); log(message)."""
@@ -223,7 +262,12 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
     area = lambda sheet: sum(_area(polys, p[0], gap) for p in sheet)      # noqa: E731
 
     # 1. assignment
-    sheets = packingsolver(specs, polys, W, H, gap, m, assign_seconds, prog('Assignment', assign_seconds))
+    sheets = packingsolver(specs, polys, W, H, gap, m, assign_seconds, prog('Assignment', assign_seconds),
+                           keepouts=keepouts)
+    U -= sum(k.area for k in (keepouts or []))              # usable area without the clamp zones
+    # with clamps, sparrow (which knows no forbidden zones) must leave room at the top for the specimens moved out
+    # of the clamp zones by repair(): target lowered by the area of the zones / usable width
+    dk = sum(k.area for k in (keepouts or [])) / max(uw, 1.0)
     if len(sheets) > max_sheets:
         raise PlacementError('the specimens need %d sheets (max_sheets = %d)' % (len(sheets), max_sheets))
     if log:
@@ -233,6 +277,8 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
         """sparrow packs sheet k as low as possible; the result is kept only if it fits."""
         trial, t = sparrow([p[0] for p in sheets[k]], polys, W, gap, m, seconds, seed, stall=max(3.0, seconds / 3.0),
                            on_progress=prog(label, seconds))
+        if trial is not None and t <= lim and keepouts:
+            trial = repair(trial, keepouts, polys, W, H, gap, m)
         if trial is not None and t <= lim:
             sheets[k] = trial
         elif log:
@@ -244,8 +290,12 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
         (stopped as soon as found), or None and the top reached."""
         ss = [q[0] for q in sheets[k] if q is not without] + extra
         count[0] += 1                                       # a new seed for each try: more variety
-        trial, t = sparrow(ss, polys, W, gap, m, fill_seconds, seed + count[0], target=lim,
+        trial, t = sparrow(ss, polys, W, gap, m, fill_seconds, seed + count[0], target=lim - dk,
                            on_progress=prog('Sheet %d: +%s' % (k + 1, extra[0]['T'].alias), fill_seconds))
+        if trial is not None and t <= lim and keepouts:
+            trial = repair(trial, keepouts, polys, W, H, gap, m)
+            if trial is None:
+                t = max(t, lim + 0.1)                       # counted as a miss
         return (trial if trial is not None and t <= lim else None), t
 
     def by_room(ks):

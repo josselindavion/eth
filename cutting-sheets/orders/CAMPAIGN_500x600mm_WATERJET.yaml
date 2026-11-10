@@ -10,15 +10,19 @@ templates: catalogue/CTLG_261102              # templates without code: lab cata
 
 # ---------- Sheet on the waterjet machine; all lengths in mm; see preview.png ----------
 sheet: 500x600         # complete sheet, width x height; the height is the rolling direction (required)
-clamping:              # L-shaped margin of the waterjet: 40 mm on the left and at the bottom, nothing is cut there
-  left: 40             #   band on the left edge of the sheet
-  bottom: 40           #   band on the bottom edge (bottom = start of the rolling direction)
-machine_area: 455x555   # really usable area: the sheet minus the L margin (40) and 5 mm on the right and top
-                       #   edges = 455 x 555 mm from (40, 40) (required)
-placement_margin: 5    # 5 mm between the really usable area and the area used for the specimens
-edge_margin: 5         # minimum distance to a free (not clamped) edge of the sheet
+clamps:                # single clamps of the L (user, 10/11/2026): 2 on the left edge, 2 on the bottom edge
+                       #   at = centre of the clamp, in mm from the bottom-left corner along that edge;
+                       #   width = along the edge, depth = into the sheet (40 = depth of the L)
+  - {side: left,   at: 175, width: 50, depth: 40}
+  - {side: left,   at: 475, width: 50, depth: 40}
+  - {side: bottom, at: 140, width: 50, depth: 40}
+  - {side: bottom, at: 375, width: 50, depth: 40}
+clamp_margin: 5        # minimum distance between a specimen and a clamp (room for the waterjet nozzle)
+edge_margin: 5         # minimum distance to the edges of the sheet (also between the clamps)
+placement_margin: 5    # 5 mm more between the really usable area and the area used for the specimens
 gap: 5                 # minimum distance between two specimens (rule of the supervisors)
-# -> effective area (where the specimens go) = 445 x 545 mm from (45, 45)
+# -> effective area (where the specimens go) = 480 x 580 mm from (10, 10), minus a zone of 70 x 50 mm around each
+#    clamp (clamp + clamp_margin + placement_margin)
 
 # ---------- Placement (time budget) ----------
 assign_time: 30        # seconds of PackingSolver to put all the specimens on sheets (step 1)

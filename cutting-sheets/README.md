@@ -78,7 +78,9 @@ specimens:
 | `templates` | folder of the templates without code | `catalogue/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
 | `sheet` | **complete sheet**, width × height in mm; the height is the rolling direction | **required** |
 | `clamping` | bands of the sheet held by the clamps, per side (mm), e.g. `{left: 40, bottom: 40}` = L-shaped; bottom = start of the rolling direction | none |
-| `machine_area` | area the wire can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel) | **required** |
+| `machine_area` | area the cutting head can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel); leave it out for the waterjet (whole sheet, minus `edge_margin`) | whole sheet |
+| `clamps` | single clamps, one line each: `{side: left, at: 175, width: 50, depth: 40}` = clamp of 50 mm along the left edge × 40 mm into the sheet, centred 175 mm from the bottom-left corner; nothing is placed within `clamp_margin` + `placement_margin` of a clamp | none |
+| `clamp_margin` | minimum distance between a specimen and a clamp (room for the nozzle) | 5 |
 | `machine_position` | distance from the left and bottom edges of the sheet to the machine area, `{left, bottom}` | inner corner of the clamping |
 | `placement_margin` | the sheet is not positioned to the mm in the machine: nothing is placed within this distance of the machine area edge (mm) | 5 |
 | `edge_margin` | minimum distance to a free (not clamped) edge of the sheet (mm) | 5 |

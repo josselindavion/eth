@@ -62,8 +62,8 @@ ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#222222'}
 SIDES = ('left', 'bottom', 'right', 'top')       # bottom = start of the rolling direction (+Y)
 
 # the only keys an order may contain (anything else is rejected, so that a typo or an old key is not ignored)
-ORDER_KEYS = ('name', 'templates', 'sheet', 'clamping', 'machine_area', 'machine_position', 'placement_margin',
-              'edge_margin', 'gap', 'assign_time', 'fill_tries', 'fill_time', 'time', 'seed', 'max_sheets',
+ORDER_KEYS = ('name', 'templates', 'sheet', 'clamping', 'clamps', 'clamp_margin', 'machine_area', 'machine_position',
+              'placement_margin', 'edge_margin', 'gap', 'assign_time', 'fill_tries', 'fill_time', 'time', 'seed', 'max_sheets',
               'specimen_id', 'specimens')
 
 
@@ -98,6 +98,19 @@ def _sides(key, d):
     return d
 
 
+def _clamps(lst):
+    """Single clamps: list of {side, at, width, depth} (mm)."""
+    if lst is None:
+        return []
+    keys = {'side', 'at', 'width', 'depth'}
+    if not isinstance(lst, list) or any(not isinstance(c, dict) or set(c) != keys for c in lst):
+        raise OrderError('clamps: expected a list of {side: left, at: 175, width: 50, depth: 40}')
+    for c in lst:
+        if c['side'] not in SIDES:
+            raise OrderError('clamps: side "%s" not among %s' % (c['side'], ', '.join(SIDES)))
+    return lst
+
+
 def read_order(path):
     """Order file -> configuration. The sheet is always described on the machine: complete sheet, clamping, machine
     area (wire travel), placement margin; the effective area and the margins per side follow (zones.py)."""
@@ -108,9 +121,8 @@ def read_order(path):
     unknown = sorted(set(o) - set(ORDER_KEYS))
     if unknown:
         raise OrderError('unknown field(s): %s (allowed: %s)' % (', '.join(unknown), ', '.join(ORDER_KEYS)))
-    for key in ('sheet', 'machine_area'):
-        if o.get(key) is None:
-            raise OrderError('missing field "%s" (e.g. sheet: 400x300, machine_area: 350x250)' % key)
+    if o.get('sheet') is None:
+        raise OrderError('missing field "sheet" (e.g. sheet: 400x300)')
     odir = os.path.dirname(os.path.abspath(path))
     cfg = {
         'name': str(o.get('name') or os.path.splitext(os.path.basename(path))[0]),
@@ -129,9 +141,11 @@ def read_order(path):
     cfg['W'], cfg['H'] = _size('sheet', o['sheet'], '400x300')
     try:
         cfg['zones'] = zones.compute(cfg['W'], cfg['H'], _sides('clamping', o.get('clamping')),
-                                     _size('machine_area', o['machine_area'], '350x250'),
+                                     _size('machine_area', o['machine_area'], '350x250')
+                                     if o.get('machine_area') is not None else None,
                                      float(o.get('placement_margin', 5.0)), float(o.get('edge_margin', 5.0)),
-                                     _sides('machine_position', o.get('machine_position')))
+                                     _sides('machine_position', o.get('machine_position')),
+                                     _clamps(o.get('clamps')), float(o.get('clamp_margin', 5.0)))
     except ValueError as e:
         raise OrderError(str(e))
     cfg['margins'] = zones.margins_from_zones(cfg['zones'])     # what the engine and the checks use
@@ -449,7 +463,7 @@ def _run(order_path, seconds, final, tmp):
         sheets = sp.place(specs, polys, W, H, cfg['gap'], cfg['margins'], cfg['time'], cfg['seed'],
                           max_sheets=cfg['max_sheets'], on_progress=on_progress, log=log,
                           assign_seconds=cfg['assign_time'], fill_tries=cfg['fill_tries'],
-                          fill_seconds=cfg['fill_time'])
+                          fill_seconds=cfg['fill_time'], keepouts=cfg['zones']['keepouts'])
     except sp.PlacementError as e:
         raise OrderError(str(e))
     if state['bar']:
@@ -466,7 +480,7 @@ def _run(order_path, seconds, final, tmp):
 
     step(5, N, 'Checking the final DXF')
     t0 = time.time()
-    R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'])
+    R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'], keepouts=cfg['zones']['keepouts'])
     R['zones'] = cfg['zones']                               # drawn in preview.png
     check_sheet.write_outputs(R, os.path.join(tmp, 'check'), argparse.Namespace(
         min_gap=cfg['gap'], warn_gap=cfg['gap'], min_margin=cfg['margins']))

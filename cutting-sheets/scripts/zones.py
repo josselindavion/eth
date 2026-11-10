@@ -1,21 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-zones.py -- Zones of a sheet on the EDM machine, and their drawing (used by make_plan.py and check_sheet.py).
+zones.py -- Zones of a sheet on the cutting machine (EDM or waterjet), and their drawing (used by make_plan.py and check_sheet.py).
 
 All in mm, in sheet coordinates (origin = bottom-left corner of the sheet, y = rolling direction):
     sheet       the complete sheet (sheet: W x H)
     clamping    the bands held by the clamps (clamping: {left: 40, bottom: 40} = L-shaped clamping)
-    machine     the area the wire can reach (machine_area: 350 x 250 for the CUT E 350), placed from the inner corner
+    machine     the area the cutting head can reach (machine_area: 350 x 250 for the CUT E 350), placed from the inner corner
                 of the clamping (or machine_position: {left, bottom})
     placement   band of placement_margin mm inside the machine area: the sheet is not positioned to the mm in the
                 machine, so nothing is placed there
     effective   the area where the specimens are placed = machine area minus placement margin, inside the sheet,
                 outside the clamping, and at least edge_margin mm from a free edge of the sheet
+    clamps      single clamps (clamps: [{side: left, at: 175, width: 50, depth: 40}, ...]): rectangle of width x depth
+                mm on that edge, centred at "at" mm from the bottom-left corner; nothing is placed within
+                clamp_margin + placement_margin mm of a clamp (keep-out zones, inside the effective area)
+Without machine_area (waterjet: the whole sheet can be cut), the machine area is the sheet minus edge_margin on the
+free edges, so that the effective area is edge_margin + placement_margin from the edges.
 
-The placement engine and the checks only need the margins per side = distance from each sheet edge to the effective
-area (margins_from_zones).
+The placement engine and the checks use the margins per side = distance from each sheet edge to the effective area
+(margins_from_zones), plus the keep-out zones of the single clamps (z['keepouts'], list of polygons).
 """
 from shapely.geometry import box
+from shapely.ops import unary_union
 from matplotlib.patches import Patch, PathPatch
 from matplotlib.path import Path
 
@@ -24,14 +30,36 @@ COLOURS = {'clamping': '#dc2626', 'machine': '#111827', 'placement': '#f59e0b', 
            'unreachable': '#9ca3af'}
 
 
-def compute(W, H, clamping, machine_area, placement_margin, edge_margin, machine_position=None):
-    """Zones of a sheet W x H (see the module docstring). clamping: {side: width}; machine_area: (w, h).
-    Returns a dict of shapely polygons + the numbers used; raises ValueError if the effective area is empty."""
+def clamp_box(cl, W, H):
+    """Rectangle of one single clamp {side, at, width, depth} on a sheet W x H."""
+    side, at, w, d = cl['side'], float(cl['at']), float(cl['width']), float(cl['depth'])
+    if side == 'left':
+        return box(0, at - w / 2, d, at + w / 2)
+    if side == 'right':
+        return box(W - d, at - w / 2, W, at + w / 2)
+    if side == 'bottom':
+        return box(at - w / 2, 0, at + w / 2, d)
+    if side == 'top':
+        return box(at - w / 2, H - d, at + w / 2, H)
+    raise ValueError('clamp side "%s": expected left, bottom, right or top' % side)
+
+
+def compute(W, H, clamping, machine_area, placement_margin, edge_margin, machine_position=None, clamps=None,
+            clamp_margin=5.0):
+    """Zones of a sheet W x H (see the module docstring). clamping: {side: width}; machine_area: (w, h) or None;
+    clamps: list of single clamps. Returns a dict of shapely polygons + the numbers used; raises ValueError if the
+    effective area is empty or a clamp is outside the sheet."""
     c = {k: float(clamping.get(k, 0.0)) for k in SIDES}
-    mw, mh = machine_area
+    clamps_cfg = list(clamps or [])
     pos = machine_position or {}
-    mx = float(pos.get('left', c['left']))
-    my = float(pos.get('bottom', c['bottom']))
+    if machine_area is None:                                # whole sheet reachable (waterjet)
+        x0, y0 = c['left'] or edge_margin, c['bottom'] or edge_margin
+        mw, mh = W - (c['right'] or edge_margin) - x0, H - (c['top'] or edge_margin) - y0
+        mx, my = float(pos.get('left', x0)), float(pos.get('bottom', y0))
+    else:
+        mw, mh = machine_area
+        mx = float(pos.get('left', c['left']))
+        my = float(pos.get('bottom', c['bottom']))
     sheet = box(0, 0, W, H)
     clamps = [b for b in (box(0, 0, c['left'], H) if c['left'] > 0 else None,
                           box(0, 0, W, c['bottom']) if c['bottom'] > 0 else None,
@@ -46,19 +74,33 @@ def compute(W, H, clamping, machine_area, placement_margin, edge_margin, machine
     eff = inner.intersection(free)
     if eff.is_empty or eff.area <= 0:
         raise ValueError('no effective area left: check sheet, clamping, machine_area, machine_position and margins')
+    pads = [clamp_box(cl, W, H) for cl in clamps_cfg]
+    for cl, b in zip(clamps_cfg, pads):
+        if not sheet.buffer(1e-6).contains(b):
+            raise ValueError('clamp %s at %g mm is outside the sheet' % (cl['side'], float(cl['at'])))
+    grow = clamp_margin + placement_margin
+    keepouts = [b.buffer(grow, join_style=2).intersection(eff) for b in pads]
+    keepouts = [k for k in keepouts if not k.is_empty and k.area > 0]
+    shape = eff.difference(unary_union(keepouts)) if keepouts else eff
     reach = machine.intersection(sheet)
-    clamp_union = sheet.intersection(clamps[0]) if clamps else None
-    for b in clamps[1:]:
-        clamp_union = clamp_union.union(b)
+    clamps = [b for b in clamps if b is not None] + pads
+    clamp_union = unary_union(clamps).intersection(sheet) if clamps else None
     placement = reach.difference(eff)
     unreachable = sheet.difference(reach)
     if clamp_union is not None:
         placement = placement.difference(clamp_union)
         unreachable = unreachable.difference(clamp_union)
+    placement = placement.union(unary_union(keepouts)) if keepouts else placement
+    if clamp_union is not None:
+        placement = placement.difference(clamp_union)
     return {'sheet': sheet, 'clamping': clamp_union, 'machine': machine, 'placement': placement,
-            'unreachable': unreachable, 'effective': eff,
+            'unreachable': unreachable, 'effective': eff, 'keepouts': keepouts, 'shape': shape,
             'numbers': {'W': W, 'H': H, 'clamping': c, 'machine_area': (mw, mh), 'machine_position': (mx, my),
-                        'placement_margin': placement_margin, 'edge_margin': edge_margin}}
+                        'placement_margin': placement_margin, 'edge_margin': edge_margin,
+                        'clamps': clamps_cfg, 'n_clamps': len(pads),
+                        'clamp_size': ((float(clamps_cfg[0]['width']), float(clamps_cfg[0]['depth']))
+                                       if clamps_cfg else None),
+                        'clamp_margin': clamp_margin, 'whole_sheet': machine_area is None}}
 
 
 def margins_from_zones(z):
@@ -88,20 +130,27 @@ def draw(ax, z, ox=0.0, oy=0.0):
     patch(z['clamping'], fill=False, hatch='////', ec=COLOURS['clamping'], lw=0, alpha=0.6, zorder=0)
     patch(z['placement'], fill=True, fc=COLOURS['placement'], alpha=0.22, ec='none', zorder=0)
     patch(z['machine'], fill=False, ec=COLOURS['machine'], lw=1.0, ls='--', zorder=1)
-    patch(z['effective'], fill=False, ec=COLOURS['effective'], lw=1.0, zorder=1)
+    patch(z.get('shape', z['effective']), fill=False, ec=COLOURS['effective'], lw=1.0, zorder=1)
 
 
 def legend_handles(z):
     n = z['numbers']
-    c = ', '.join('%s %g' % (k, v) for k, v in n['clamping'].items() if v) or 'none'
-    h = [Patch(fill=False, hatch='////', ec=COLOURS['clamping'], label='clamping (%s mm)' % c),
-         Patch(fill=False, ec=COLOURS['machine'], ls='--', label='machine area %g x %g mm (wire travel)'
+    c = ', '.join('%s %g' % (k, v) for k, v in n['clamping'].items() if v)
+    if n.get('n_clamps'):
+        c = (c + '; ' if c else '') + '%d clamps %g x %g' % ((n['n_clamps'],) + n['clamp_size'])
+    h = [Patch(fill=False, hatch='////', ec=COLOURS['clamping'], label='clamping (%s mm)' % (c or 'none')),
+         Patch(fill=False, ec=COLOURS['machine'], ls='--',
+               label=('usable area %g x %g mm' if n.get('whole_sheet') else 'machine area %g x %g mm (wire travel)')
                % n['machine_area']),
-         Patch(fc=COLOURS['placement'], alpha=0.35, ec='none', label='placement margin %g mm' % n['placement_margin']),
+         Patch(fc=COLOURS['placement'], alpha=0.35, ec='none',
+               label='placement margin %g mm' % n['placement_margin'] +
+                     (' (+ clamp margin %g mm)' % n['clamp_margin'] if n.get('n_clamps') else '')),
          Patch(fill=False, ec=COLOURS['effective'], label='effective area %.0f x %.0f mm (specimens)'
                % _size(z['effective']))]
     if not z['unreachable'].is_empty:
-        h.append(Patch(fc=COLOURS['unreachable'], alpha=0.3, ec='none', label='sheet out of reach of the wire'))
+        h.append(Patch(fc=COLOURS['unreachable'], alpha=0.3, ec='none',
+                       label='edge margin %g mm' % n['edge_margin'] if n.get('whole_sheet')
+                       else 'sheet out of reach of the wire'))
     return h
 
 
