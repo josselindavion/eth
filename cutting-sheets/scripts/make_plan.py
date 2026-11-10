@@ -193,7 +193,7 @@ def expand(cfg, temps):
             specs.append({'T': T, 'angle': ang, 'rot': (ang + T.angle_offset) % 360.0,   # rot = placement angle
                           'a_digit': a_digit, 'index': i, 'line': k,
                           'test_geometry': str(line.get('test_geometry', '') or ''),
-                          'block': '%s__%03ddeg__%s%d' % (T.kind, round(ang), 'i' if T.has_code else 'n', i)})
+                          'block': '%s__%03ddeg__%s%d' % (T.alias, round(ang), 'i' if T.has_code else 'n', i)})
         nxt[key] = idx + n
     if errors:
         raise OrderError('\n'.join(errors))

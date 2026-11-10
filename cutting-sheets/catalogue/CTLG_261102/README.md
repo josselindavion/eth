@@ -6,19 +6,19 @@ One template per specimen type, **without notch code**. The code (angle + index)
 
 | Type | Names in the order file | Size (mm) | Holes | Angles in the source | Code origin (mm) |
 |---|---|---|---|---|---|
-| CTLG_CHCH | `CHCH`, `CH` | 105.9 × 30.0 | 1 | 0°, 45°, 90° | (-6.000, 52.944) |
+| CTLG_CHCH | `CHD48`, `CHCH`, `CH` | 105.9 × 30.0 | 1 | 0°, 45°, 90° | (-6.000, 52.944) |
 | CTLG_NT06 | `NT06`, `NT6.67` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) |
 | CTLG_NT20 | `NT20` | 105.9 × 30.0 | 0 | 0°, 45°, 90° | (-6.000, 52.944) |
-| CTLG_UTUT | `UTUT`, `UT` | 105.9 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 52.944) |
+| CTLG_UTUT | `UT40`, `UTUT`, `UT` | 105.9 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 52.944) |
 | CTST_SHHD | `SHHD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) |
 | CTST_SHLD | `SHLD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) |
 | CTST_SHMD | `SHMD` | 80.8 × 30.0 | 0 | 0°, 45°, 90°, 135° | (-6.000, 40.394) |
-| CTST_UTST | `UTST` | 80.8 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 40.394) |
-| MNAK_FULL | `MNAK_FULL`, `DISC0` | 60.0 × 54.0 | 0 | 0°, 45°, 90° | (-7.000, 27.000) |
-| MNAK_HOLE | `MNAK_HOLE`, `DISC2` | 60.0 × 54.0 | 2 | 0°, 45°, 90° | (-7.000, 27.000) |
+| CTST_UTST | `UT19`, `UTST` | 80.8 × 30.0 | 0 | 0°, 15°, 30°, 45°, 60°, 75°, 90° | (-6.000, 40.394) |
+| MNAK_FULL | `MNAK_ROUND_FULL`, `MNAK_FULL`, `DISC0` | 60.0 × 54.0 | 0 | 0°, 45°, 90° | (-7.000, 27.000) |
+| MNAK_HOLE | `MNAK_ROUND_HOLE`, `MNAK_HOLE`, `DISC2` | 60.0 × 54.0 | 2 | 0°, 45°, 90° | (-7.000, 27.000) |
 | MNAK_RECT_FULL | `MNAK_RECT_FULL` | 80.0 × 54.0 | 0 | 0°, 45°, 90° | (-6.000, 40.000) |
 | MNAK_RECT_HOLE | `MNAK_RECT_HOLE`, `MNAK_RECT` | 80.0 × 54.0 | 2 | 0°, 45°, 90° | (-6.000, 40.000) |
-| TENS_FULL | `TENS_FULL`, `STRIP` | 140.0 × 30.0 | 0 | – | no code |
+| TENS_FULL | `LASER`, `TENS_FULL`, `STRIP` | 140.0 × 30.0 | 0 | – | no code |
 
 Template frame: centre of the minimum bounding rectangle at the origin, code towards +Y. The angle of a specimen is the direction of its code end, measured from the rolling direction (+Y), counter-clockwise, minus the angle offset of the type (MNAK_RECT: −90°). For discs with two holes, the holes are perpendicular to the code direction (angle 90° = holes along the rolling direction); MNAK_RECT has the same hole orientation as the disc of the same angle.
 

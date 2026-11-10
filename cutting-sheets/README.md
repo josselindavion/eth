@@ -36,7 +36,7 @@ One order per lab plan (the `.pdf` / `.dxf` of 2025, and the CT drawing of 2026;
 CUT E 350, L-shaped 40 mm clamping, effective area 240 (RD) × 340 (TD) mm). The old models of those plans (straight grips,
 140 mm; shear blanks 93 mm) are replaced by the catalogue models with the "Christmas tree" grips; same angles and same
 notch codes as in the plans (read in their DXF); the discs are replaced by the rectangular Mini-Nakajima, and extra
-`TENS_FULL` strips fill the space left on the sheets. Each order file explains its correspondence in its header.
+`LASER` strips fill the space left on the sheets. Each order file explains its correspondence in its header.
 
 **Results** in `cutting-sheets/runs/<name>/`:
 - `<name>.dxf`: the plan for the workshop;
@@ -68,7 +68,7 @@ clamping: {left: 40, bottom: 40}   # L-shaped clamping
 machine_area: 250x350              # wire travel of the EDM (AgieCharmilles CUT E 350), RD x TD
 placement_margin: 5                # tolerance on the position of the sheet in the machine
 specimens:
-  - {type: UTUT, angle: 30, count: 5}
+  - {type: UT40, angle: 30, count: 5}
   - {type: NT20, angle: 45, count: 3}
 ```
 
@@ -106,18 +106,23 @@ rolling direction first, marked (RD) / (TD); x = across (TD), y = rolling direct
 **Types** = families of the lab catalogue (`catalogue/specimen_templates_261029_barcoded.dxf`) and of the complementary
 catalogue `MNAK_RECT`:
 
-| Type | Short name | Specimen |
-|---|---|---|
-| `UTUT` | `UT` | uniaxial tension, 106 mm |
-| `NT20` / `NT06` | `NT6.67` for NT06 | notched tension, radius 20 / 6.67 mm, 106 mm |
-| `CHCH` | `CH` | central hole Ø 4.8 mm, 106 mm |
-| `UTST` | – | short uniaxial tension, 81 mm |
-| `SHLD` / `SHMD` / `SHHD` | – | short shear, 81 mm; same outline, only the corner next to the code differs |
-| `MNAK_FULL` | `DISC0` | disc without holes |
-| `MNAK_HOLE` | `DISC2` | disc with 2 holes; holes at **angle + 90°** (angle 90° = holes along the rolling direction) |
-| `MNAK_RECT_HOLE` | `MNAK_RECT` | **rectangular** Mini-Nakajima 80 × 54 mm with 2 holes (proposal of Erik, 02/11/2026): code on an **end** (short side), chamfer on the left of the code; **angle = same hole orientation as the disc `MNAK_HOLE` with the same angle** (90° = holes along the rolling direction), so the coded end is placed at angle − 90° |
-| `MNAK_RECT_FULL` | – | the same **without holes** (equivalent of `MNAK_FULL`) |
-| `TENS_FULL` | `STRIP` | strip 140 × 30 mm without code |
+Names of the lab convention (user, 10/11/2026); the older names are still accepted in an order file.
+
+| Type (lab name) | Older names | Catalogue family | Specimen |
+|---|---|---|---|
+| `UT40` | `UTUT`, `UT` | `CTLG_UTUT` | uniaxial tension, 106 mm; gauge zone 10 mm wide, ≈ 40 mm long |
+| `NT20` / `NT06` | `NT6.67` for NT06 | `CTLG_NT20` / `CTLG_NT06` | notched tension, radius 20 / 6.67 mm, 106 mm |
+| `CHD48` | `CHCH`, `CH` | `CTLG_CHCH` | central hole Ø 4.8 mm, 106 mm |
+| `UT19` | `UTST` | `CTST_UTST` | short uniaxial tension, 81 mm; gauge zone 5 mm wide, ≈ 19 mm between the shoulders |
+| `SHLD` / `SHMD` / `SHHD` | – | `CTST_SHLD` / … | short shear, 81 mm; same outline, only the corner next to the code differs |
+| `MNAK_ROUND_FULL` | `MNAK_FULL`, `DISC0` | `MNAK_FULL` | round Mini-Nakajima (disc) without holes |
+| `MNAK_ROUND_HOLE` | `MNAK_HOLE`, `DISC2` | `MNAK_HOLE` | round Mini-Nakajima with 2 holes; holes at **angle + 90°** (angle 90° = holes along the rolling direction) |
+| `MNAK_RECT_HOLE` | `MNAK_RECT` | `MNAK_RECT_HOLE` | **rectangular** Mini-Nakajima 80 × 54 mm with 2 holes (proposal of Erik, 02/11/2026): code on an **end** (short side), chamfer on the left of the code; **angle = same hole orientation as `MNAK_ROUND_HOLE` with the same angle** (90° = holes along the rolling direction), so the coded end is placed at angle − 90° |
+| `MNAK_RECT_FULL` | – | `MNAK_RECT_FULL` | the same **without holes** |
+| `LASER` | `TENS_FULL`, `STRIP` | `TENS_FULL` | strip 140 × 30 mm without code, for the speckle contrast tests |
+
+The lab name is used in the orders, the notice, the registry (`alias` column; `type` = catalogue family) and the
+block names of the plan DXF (`CHD48__090deg__i3`).
 
 - **Angle**: direction of the coded head, measured from the rolling direction (+Y), counter-clockwise. 0° to 135° in
   steps of 15°, for all types. Only exception: `MNAK_RECT` / `MNAK_RECT_FULL`, placed with the coded end at
@@ -268,11 +273,11 @@ edge. The recesses are part of the closed contour (really cut); there is no gap 
 
 | Type | Mikrosteg 1 | Mikrosteg 2 |
 |---|---|---|
-| UTUT, NT20, NT06, CHCH (106 mm) | end face of the bottom grip, centred | right side of the top grip (top end = code, left = chamfer) |
-| UTST, SHLD, SHMD, SHHD (81 mm) | same | same |
-| MNAK_HOLE, MNAK_FULL (disc) | rim at 30° | rim at 210° (diametrically opposite) |
+| UT40, NT20, NT06, CHD48 (106 mm) | end face of the bottom grip, centred | right side of the top grip (top end = code, left = chamfer) |
+| UT19, SHLD, SHMD, SHHD (81 mm) | same | same |
+| MNAK_ROUND_HOLE, MNAK_ROUND_FULL (disc) | rim at 30° | rim at 210° (diametrically opposite) |
 | MNAK_RECT_HOLE, MNAK_RECT_FULL | bottom end, 14 mm left of centre | coded end, 14 mm right of centre |
-| TENS_FULL | bottom end face, centred | top end face, centred |
+| LASER | bottom end face, centred | top end face, centred |
 
 Positions chosen with the user on 03/11/2026: opposite places, in the clamping zones, as far as possible from the test
 zone (figures in `journal/2026-11-03.md`). The final check compares every specimen of the DXF with its template

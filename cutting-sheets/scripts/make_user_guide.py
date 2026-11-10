@@ -168,7 +168,7 @@ placement_margin: 5                # tolerance on the position of the sheet in t
 edge_margin: 5                     # distance to a free edge of the sheet
 gap: 5                             # distance between two specimens
 specimens:
-  - {type: UTUT, angle: 30, count: 5}
+  - {type: UT40, angle: 30, count: 5}
   - {type: NT20, angle: 45, count: 3, first_index: 1}"""),
            P('4.1 The sheet on the machine', 'h2'),
            table([['Field', 'Meaning', 'Default'],
@@ -211,18 +211,18 @@ specimens:
                                   '(default 0, max 9)']],
                  [0.2, 0.8]),
            Spacer(1, 6),
-           table([['Type', 'Short name', 'Specimen'],
-                  ['UTUT', 'UT', 'uniaxial tension, 106 mm'],
+           table([['Type (lab name)', 'Older names', 'Specimen'],
+                  ['UT40', 'UTUT, UT', 'uniaxial tension, 106 mm (gauge zone ≈ 40 mm)'],
                   ['NT20 / NT06', 'NT6.67 (for NT06)', 'notched tension, radius 20 / 6.67 mm, 106 mm'],
-                  ['CHCH', 'CH', 'central hole, 106 mm'],
-                  ['UTST', '–', 'short uniaxial tension, 81 mm'],
+                  ['CHD48', 'CHCH, CH', 'central hole Ø 4.8 mm, 106 mm'],
+                  ['UT19', 'UTST', 'short uniaxial tension, 81 mm (gauge zone ≈ 19 mm)'],
                   ['SHLD / SHMD / SHHD', '–', 'short shear, 81 mm'],
-                  ['MNAK_FULL / MNAK_HOLE', 'DISC0 / DISC2', 'Mini-Nakajima disc without / with 2 holes '
-                                                             '(holes at angle + 90°)'],
+                  ['MNAK_ROUND_FULL / MNAK_ROUND_HOLE', 'MNAK_FULL / MNAK_HOLE',
+                   'round Mini-Nakajima without / with 2 holes (holes at angle + 90°)'],
                   ['MNAK_RECT_FULL / MNAK_RECT_HOLE', '– / MNAK_RECT', 'rectangular Mini-Nakajima 80 × 54 mm '
                                                                        'without / with 2 holes (holes oriented as on '
                                                                        'the disc with the same angle)'],
-                  ['TENS_FULL', 'STRIP', 'strip 140 × 30 mm, no code']],
+                  ['LASER', 'TENS_FULL, STRIP', 'strip 140 × 30 mm, no code (speckle contrast)']],
                  [0.3, 0.2, 0.5]),
            Spacer(1, 4),
            P('Only the fields of this guide are accepted: an unknown field (typo, old field) stops the run with the '

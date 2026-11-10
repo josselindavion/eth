@@ -49,11 +49,16 @@ import sheetlib as sl                    # noqa: E402
 ROOT = os.path.abspath(os.path.join(HERE, '..', 'catalogue'))
 LAYERS = {3: 'Q3_NORMAL', 4: 'Q4_MEDIUM', 5: 'Q5_HIGH'}
 ACI_RGB = {3: '#16a34a', 4: '#06b6d4', 5: '#2546d6', 7: '#444444'}
-# lab catalogue: family (block name without _nn) -> names accepted in the order file (the first one is displayed)
+# lab catalogue: family (block name without _nn) -> names accepted in the order file. The FIRST one is the lab name
+# (user, 10/11/2026: UT40 / UT19 = length of the gauge zone, CHD48 = hole of 4.8 mm, LASER = speckle contrast strip),
+# used in the orders, the notice, the registry and the block names of the plan; the others (older names) are still
+# accepted in an order file.
 CATALOGUE_ALIASES = {
-    'CTLG_UTUT': ['UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'], 'CTLG_CHCH': ['CHCH', 'CH'],
-    'CTST_UTST': ['UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
-    'MNAK_FULL': ['MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_HOLE', 'DISC2'], 'TENS_FULL': ['TENS_FULL', 'STRIP'],
+    'CTLG_UTUT': ['UT40', 'UTUT', 'UT'], 'CTLG_NT20': ['NT20'], 'CTLG_NT06': ['NT06', 'NT6.67'],
+    'CTLG_CHCH': ['CHD48', 'CHCH', 'CH'],
+    'CTST_UTST': ['UT19', 'UTST'], 'CTST_SHLD': ['SHLD'], 'CTST_SHMD': ['SHMD'], 'CTST_SHHD': ['SHHD'],
+    'MNAK_FULL': ['MNAK_ROUND_FULL', 'MNAK_FULL', 'DISC0'], 'MNAK_HOLE': ['MNAK_ROUND_HOLE', 'MNAK_HOLE', 'DISC2'],
+    'TENS_FULL': ['LASER', 'TENS_FULL', 'STRIP'],
     'MNAK_RECT_HOLE': ['MNAK_RECT_HOLE', 'MNAK_RECT'],    # complementary catalogue (build_mnak_rect.py)
     'MNAK_RECT_FULL': ['MNAK_RECT_FULL']}
 BLOCK_RE = re.compile(r'^(.*?)_(\d+)$')

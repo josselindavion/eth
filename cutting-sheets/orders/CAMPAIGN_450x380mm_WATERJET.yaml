@@ -1,7 +1,7 @@
 # Complete testing campaign for one material, waterjet cutting, on sheets of 450 (RD) x 380 (TD) mm, rolling direction
 # first (sheet size used in the supervisors' plans). Content (journal 2026-11-09, section 4): every geometry tested 3
 # times per orientation, codes index 1, 2, 3 (= repeat). Shear specimens (SHLD / SHMD / SHHD) are not in this order:
-# they are cut by wire EDM for their accuracy (separate EDM order). TENS_FULL strips (no code) are for the speckle
+# they are cut by wire EDM for their accuracy (separate EDM order). LASER strips (no code) are for the speckle
 # contrast tests.
 # Run from the repository root:
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_450x380mm_WATERJET.yaml
@@ -30,34 +30,34 @@ seed: 1                # seed of the random draws of sparrow (change it to get a
 max_sheets: 20         # the order is rejected if it needs more sheets than this
 
 # ---------- Specimens: one line = "count specimens of this type at this angle" ----------
-# type: name in the lab catalogue
-#   long specimens 106 mm   : UTUT (or UT), NT20, NT06 (or NT6.67), CHCH (or CH)
-#   short specimens 81 mm   : UTST, SHLD, SHMD, SHHD
-#   discs                   : MNAK_FULL (or DISC0), MNAK_HOLE (or DISC2; holes at angle + 90 deg)
-#   rectangular Nakajima    : MNAK_RECT_FULL, MNAK_RECT_HOLE (or MNAK_RECT; holes oriented as on the disc)
-#   strip without code      : TENS_FULL (or STRIP)
+# type: lab name of the specimen (names of 10/11/2026; the older names in brackets are still accepted)
+#   long specimens 106 mm   : UT40 (UTUT), NT20, NT06, CHD48 (CHCH)
+#   short specimens 81 mm   : UT19 (UTST), SHLD, SHMD, SHHD
+#   round Mini-Nakajima     : MNAK_ROUND_FULL (MNAK_FULL), MNAK_ROUND_HOLE (MNAK_HOLE; holes at angle + 90 deg)
+#   rectangular Nakajima    : MNAK_RECT_FULL, MNAK_RECT_HOLE (holes oriented as on the round one)
+#   strip without code      : LASER (TENS_FULL), speckle contrast tests
 # angle: direction of the coded end, from the rolling direction, 0-135 deg in steps of 15 (written in the notch code)
 # count: number of specimens of this line
 # first_index: index (number in the notch code) of the first specimen, then +1 for each one (default 0; max 9)
 specimens:
-  - {type: UTUT,           angle: 0,   count: 3, first_index: 1}
-  - {type: UTUT,           angle: 15,  count: 3, first_index: 1}
-  - {type: UTUT,           angle: 30,  count: 3, first_index: 1}
-  - {type: UTUT,           angle: 45,  count: 3, first_index: 1}
-  - {type: UTUT,           angle: 60,  count: 3, first_index: 1}
-  - {type: UTUT,           angle: 75,  count: 3, first_index: 1}
-  - {type: UTUT,           angle: 90,  count: 3, first_index: 1}
-  - {type: NT20,           angle: 0,   count: 3, first_index: 1}
-  - {type: NT20,           angle: 45,  count: 3, first_index: 1}
-  - {type: NT20,           angle: 90,  count: 3, first_index: 1}
-  - {type: NT06,           angle: 0,   count: 3, first_index: 1}
-  - {type: NT06,           angle: 45,  count: 3, first_index: 1}
-  - {type: NT06,           angle: 90,  count: 3, first_index: 1}
-  - {type: CHCH,           angle: 0,   count: 3, first_index: 1}
-  - {type: CHCH,           angle: 45,  count: 3, first_index: 1}
-  - {type: CHCH,           angle: 90,  count: 3, first_index: 1}
-  - {type: MNAK_RECT_FULL, angle: 0,   count: 3, first_index: 1}   # equi-biaxial, no orientation
-  - {type: MNAK_RECT_HOLE, angle: 90,  count: 3, first_index: 1}   # holes along the rolling direction
-  - {type: MNAK_RECT_HOLE, angle: 45,  count: 3, first_index: 1}   # holes at 135 deg
-  - {type: MNAK_RECT_HOLE, angle: 0,   count: 3, first_index: 1}   # holes across the rolling direction
-  - {type: TENS_FULL,      angle: 0,   count: 4}   # speckle contrast tests
+  - {type: UT40,            angle: 0,   count: 3, first_index: 1}
+  - {type: UT40,            angle: 15,  count: 3, first_index: 1}
+  - {type: UT40,            angle: 30,  count: 3, first_index: 1}
+  - {type: UT40,            angle: 45,  count: 3, first_index: 1}
+  - {type: UT40,            angle: 60,  count: 3, first_index: 1}
+  - {type: UT40,            angle: 75,  count: 3, first_index: 1}
+  - {type: UT40,            angle: 90,  count: 3, first_index: 1}
+  - {type: NT20,            angle: 0,   count: 3, first_index: 1}
+  - {type: NT20,            angle: 45,  count: 3, first_index: 1}
+  - {type: NT20,            angle: 90,  count: 3, first_index: 1}
+  - {type: NT06,            angle: 0,   count: 3, first_index: 1}
+  - {type: NT06,            angle: 45,  count: 3, first_index: 1}
+  - {type: NT06,            angle: 90,  count: 3, first_index: 1}
+  - {type: CHD48,           angle: 0,   count: 3, first_index: 1}
+  - {type: CHD48,           angle: 45,  count: 3, first_index: 1}
+  - {type: CHD48,           angle: 90,  count: 3, first_index: 1}
+  - {type: MNAK_RECT_FULL,  angle: 0,   count: 3, first_index: 1}   # equi-biaxial, no orientation
+  - {type: MNAK_RECT_HOLE,  angle: 90,  count: 3, first_index: 1}   # holes along the rolling direction
+  - {type: MNAK_RECT_HOLE,  angle: 45,  count: 3, first_index: 1}   # holes at 135 deg
+  - {type: MNAK_RECT_HOLE,  angle: 0,   count: 3, first_index: 1}   # holes across the rolling direction
+  - {type: LASER,           angle: 0,   count: 4}   # speckle contrast tests
