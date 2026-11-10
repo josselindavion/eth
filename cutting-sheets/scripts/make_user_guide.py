@@ -3,7 +3,7 @@
 make_user_guide.py -- Builds cutting-sheets/user_guide.pdf (how to use the cutting-plan tool).
 
 Run from the repository root, after a run of the shear plan order (the guide shows its preview and notice):
-    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml
+    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_600x500mm_WATERJET.yaml
     py cutting-sheets/scripts/make_user_guide.py
 Needs reportlab and pdftoppm (poppler) for the notice picture.
 """
@@ -26,9 +26,9 @@ from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, Prefo
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.dirname(HERE)
 OUT = os.path.join(BASE, 'user_guide.pdf')
-RUN = os.path.join(BASE, 'output', 'ETH_450x380mm_ShearEDM_v20250520_EDM')   # run of the shear plan order (--final)
+RUN = os.path.join(BASE, 'output', 'CAMPAIGN_600x500mm_WATERJET')   # run of the 600 x 500 order (--final)
 if not os.path.isdir(RUN):
-    RUN = os.path.join(BASE, 'runs', 'ETH_450x380mm_ShearEDM_v20250520_EDM')
+    RUN = os.path.join(BASE, 'runs', 'CAMPAIGN_600x500mm_WATERJET')
 
 for name, f in (('Sans', 'DejaVuSans.ttf'), ('Sans-Bold', 'DejaVuSans-Bold.ttf'), ('Mono', 'DejaVuSansMono.ttf')):
     for d in ('/usr/share/fonts/truetype/dejavu', 'C:/Windows/Fonts'):
@@ -137,7 +137,7 @@ def build():
 
     st += [P('3. Running an order', 'h1'),
            P('Always from the repository root:'),
-           code('cd ~/Documents/eth\ngit pull\npy cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml'),
+           code('cd ~/Documents/eth\ngit pull\npy cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_600x500mm_WATERJET.yaml'),
            table([['Option', 'Effect'],
                   ['(none)', 'results in <font name="Mono">cutting-sheets/runs/&lt;name&gt;/</font>; this folder is '
                              'ignored by git, so runs can be repeated freely'],
@@ -152,12 +152,12 @@ def build():
            Spacer(1, 6),
            P('The terminal shows the 6 steps, progress bars with the remaining time, the specimens moved between '
              'sheets, and the table of checks. A good run ends with:'),
-           code('DONE, all checks OK, in 28 s\n'
-                '    Plan    : .../runs/ETH_450x380mm_ShearEDM_v20250520_EDM/ETH_..._EDM.dxf\n'
+           code('DONE, all checks OK, in 2 min 08 s\n'
+                '    Plan    : .../runs/CAMPAIGN_600x500mm_WATERJET/CAMPAIGN_600x500mm_WATERJET.dxf\n'
                 '    Notice  : .../notice.pdf\n    Registry: .../registry.csv\n    Preview : .../preview.png')]
 
     st += [PageBreak(), P('4. Writing an order', 'h1'),
-           P('Copy <font name="Mono">cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml</font> under a new name and edit it with any '
+           P('Copy <font name="Mono">cutting-sheets/orders/CAMPAIGN_600x500mm_WATERJET.yaml</font> under a new name and edit it with any '
              'text editor. Every field is explained by a comment in the file. Text after # is a comment. Keep the '
              'indentation (spaces, no tabs).'),
            code("""name: ETH_300x400mm_SHEET_v20261103_UT30   # plan name: output folder, DXF, notice
@@ -251,10 +251,10 @@ specimens:
              'attached; after breaking it out, the rest of the bridge stays inside the recess.'),
            P('Send the <b>DXF and notice.pdf</b> to the workshop; keep <b>registry.csv</b> for the lab.'),
            KeepTogether([picture(os.path.join(RUN, 'preview.png'), W),
-                         P('preview.png of the shear plan (orders/ETH_450x380mm_ShearEDM_v20250520.yaml). Red hatching: clamping; black dashed: machine area '
-                           '(wire travel); orange band: placement margin; purple: effective area where the '
-                           'specimens are placed; grey: part of the sheet out of reach of the wire. Line colours '
-                           '= EDM quality.', 'cap')]),
+                         P('preview.png of the 600 × 500 campaign (orders/CAMPAIGN_600x500mm_WATERJET.yaml). Red hatching: '
+                           'clamps; black dashed: usable area; orange band: placement margin; purple: effective area '
+                           'where the specimens are placed; orange circle: repeats side by side; blue arrow: '
+                           'rolling direction.', 'cap')]),
            KeepTogether([picture(notice_png, 0.55 * W),
                          P('First page of notice.pdf (same plan); red squares = Mikrostegs.', 'cap')])]
 

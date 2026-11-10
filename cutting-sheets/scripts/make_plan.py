@@ -3,7 +3,7 @@
 make_plan.py -- Complete EDM cutting plan from an order file ("5 UT at 30 deg, 3 NT20 at 45 deg...").
 
 Run (Python 3 + ezdxf, shapely, matplotlib, scipy, pyyaml, spyrrow, packingsolver), from the repository root:
-    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml
+    py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_600x500mm_WATERJET.yaml
 
 Steps:
     1. read the order (YAML, see cutting-sheets/orders/) and check it: known type, angle multiple of 15 deg and
