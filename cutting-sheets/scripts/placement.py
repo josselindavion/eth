@@ -69,14 +69,44 @@ def _placed(s, r, x, y, polys):
 # ============================================================
 # SPARROW (separate process, can be stopped early)
 # ============================================================
-def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, on_progress=None):
+def _touches(k, m, H=None):
+    """Side(s) of the effective area that a keep-out zone touches: 'left', 'bottom' (the clamps of the L)."""
+    b = k.bounds
+    return ('left' if abs(b[0] - m['left']) < 1e-6 else '') + ('bottom' if abs(b[1] - m['bottom']) < 1e-6 else '')
+
+
+def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, on_progress=None, keepouts=None,
+            lim=None):
     """Packs specs on one sheet as a strip (length = rolling direction). Stops as soon as the top of the layout is
     <= target (if given), or when the top has not gone down by 0.5 mm for "stall" seconds (if given), otherwise after
     "seconds"; with a target, a try that is less than 2 mm above it after "seconds" gets up to "seconds" more. Returns (placed list, top) of the best solution, or (None, inf).
-    m: margins per side {'left', 'bottom', 'right', 'top'} in mm."""
+    m: margins per side {'left', 'bottom', 'right', 'top'} in mm.
+    keepouts + lim: the clamp zones of the left and bottom edges are given to sparrow as one fixed "wall" item: a
+    comb made of a thin bar along the left edge (from the bottom up to lim, the top limit of the sheet) and along the
+    bottom edge, lying in the edge margin, with one tooth on each clamp zone. As long as the wall reaches lim, sparrow
+    can only put it in one place (strip start, against the left side): solutions where it is elsewhere are refused."""
     sep = gap + SAFETY
     x0, x1 = m['left'] - gap, W - m['right'] + gap          # strip borders, x on the sheet
     y0 = m['bottom'] - gap                                  # start of the strip, y on the sheet
+    wall = None
+    walled = [k for k in (keepouts or []) if _touches(k, m)]
+    if walled and lim is not None:
+        from shapely.ops import unary_union
+        from shapely.geometry import box as sbox
+        bt = 1.0                                            # thickness of the bars of the wall
+        x0, y0 = x0 - sep - bt, y0 - sep - bt                # strip widened so that the bars lie in the margin
+        sx, sy = x0 + sep, y0 + sep                          # outer corner of the wall
+        parts = [sbox(sx, sy, sx + bt, lim - 0.05), sbox(sx, sy, x1 - sep - 0.1, sy + bt)]   # not exactly the strip
+        sk = sep / math.sqrt(2.0) - 0.05                     # tooth inset: the rounded clearance of sparrow
+        for k in walled:                                    # (distance sep) must also cover the zone's corners
+            kx0, ky0, kx1, ky1 = k.bounds
+            t = _touches(k, m)
+            parts.append(sbox(sx if 'left' in t else kx0 + sk, sy if 'bottom' in t else ky0 + sk,
+                              kx1 - sk, ky1 - sk))
+        wall = unary_union(parts)
+        if wall.geom_type != 'Polygon' or list(wall.interiors):
+            wall = None                                     # should not happen; then repair() does the work
+            x0, y0 = m['left'] - gap, m['bottom'] - gap
     strip_h = x1 - x0
     if strip_h <= 2 * sep:
         raise PlacementError('left + right margins too large for a sheet %g mm wide' % W)
@@ -88,6 +118,8 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
         g = affinity.rotate(polys[ss[0]['T'].kind], -90, origin=(0, 0))     # our +Y = +X of the strip
         a = ss[0]['rot']
         items.append([gid, [list(p) for p in g.exterior.coords[:-1]], len(ss), [a, (a + 180.0) % 360.0]])
+    if wall is not None:                                    # sheet (x, y) -> strip (y - y0, x1 - x), fixed angle
+        items.append(['WALL', [[y - y0, x1 - x] for x, y in wall.exterior.coords[:-1]], 1, [0.0]])
     budget = 2 * seconds if target is not None else seconds    # time given to sparrow itself
     job = {'items': items, 'strip_height': strip_h, 'separation': sep, 'seconds': budget, 'seed': seed,
            'workers': None}
@@ -113,6 +145,11 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
                 if msg['kind'] == 'error':
                     raise PlacementError('sparrow: %s' % msg['error'])
                 top = msg['width'] - sep + y0
+                if wall is not None:                        # the wall must be at its place, otherwise refused
+                    w = [q for q in msg['placed'] if q[0] == 'WALL']
+                    if not w or abs(w[0][2]) > 0.3 or abs(w[0][3]) > 0.3 or \
+                            abs((w[0][1] + 180.0) % 360.0 - 180.0) > 0.01:
+                        top = math.inf
                 if top < best_top:
                     best, best_top = msg['placed'], top
                 if top < top_imp - 0.5:
@@ -143,6 +180,8 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
     placed = []
     # bottom -> top, then left -> right, so that the indices increase in reading order
     for gid, rot, tx, ty in sorted(best, key=lambda p: (round(p[2], 1), -p[3])):
+        if gid == 'WALL':
+            continue
         s = pool[gid].pop(0)
         placed.append(_placed(s, _snap(rot, s['rot']), x1 - ty, y0 + tx, polys))   # strip -> sheet
     return placed, best_top
@@ -267,16 +306,29 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
     U -= sum(k.area for k in (keepouts or []))              # usable area without the clamp zones
     # with clamps, sparrow (which knows no forbidden zones) must leave room at the top for the specimens moved out
     # of the clamp zones by repair(): target lowered by the area of the zones / usable width
-    dk = sum(k.area for k in (keepouts or [])) / max(uw, 1.0)
+    dk = sum(k.area for k in (keepouts or []) if not _touches(k, m)) / max(uw, 1.0)
     if len(sheets) > max_sheets:
         raise PlacementError('the specimens need %d sheets (max_sheets = %d)' % (len(sheets), max_sheets))
     if log:
         log('PackingSolver: %d sheet(s) (%s specimens)' % (len(sheets), ', '.join(str(len(s)) for s in sheets)))
+    # direct try on one sheet when the area allows it (PackingSolver is less dense than sparrow)
+    if len(sheets) > 1 and sum(area(s) for s in sheets) <= fill_max * U:
+        t1 = max(60.0, 4 * fill_seconds)
+        trial, t = sparrow(specs, polys, W, gap, m, t1, seed, target=lim, on_progress=prog('One sheet', t1),
+                           keepouts=keepouts, lim=lim)
+        if trial is not None and t <= lim and keepouts:
+            trial = repair(trial, keepouts, polys, W, H, gap, m)
+        if trial is not None and t <= lim:
+            sheets = [trial]
+            if log:
+                log('all the specimens fit on one sheet (sparrow)')
+        elif log:
+            log('one sheet: not reached (top %.1f mm for a limit of %.1f mm)' % (t, lim))
 
     def compact(k, label):
         """sparrow packs sheet k as low as possible; the result is kept only if it fits."""
         trial, t = sparrow([p[0] for p in sheets[k]], polys, W, gap, m, seconds, seed, stall=max(3.0, seconds / 3.0),
-                           on_progress=prog(label, seconds))
+                           on_progress=prog(label, seconds), keepouts=keepouts, lim=lim)
         if trial is not None and t <= lim and keepouts:
             trial = repair(trial, keepouts, polys, W, H, gap, m)
         if trial is not None and t <= lim:
@@ -291,7 +343,8 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
         ss = [q[0] for q in sheets[k] if q is not without] + extra
         count[0] += 1                                       # a new seed for each try: more variety
         trial, t = sparrow(ss, polys, W, gap, m, fill_seconds, seed + count[0], target=lim - dk,
-                           on_progress=prog('Sheet %d: +%s' % (k + 1, extra[0]['T'].alias), fill_seconds))
+                           on_progress=prog('Sheet %d: +%s' % (k + 1, extra[0]['T'].alias), fill_seconds),
+                           keepouts=keepouts, lim=lim)
         if trial is not None and t <= lim and keepouts:
             trial = repair(trial, keepouts, polys, W, H, gap, m)
             if trial is None:

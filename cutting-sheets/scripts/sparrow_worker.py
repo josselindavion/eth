@@ -32,7 +32,7 @@ def main():
     def work():
         try:
             box['sol'] = inst.solve(conf, progress=queue)
-        except Exception as e:
+        except BaseException as e:                          # also the panics of the Rust code
             box['err'] = repr(e)
 
     def send(kind, sol):

@@ -63,4 +63,4 @@ specimens:
   - {type: MNAK_RECT_HOLE, angle: 90,  count: 3, first_index: 1}   # holes along the rolling direction
   - {type: MNAK_RECT_HOLE, angle: 45,  count: 3, first_index: 1}   # holes at 135 deg
   - {type: MNAK_RECT_HOLE, angle: 0,   count: 3, first_index: 1}   # holes across the rolling direction
-  - {type: TENS_FULL,      angle: 0,   count: 4}   # speckle contrast tests
+  - {type: TENS_FULL,      angle: 0,   count: 1}   # speckle contrast tests (1, not 4: everything on one sheet)
