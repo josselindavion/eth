@@ -26,6 +26,7 @@ import sys
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt          # noqa: E402
+from matplotlib.patches import FancyArrow        # noqa: E402
 from shapely.geometry import Point, Polygon      # noqa: E402
 from shapely.ops import nearest_points           # noqa: E402
 
@@ -288,6 +289,14 @@ def fig_preview(R, out):
         ax.add_patch(plt.Circle((x, y), 6, fill=False, color=col, lw=1.6))
     for i, f in enumerate(frs):
         ax.text(f.bounds[0] + 4, f.bounds[3] - 4, 'sheet %d' % (i + 1), fontsize=9, va='top')
+        # rolling direction (+Y) next to the left edge of each sheet; sizes are written RD x TD
+        fx0, fy0, fx1, fy1 = f.bounds
+        L = min(80.0, 0.3 * (fy1 - fy0))
+        ax.add_patch(FancyArrow(fx0 - 12, fy0, 0, L, width=2.0, head_width=7.0, head_length=8.0, color='#3b6fb6',
+                                length_includes_head=True))
+        ax.text(fx0 - 18, fy0 + L / 2, 'RD', rotation=90, ha='right', va='center', fontsize=8, color='#3b6fb6')
+        ax.text((fx0 + fx1) / 2, fy0 - 4, '%g (RD) × %g (TD) mm' % (fy1 - fy0, fx1 - fx0), ha='center', va='top',
+                fontsize=7, color='#555555')
     if z:
         ax.set_title('%s  –  red circle: blocking problem, orange: to check; small numbers: piece index'
                      % os.path.basename(d.path), fontsize=9, loc='left')

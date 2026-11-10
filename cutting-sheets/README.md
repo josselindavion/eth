@@ -25,15 +25,15 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/ETH_300x300_6_SHEET
 
 | Order | Content |
 |---|---|
-| `orders/CAMPAIGN_<W>x<H>mm_WATERJET.yaml` | complete testing campaign of one material (no shear: EDM) for waterjet cutting, one per sheet size of the supervisors (300 × 300, 380 × 450, 400 × 450, 500 × 600): L margin 40 mm, 5 mm on the other edges, 5 mm placement margin |
+| `orders/CAMPAIGN_<RD>x<TD>mm_WATERJET.yaml` | complete testing campaign of one material (no shear: EDM) for waterjet cutting, one per sheet size of the supervisors (RD × TD: 300 × 300, 450 × 380, 450 × 400, 600 × 500; 600 × 500 = 1 sheet with single clamps, 2 per side of the L): L margin 40 mm, 5 mm on the other edges, 5 mm placement margin |
 | `orders/ETH_300x300_6_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
 | `orders/ETH_450x400_3_SHEET_v20250520.yaml` | lab plan of the same name (66 specimens + 5 extra strips): 4 sheets |
 | `orders/ETH_600x500mm_2_SHEET_v20250220.yaml` | lab plan of the same name (64 specimens + 4 extra strips): 4 sheets |
 | `orders/ETH_450x380mm_ShearEDM_v20250520.yaml` | lab shear plan of the same name (24 shear specimens + 1 extra strip): 1 sheet |
 | `orders/ETH_600x500mm_2_SHEET_v20260901_CT_bardcode.yaml` | CT drawing of 2026 of the same name (68 specimens, already Christmas tree models; discs replaced by the rectangular Mini-Nakajima): 4 sheets |
 
-One order per lab plan (the `.pdf` / `.dxf` of 2025, and the CT drawing of 2026; the plans themselves are no longer kept in the repository), for the EDM machine (400 × 300 mm sheets on the
-CUT E 350, L-shaped 40 mm clamping, effective area 340 × 240 mm). The old models of those plans (straight grips,
+One order per lab plan (the `.pdf` / `.dxf` of 2025, and the CT drawing of 2026; the plans themselves are no longer kept in the repository), for the EDM machine (300 (RD) × 400 (TD) mm sheets on the
+CUT E 350, L-shaped 40 mm clamping, effective area 240 (RD) × 340 (TD) mm). The old models of those plans (straight grips,
 140 mm; shear blanks 93 mm) are replaced by the catalogue models with the "Christmas tree" grips; same angles and same
 notch codes as in the plans (read in their DXF); the discs are replaced by the rectangular Mini-Nakajima, and extra
 `TENS_FULL` strips fill the space left on the sheets. Each order file explains its correspondence in its header.
@@ -62,10 +62,10 @@ example the one sent to the workshop), add `--final`: it then goes to `output/<n
 Copy one of the orders under a new name and edit the lines:
 
 ```yaml
-name: ETH_400x300mm_SHEET_v20261103_UT30
-sheet: 400x300                     # complete sheet
+name: ETH_300x400mm_SHEET_v20261103_UT30
+sheet: 300x400                     # complete sheet, RD x TD (rolling direction first)
 clamping: {left: 40, bottom: 40}   # L-shaped clamping
-machine_area: 350x250              # wire travel of the EDM (AgieCharmilles CUT E 350)
+machine_area: 250x350              # wire travel of the EDM (AgieCharmilles CUT E 350), RD x TD
 placement_margin: 5                # tolerance on the position of the sheet in the machine
 specimens:
   - {type: UTUT, angle: 30, count: 5}
@@ -76,9 +76,9 @@ specimens:
 |---|---|---|
 | `name` | name of the plan, of the output folder and of the DXF | file name |
 | `templates` | folder of the templates without code | `catalogue/CTLG_261102` (lab catalogue + `MNAK_RECT`) |
-| `sheet` | **complete sheet**, width × height in mm; the height is the rolling direction | **required** |
+| `sheet` | **complete sheet** in mm, **rolling direction first**: `RDxTD` (`600x500` = 600 mm along the rolling direction × 500 mm across); on the drawing the rolling direction is +Y (vertical) | **required** |
 | `clamping` | bands of the sheet held by the clamps, per side (mm), e.g. `{left: 40, bottom: 40}` = L-shaped; bottom = start of the rolling direction | none |
-| `machine_area` | area the cutting head can reach, width × height in mm (CUT E 350: `350x250`, X × Y travel); leave it out for the waterjet (whole sheet, minus `edge_margin`) | whole sheet |
+| `machine_area` | area the cutting head can reach, RD × TD in mm (CUT E 350: `250x350` = Y × X travel); leave it out for the waterjet (whole sheet, minus `edge_margin`) | whole sheet |
 | `clamps` | single clamps, one line each: `{side: left, at: 175, width: 50, depth: 40}` = clamp of 50 mm along the left edge × 40 mm into the sheet, centred 175 mm from the bottom-left corner; nothing is placed within `clamp_margin` + `placement_margin` of a clamp | none |
 | `clamp_margin` | minimum distance between a specimen and a clamp (room for the nozzle) | 5 |
 | `machine_position` | distance from the left and bottom edges of the sheet to the machine area, `{left, bottom}` | inner corner of the clamping |
@@ -98,9 +98,10 @@ There is **one order format**: any other field (a typo, or an old field such as 
 first version) is rejected with the list of allowed fields.
 
 **Effective area** (where the specimens are placed) = machine area minus the placement margin on each side, inside
-the sheet, outside the clamping and at least `edge_margin` from a free edge. Example: sheet 400 × 300, clamping left
-40 and bottom 40, machine area 350 × 250, placement margin 5 → machine area from (40, 40) to (390, 290), effective
-area 340 × 240 mm from (45, 45). The terminal and the notice print these numbers.
+the sheet, outside the clamping and at least `edge_margin` from a free edge. Example: sheet `300x400` (RD × TD), clamping
+left 40 and bottom 40, machine area `250x350`, placement margin 5 → machine area from x 40, y 40 to x 390, y 290,
+effective area 240 (RD) × 340 (TD) mm from x 45, y 45. The terminal, the notice and the preview print every size
+rolling direction first, marked (RD) / (TD); x = across (TD), y = rolling direction (RD).
 
 **Types** = families of the lab catalogue (`catalogue/specimen_templates_261029_barcoded.dxf`) and of the complementary
 catalogue `MNAK_RECT`:
@@ -178,12 +179,12 @@ Measured results:
 
 | Order | Sheets | Duration |
 |---|---|---|
-| CT programme, 63 specimens, one 500 × 600 sheet | 1 sheet, 514 mm high in 60 s (old in-house engine, dropped on 30/10/2026: 564–571 mm) | 1 min |
-| CT programme, 68 specimens, 350 × 250 sheets, L-shaped 40 mm, without filling | 5 sheets of 13–14 specimens, 215–230 mm used of 245 | ~4 min 30 s |
+| CT programme, 63 specimens, one 600 (RD) × 500 (TD) sheet | 1 sheet, 514 mm high in 60 s (old in-house engine, dropped on 30/10/2026: 564–571 mm) | 1 min |
+| CT programme, 68 specimens, 250 (RD) × 350 (TD) sheets, L-shaped 40 mm, without filling | 5 sheets of 13–14 specimens, 215–230 mm used of 245 | ~4 min 30 s |
 | same, with filling (`fill_tries: 8`) | 5 sheets: 14, 14, 15, 15, then 10 specimens; 230–239 mm used on sheets 1–4 | ~11–13 min |
 | CT programme with the rectangular Mini-Nakajima (02/11/2026), sparrow only, `time: 10` | 6 sheets (the last with 2 specimens) | 5 min 12 s |
-| same, **PackingSolver + sparrow** (350 × 250 sheet, L 40 inside the sheet) | 5 sheets of 13–14 specimens, 238–245 mm used of 245 | 6 min 20 s |
-| same, **400 × 300 sheet on the CUT E 350** (clamping outside the machine area, effective area 340 × 240; order removed on 03/11/2026) | **4 sheets** (14, 16, 19, 19 specimens) | **1 min 28 s** |
+| same, **PackingSolver + sparrow** (250 (RD) × 350 (TD) sheet, L 40 inside the sheet) | 5 sheets of 13–14 specimens, 238–245 mm used of 245 | 6 min 20 s |
+| same, **300 (RD) × 400 (TD) sheet on the CUT E 350** (clamping outside the machine area, effective area 240 (RD) × 340 (TD); order removed on 03/11/2026) | **4 sheets** (14, 16, 19, 19 specimens) | **1 min 28 s** |
 
 ## Folder content
 

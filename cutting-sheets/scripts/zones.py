@@ -137,16 +137,16 @@ def legend_handles(z):
     n = z['numbers']
     c = ', '.join('%s %g' % (k, v) for k, v in n['clamping'].items() if v)
     if n.get('n_clamps'):
-        c = (c + '; ' if c else '') + '%d clamps %g x %g' % ((n['n_clamps'],) + n['clamp_size'])
+        c = (c + '; ' if c else '') + '%d clamps %g along the edge x %g deep' % ((n['n_clamps'],) + n['clamp_size'])
     h = [Patch(fill=False, hatch='////', ec=COLOURS['clamping'], label='clamping (%s mm)' % (c or 'none')),
          Patch(fill=False, ec=COLOURS['machine'], ls='--',
-               label=('usable area %g x %g mm' if n.get('whole_sheet') else 'machine area %g x %g mm (wire travel)')
-               % n['machine_area']),
+               label=('usable area %g (RD) x %g (TD) mm' if n.get('whole_sheet')
+                      else 'machine area %g (RD) x %g (TD) mm (wire travel)') % n['machine_area'][::-1]),
          Patch(fc=COLOURS['placement'], alpha=0.35, ec='none',
                label='placement margin %g mm' % n['placement_margin'] +
                      (' (+ clamp margin %g mm)' % n['clamp_margin'] if n.get('n_clamps') else '')),
-         Patch(fill=False, ec=COLOURS['effective'], label='effective area %.0f x %.0f mm (specimens)'
-               % _size(z['effective']))]
+         Patch(fill=False, ec=COLOURS['effective'], label='effective area %.0f (RD) x %.0f (TD) mm (specimens)'
+               % _size(z['effective'])[::-1])]
     if not z['unreachable'].is_empty:
         h.append(Patch(fc=COLOURS['unreachable'], alpha=0.3, ec='none',
                        label='edge margin %g mm' % n['edge_margin'] if n.get('whole_sheet')

@@ -10,16 +10,16 @@ name: ETH_450x380mm_ShearEDM_v20250520_EDM      # name of the plan: output folde
 templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the EDM machine (AgieCharmilles CUT E 350); all lengths in mm; see preview.png ----------
-sheet: 400x300         # complete sheet, width x height; the height is the rolling direction (required)
+sheet: 300x400         # complete sheet, RD x TD: rolling direction first (required)
 clamping:              # bands of the sheet held by the clamps, per side (left / bottom / right / top); here L-shaped
   left: 40             #   clamped band on the left edge of the sheet
   bottom: 40           #   clamped band on the bottom edge (bottom = start of the rolling direction)
-machine_area: 350x250  # area the wire can reach = X x Y travel of the CUT E 350 (required); it starts at the inner
+machine_area: 250x350  # area the wire can reach, RD x TD = Y x X travel of the CUT E 350; it starts at the inner
                        #   corner of the clamping, unless machine_position: {left: .., bottom: ..} is given
 placement_margin: 5    # the sheet is not positioned to the mm: nothing is placed within 5 mm of the machine area edge
 edge_margin: 5         # minimum distance between a specimen and a free (not clamped) edge of the sheet
 gap: 5                 # minimum distance between two specimens (rule of the supervisors)
-# -> effective area (where the specimens go) = machine area - placement margin = 340 x 240 mm from (45, 45)
+# -> effective area (where the specimens go) = machine area - placement margin = 240 (RD) x 340 (TD) mm from x 45, y 45
 
 # ---------- Placement (time budget) ----------
 assign_time: 30        # seconds of PackingSolver to put all the specimens on sheets (step 1)

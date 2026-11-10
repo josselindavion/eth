@@ -83,11 +83,13 @@ def resolve(path, order_dir):
 
 
 def _size(key, v, example):
+    """Reads a size written rolling direction first, "RDxTD" (e.g. 600x500: 600 mm along the rolling direction,
+    500 mm across). Returns (x, y) in sheet coordinates = (TD, RD), since y is the rolling direction."""
     try:
-        w, h = (float(x) for x in str(v).lower().split('x'))
+        rd, td = (float(x) for x in str(v).lower().split('x'))
     except ValueError:
-        raise OrderError('%s: "%s" is not of the form %s' % (key, v, example))
-    return w, h
+        raise OrderError('%s: "%s" is not of the form %s (rolling direction first)' % (key, v, example))
+    return td, rd
 
 
 def _sides(key, d):
@@ -138,10 +140,10 @@ def read_order(path):
         'specimen_id': o.get('specimen_id') or {},
         'lines': list(o['specimens']),
     }
-    cfg['W'], cfg['H'] = _size('sheet', o['sheet'], '400x300')
+    cfg['W'], cfg['H'] = _size('sheet', o['sheet'], '600x500')     # W = TD (x), H = RD (y)
     try:
         cfg['zones'] = zones.compute(cfg['W'], cfg['H'], _sides('clamping', o.get('clamping')),
-                                     _size('machine_area', o['machine_area'], '350x250')
+                                     _size('machine_area', o['machine_area'], '250x350')
                                      if o.get('machine_area') is not None else None,
                                      float(o.get('placement_margin', 5.0)), float(o.get('edge_margin', 5.0)),
                                      _sides('machine_position', o.get('machine_position')),
@@ -334,9 +336,10 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
             ax.set_aspect('equal')
             ax.axis('off')
             ax.annotate('', xy=(0, -7), xytext=(W, -7), arrowprops=dict(arrowstyle='<->', lw=0.6))
-            ax.text(W / 2, -9, 'min %g mm' % W, ha='center', va='top', fontsize=8)
+            ax.text(W / 2, -9, 'TD: min %g mm' % W, ha='center', va='top', fontsize=8)
             ax.annotate('', xy=(W + 7, 0), xytext=(W + 7, H), arrowprops=dict(arrowstyle='<->', lw=0.6))
-            ax.text(W + 9, H / 2, 'min %g mm' % H, rotation=90, ha='left', va='center', fontsize=8)
+            ax.text(W + 9, H / 2, 'RD (rolling direction): min %g mm' % H, rotation=90, ha='left', va='center',
+                    fontsize=8)
             # legend on the left
             lg = fig.add_axes([0.02, 0.10, 0.17, 0.78])
             lg.axis('off')
@@ -362,11 +365,13 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
             fig.suptitle('EDM cutting sheet %d / %d – %s' % (k + 1, n_sheets, cfg['name']), fontsize=10, y=0.96)
             n = cfg['zones']['numbers']
             ex0, ey0, ex1, ey1 = cfg['zones']['effective'].bounds
-            where = ('sheet %g × %g  ·  clamping %s\nmachine area %g × %g  ·  placement margin %g  ·  effective '
-                     'area %g × %g from (%g, %g)' % (W, H, ', '.join('%s %g' % (kk, v) for kk, v in
-                                                                     n['clamping'].items() if v) or 'none',
-                                                      n['machine_area'][0], n['machine_area'][1],
-                                                      n['placement_margin'], ex1 - ex0, ey1 - ey0, ex0, ey0))
+            where = ('sheet %g (RD) × %g (TD)  ·  clamping %s\n%s %g (RD) × %g (TD)  ·  placement margin %g  ·  '
+                     'effective area %g (RD) × %g (TD) from x %g, y %g'
+                     % (H, W, ', '.join('%s %g' % (kk, v) for kk, v in n['clamping'].items() if v) or
+                        ('%d clamps' % n['n_clamps'] if n.get('n_clamps') else 'none'),
+                        'usable area' if n.get('whole_sheet') else 'machine area',
+                        n['machine_area'][1], n['machine_area'][0],
+                        n['placement_margin'], ey1 - ey0, ex1 - ex0, ex0, ey0))
             fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  %s' % (
                 os.path.basename(dxf_path), cfg['gap'], where),
                      fontsize=7, color='#444444', va='top')
@@ -419,14 +424,17 @@ def _run(order_path, seconds, final, tmp):
             shutil.rmtree(old, ignore_errors=True)
         elif os.path.exists(old):
             os.remove(old)
-    print('    %s: %d specimens, sheet %g x %g mm, gap %g mm'
-          % (os.path.basename(order_path), len(specs), W, H, cfg['gap']))
+    print('    %s: %d specimens, sheet %g (RD) x %g (TD) mm, gap %g mm'
+          % (os.path.basename(order_path), len(specs), H, W, cfg['gap']))
     n = cfg['zones']['numbers']
     ex0, ey0, ex1, ey1 = cfg['zones']['effective'].bounds
-    print('    clamping %s mm; machine area %g x %g mm from (%g, %g); placement margin %g mm -> effective area '
-          '%g x %g mm from (%g, %g)' % (', '.join('%s %g' % (k, v) for k, v in n['clamping'].items() if v) or 'none',
-                                       n['machine_area'][0], n['machine_area'][1], n['machine_position'][0],
-                                       n['machine_position'][1], n['placement_margin'], ex1 - ex0, ey1 - ey0, ex0, ey0))
+    print('    clamping %s; %s %g (RD) x %g (TD) mm from x %g, y %g; placement margin %g mm -> effective area '
+          '%g (RD) x %g (TD) mm from x %g, y %g'
+          % (', '.join('%s %g mm' % (k, v) for k, v in n['clamping'].items() if v) or
+             ('%d clamps' % n['n_clamps'] if n.get('n_clamps') else 'none'),
+             'usable area' if n.get('whole_sheet') else 'machine area', n['machine_area'][1], n['machine_area'][0],
+             n['machine_position'][0], n['machine_position'][1], n['placement_margin'], ey1 - ey0, ex1 - ex0,
+             ex0, ey0))
     for (alias, ang), grp in sorted(collections.Counter(
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
         grp_specs = [s for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]

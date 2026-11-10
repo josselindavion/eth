@@ -292,9 +292,9 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
         T = s['T']
         b = affinity.rotate(polys[T.kind], s['rot'], origin=(0, 0)).bounds
         if b[2] - b[0] > uw + 1e-6 or b[3] - b[1] > uh + 1e-6:
-            raise PlacementError('%s at %g deg (%.0f x %.0f mm once turned) does not fit in the usable area of the '
-                                 'sheet (%g x %g mm, margins excluded)' % (T.alias, s['angle'], b[2] - b[0],
-                                                                         b[3] - b[1], uw, uh))
+            raise PlacementError('%s at %g deg (%.0f (RD) x %.0f (TD) mm once turned) does not fit in the usable '
+                                 'area of the sheet (%g (RD) x %g (TD) mm, margins excluded)'
+                                 % (T.alias, s['angle'], b[3] - b[1], b[2] - b[0], uh, uw))
     prog = (lambda label, sec: (lambda t, best: on_progress(label, t, best, sec))) if on_progress else \
         (lambda label, sec: None)
     U = (uw + gap) * (uh + gap)

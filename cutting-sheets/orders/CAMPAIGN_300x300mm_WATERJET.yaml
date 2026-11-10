@@ -1,7 +1,8 @@
-# Complete testing campaign for one material, waterjet cutting, on sheets of 300 x 300 mm (sheet size used in the
-# supervisors' plans). Content (journal 2026-11-09, section 4): every geometry tested 3 times per orientation, codes
-# index 1, 2, 3 (= repeat). Shear specimens (SHLD / SHMD / SHHD) are not in this order: they are cut by wire EDM for
-# their accuracy (separate EDM order). TENS_FULL strips (no code) are for the speckle contrast tests.
+# Complete testing campaign for one material, waterjet cutting, on sheets of 300 (RD) x 300 (TD) mm, rolling direction
+# first (sheet size used in the supervisors' plans). Content (journal 2026-11-09, section 4): every geometry tested 3
+# times per orientation, codes index 1, 2, 3 (= repeat). Shear specimens (SHLD / SHMD / SHHD) are not in this order:
+# they are cut by wire EDM for their accuracy (separate EDM order). TENS_FULL strips (no code) are for the speckle
+# contrast tests.
 # Run from the repository root:
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_300x300mm_WATERJET.yaml
 
@@ -9,16 +10,16 @@ name: CAMPAIGN_300x300mm_WATERJET               # name of the plan: output folde
 templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the waterjet machine; all lengths in mm; see preview.png ----------
-sheet: 300x300         # complete sheet, width x height; the height is the rolling direction (required)
+sheet: 300x300         # complete sheet, RD x TD: rolling direction first (required)
 clamping:              # L-shaped margin of the waterjet: 40 mm on the left and at the bottom, nothing is cut there
   left: 40             #   band on the left edge of the sheet
   bottom: 40           #   band on the bottom edge (bottom = start of the rolling direction)
 machine_area: 255x255   # really usable area: the sheet minus the L margin (40) and 5 mm on the right and top
-                       #   edges = 255 x 255 mm from (40, 40) (required)
+                       #   edges = 255 (RD) x 255 (TD) mm from x 40, y 40 (required)
 placement_margin: 5    # 5 mm between the really usable area and the area used for the specimens
 edge_margin: 5         # minimum distance to a free (not clamped) edge of the sheet
 gap: 5                 # minimum distance between two specimens (rule of the supervisors)
-# -> effective area (where the specimens go) = 245 x 245 mm from (45, 45)
+# -> effective area (where the specimens go) = 245 (RD) x 245 (TD) mm from x 45, y 45
 
 # ---------- Placement (time budget) ----------
 assign_time: 30        # seconds of PackingSolver to put all the specimens on sheets (step 1)

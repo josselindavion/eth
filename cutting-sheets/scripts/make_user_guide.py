@@ -160,10 +160,10 @@ def build():
            P('Copy <font name="Mono">cutting-sheets/orders/ETH_450x380mm_ShearEDM_v20250520.yaml</font> under a new name and edit it with any '
              'text editor. Every field is explained by a comment in the file. Text after # is a comment. Keep the '
              'indentation (spaces, no tabs).'),
-           code("""name: ETH_400x300mm_SHEET_v20261103_UT30   # plan name: output folder, DXF, notice
-sheet: 400x300                     # complete sheet, width x height (height = rolling direction)
+           code("""name: ETH_300x400mm_SHEET_v20261103_UT30   # plan name: output folder, DXF, notice
+sheet: 300x400                     # complete sheet, RD x TD (rolling direction first)
 clamping: {left: 40, bottom: 40}   # L-shaped clamping
-machine_area: 350x250              # wire travel of the EDM (AgieCharmilles CUT E 350)
+machine_area: 250x350              # wire travel of the EDM (CUT E 350), RD x TD
 placement_margin: 5                # tolerance on the position of the sheet in the machine
 edge_margin: 5                     # distance to a free edge of the sheet
 gap: 5                             # distance between two specimens
@@ -172,10 +172,12 @@ specimens:
   - {type: NT20, angle: 45, count: 3, first_index: 1}"""),
            P('4.1 The sheet on the machine', 'h2'),
            table([['Field', 'Meaning', 'Default'],
-                  ['sheet', 'complete sheet, width × height in mm; the height is the rolling direction', 'required'],
+                  ['sheet', 'complete sheet in mm, rolling direction first: RDxTD (600x500 = 600 mm along the rolling '
+                            'direction × 500 mm across)', 'required'],
                   ['clamping', 'bands held by the clamps, per side (left, bottom, right, top); '
                                '{left: 40, bottom: 40} = L-shaped clamping', 'none'],
-                  ['machine_area', 'area the wire can reach (CUT E 350: 350x250 = X × Y travel)', 'required'],
+                  ['machine_area', 'area the wire can reach, RD × TD (CUT E 350: 250x350 = Y × X travel); leave it out '
+                                   'for the waterjet', 'whole sheet'],
                   ['machine_position', 'where the machine area starts on the sheet, {left: .., bottom: ..}',
                    'inner corner of the clamping'],
                   ['placement_margin', 'nothing is placed within this distance of the machine area edge, because '
@@ -185,9 +187,9 @@ specimens:
                  [0.2, 0.62, 0.18]),
            Spacer(1, 4),
            P('<b>Effective area</b> (where the specimens go) = machine area minus the placement margin on each side, '
-             'inside the sheet and outside the clamping. With the values above: machine area from (40, 40) to '
-             '(390, 290), effective area 340 × 240 mm from (45, 45). The terminal, the notice and the preview show '
-             'these zones.'),
+             'inside the sheet and outside the clamping. With the values above: machine area from x 40, y 40 to '
+             'x 390, y 290, effective area 240 (RD) × 340 (TD) mm from x 45, y 45. The terminal, the notice and the '
+             'preview show these zones and write every size rolling direction first, marked (RD) / (TD).'),
            P('4.2 Placement time', 'h2'),
            table([['Field', 'Meaning', 'Default'],
                   ['assign_time', 'seconds for PackingSolver to put all the specimens on sheets', '30'],
