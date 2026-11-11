@@ -42,7 +42,7 @@ G_TEXT = colors.Color(0.40, 0.40, 0.40)
 
 st_title = ParagraphStyle('t', fontName=BOLD, fontSize=16, leading=20)
 st_sub = ParagraphStyle('s', fontName=FONT, fontSize=8.5, leading=11, textColor=G_TEXT)
-st_h = ParagraphStyle('h', fontName=BOLD, fontSize=11.5, leading=14, spaceBefore=12, spaceAfter=1)
+st_h = ParagraphStyle('h', fontName=BOLD, fontSize=11.5, leading=14, spaceBefore=8, spaceAfter=1)
 
 ALL7 = (0, 15, 30, 45, 60, 75, 90)
 A3 = (0, 45, 90)
@@ -100,7 +100,7 @@ def matrix(cols, blocks, width):
              ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
              ('LINEBELOW', (0, 1), (-1, -1), 0.3, G_LINE),
              ('FONT', (-1, 1), (-1, -1), BOLD, 9),
-             ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]
+             ('TOPPADDING', (0, 0), (-1, -1), 2.4), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.4)]
     col_tot = [0] * len(cols)
     for bname, rows in blocks:
         r = len(data)
@@ -121,6 +121,21 @@ def matrix(cols, blocks, width):
     return t, total
 
 
+def laser_table(width):
+    """LASER strips (speckle contrast, no code) in every campaign, without a number: they fill the free space."""
+    wg, wt = 40 * mm, 18 * mm
+    wa = (width - wg - wt) / len(ALL7)
+    data = [['OTHER  ·  waterjet, no code, number set by the free space'] + [''] * (len(ALL7) + 1),
+            ['LASER'] + [''] * len(ALL7) + ['–']]
+    t = Table(data, colWidths=[wg] + [wa] * len(ALL7) + [wt], hAlign='LEFT')
+    t.setStyle(TableStyle([('SPAN', (0, 0), (-1, 0)), ('BACKGROUND', (0, 0), (-1, 0), G_SEC),
+                           ('FONT', (0, 0), (-1, 0), BOLD, 7.5), ('FONT', (0, 1), (-1, 1), FONT, 9),
+                           ('FONT', (-1, 1), (-1, 1), BOLD, 9), ('ALIGN', (1, 1), (-1, 1), 'CENTER'),
+                           ('LINEBELOW', (0, 1), (-1, 1), 0.3, G_LINE), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                           ('TOPPADDING', (0, 0), (-1, -1), 2.4), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.4)]))
+    return t
+
+
 PAGE_W = A4[0] - 36 * mm
 st_big = ParagraphStyle('a', fontName=BOLD, fontSize=10.5, leading=13)
 story, summary = [], []
@@ -134,8 +149,8 @@ for k, (ctitle, csub, blocks) in enumerate(CAMPAIGNS):
         t, tot = matrix(ALL7, bl, PAGE_W)
         tots.append(tot)
         story.append(KeepTogether([Paragraph('%s  ·  %d specimens' % (title, tot), st_h), Spacer(1, 3), t]))
-    story += [Spacer(1, 10), Paragraph('TOTAL: %s = %d SPECIMENS' % (' + '.join(str(x) for x in tots), sum(tots)),
-                                       st_big)]
+    story += [Spacer(1, 8), KeepTogether([laser_table(PAGE_W), Spacer(1, 8), Paragraph(
+        'TOTAL: %s = %d SPECIMENS (+ LASER)' % (' + '.join(str(x) for x in tots), sum(tots)), st_big)])]
     summary.append('%s %d' % (ctitle.split()[1], sum(tots)))
 
 
@@ -147,7 +162,7 @@ def footer(canvas, doc):
     canvas.restoreState()
 
 
-doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=15 * mm,
-                        bottomMargin=15 * mm, title='Test campaigns, DP steel sheet', author='Mohr lab, ETH Zurich')
+doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=13 * mm,
+                        bottomMargin=14 * mm, title='Test campaigns, DP steel sheet', author='Mohr lab, ETH Zurich')
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print('written %s (%s)' % (OUT, ', '.join(summary)))
