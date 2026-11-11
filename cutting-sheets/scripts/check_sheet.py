@@ -66,7 +66,7 @@ def piece_side_margins(frame, poly):
     return {'left': pb[0] - fb[0], 'bottom': pb[1] - fb[1], 'right': fb[2] - pb[2], 'top': fb[3] - pb[3]}
 
 
-def analyse(path, min_gap, warn_gap, min_margin, keepouts=None):
+def analyse(path, min_gap, warn_gap, min_margin, keepouts=None, forbidden=None):
     d = sl.Drawing(path)
     frs = sl.frames(d)
     pcs = sl.pieces(d)
@@ -209,6 +209,23 @@ def analyse(path, min_gap, warn_gap, min_margin, keepouts=None):
                     break
         check('Clamps (keep-out zones)', 'OK' if not n_ko else 'ERROR',
               '%d clamp zone(s) per sheet; %d piece(s) inside' % (len(keepouts), n_ko))
+    # optional: forbidden zone of a partly used sheet (with its margin), same on every sheet
+    if forbidden:
+        n_fz = 0
+        for p in pcs:
+            if not p.sheet:
+                continue
+            x0, y0 = frs[p.sheet - 1].bounds[:2]
+            for k in forbidden:
+                kk = affinity.translate(k, x0, y0)
+                if p.poly.intersection(kk).area > 1e-3:
+                    n_fz += 1
+                    c = p.poly.intersection(kk).representative_point()
+                    R['issues'].append(('ERROR', 'forbidden', (c.x, c.y), 'piece %d (%s) in the forbidden zone '
+                                        '(or its margin)' % (p.k, p.kind), p.sheet))
+                    break
+        check('Forbidden zone', 'OK' if not n_fz else 'ERROR',
+              '%d zone(s) per sheet (with margin); %d piece(s) inside' % (len(forbidden), n_fz))
     # 9. codes
     need = [p for p in pcs if not p.kind.startswith('STRIP')]
     nocode = [p for p in need if not p.code]

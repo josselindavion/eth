@@ -75,8 +75,48 @@ def _touches(k, m, H=None):
     return ('left' if abs(b[0] - m['left']) < 1e-6 else '') + ('bottom' if abs(b[1] - m['bottom']) < 1e-6 else '')
 
 
+_BRIDGES = {}                                           # cache: the same bridge is asked at every sparrow try
+WALL_PLAY = 1.0                                         # mm of play of the wall across the strip, forbidden zone only
+
+
+def _bridge(zone, comb, free, sx, sy, bt):
+    """Bar of thickness bt joining a forbidden zone (wall part) to the comb of the wall: horizontal to the left bar
+    (x = sx) or vertical to the bottom bar (y = sy), at the position where it crosses the least free area (area where
+    specimens could go: a bar across a gap where nothing fits costs nothing). Returns the bar (shapely) or None."""
+    from shapely.geometry import box as sbox
+    key = (zone.wkb, comb.wkb, free.wkb, round(sx, 3), round(sy, 3), bt)
+    if key in _BRIDGES:
+        return _BRIDGES[key]
+    zx0, zy0, zx1, zy1 = zone.bounds
+    best = None
+    for horiz in (True, False):
+        lo, hi = (zy0, zy1 - bt) if horiz else (zx0, zx1 - bt)
+        n = max(1, int((hi - lo) / 1.0))
+        for i in range(n + 1):
+            v = lo + (hi - lo) * i / n
+            probe = sbox(sx, v, zx1, v + bt) if horiz else sbox(v, sy, v + bt, zy1)
+            hit = probe.intersection(zone)
+            if hit.is_empty or hit.area < bt * bt * 0.5:
+                continue
+            # the bar stops where it enters the zone (1 mm inside, so that the union is one polygon)
+            if horiz:
+                end = min(g.bounds[0] for g in (hit.geoms if hasattr(hit, 'geoms') else [hit]))
+                bar = sbox(sx, v, end + 1.0, v + bt)
+            else:
+                end = min(g.bounds[1] for g in (hit.geoms if hasattr(hit, 'geoms') else [hit]))
+                bar = sbox(v, sy, v + bt, end + 1.0)
+            if bar.difference(comb.union(zone)).is_empty:
+                cost = 0.0
+            else:
+                cost = bar.buffer(SAFETY + 5.0, join_style=2).intersection(free).area
+            if best is None or cost < best[0]:
+                best = (cost, bar)
+    _BRIDGES[key] = best[1] if best else None
+    return _BRIDGES[key]
+
+
 def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, on_progress=None, keepouts=None,
-            lim=None):
+            lim=None, forbidden=None, free=None):
     """Packs specs on one sheet as a strip (length = rolling direction). Stops as soon as the top of the layout is
     <= target (if given), or when the top has not gone down by 0.5 mm for "stall" seconds (if given), otherwise after
     "seconds"; with a target, a try that is less than 2 mm above it after "seconds" gets up to "seconds" more. Returns (placed list, top) of the best solution, or (None, inf).
@@ -84,26 +124,67 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
     keepouts + lim: the clamp zones of the left and bottom edges are given to sparrow as one fixed "wall" item: a
     comb made of a thin bar along the left edge (from the bottom up to lim, the top limit of the sheet) and along the
     bottom edge, lying in the edge margin, with one tooth on each clamp zone. As long as the wall reaches lim, sparrow
-    can only put it in one place (strip start, against the left side): solutions where it is elsewhere are refused."""
+    can only put it in one place (strip start, against the left side): solutions where it is elsewhere are refused.
+    forbidden (optional, partly used sheet): forbidden zones (with their margin) anywhere on the sheet. Each one
+    becomes part of the same wall, joined to the comb by a thin bridge placed where it costs the least free area
+    (free: free area of the sheet, used to choose the bridge). Without forbidden, nothing changes."""
     sep = gap + SAFETY
     x0, x1 = m['left'] - gap, W - m['right'] + gap          # strip borders, x on the sheet
     y0 = m['bottom'] - gap                                  # start of the strip, y on the sheet
-    wall = None
+    wall, play, top_bar = None, 0.0, 0.0
     walled = [k for k in (keepouts or []) if _touches(k, m)]
-    if walled and lim is not None:
+    if (walled or forbidden) and lim is not None:
         from shapely.ops import unary_union
         from shapely.geometry import box as sbox
         bt = 1.0                                            # thickness of the bars of the wall
         x0, y0 = x0 - sep - bt, y0 - sep - bt                # strip widened so that the bars lie in the margin
         sx, sy = x0 + sep, y0 + sep                          # outer corner of the wall
-        parts = [sbox(sx, sy, sx + bt, lim - 0.05), sbox(sx, sy, x1 - sep - 0.1, sy + bt)]   # not exactly the strip
+        # with a forbidden zone, sparrow cannot place a wall that fills the strip width to 0.1 mm: the wall gets
+        # PLAY mm of play across the strip (it may then sit up to PLAY mm to the right), and every part of it is
+        # widened by PLAY mm to the left so that the zones stay covered wherever it sits
+        play = WALL_PLAY if forbidden else 0.0
+        parts = [sbox(sx, sy, sx + bt, lim - 0.05), sbox(sx, sy, x1 - sep - 0.1 - play, sy + bt)]   # not exactly the strip
+        if forbidden:
+            # + a top bar in the top margin (specimens stay below lim), so that the clamps of the top edge hang
+            # from it like the clamps of the left edge hang from the left bar; the strip length is then set by the
+            # wall and the real top is the strip length minus the room of this bar (top_bar below)
+            ytb = lim + gap                                 # bottom of the top bar
+            parts = [sbox(sx, sy, sx + bt, ytb + bt), sbox(sx, sy, x1 - sep - 0.1 - play, sy + bt),
+                     sbox(sx, ytb, x1 - sep - 0.1 - play, ytb + bt)]
+            top_bar = gap + bt
         sk = sep / math.sqrt(2.0) - 0.05                     # tooth inset: the rounded clearance of sparrow
+        swept = (lambda g: unary_union([affinity.translate(g, -play * i / 10.0, 0) for i in range(11)])) if play \
+            else (lambda g: g)
         for k in walled:                                    # (distance sep) must also cover the zone's corners
             kx0, ky0, kx1, ky1 = k.bounds
             t = _touches(k, m)
-            parts.append(sbox(sx if 'left' in t else kx0 + sk, sy if 'bottom' in t else ky0 + sk,
-                              kx1 - sk, ky1 - sk))
+            parts.append(swept(sbox(sx if 'left' in t else kx0 + sk, sy if 'bottom' in t else ky0 + sk,
+                                    kx1 - sk, ky1 - sk)))
+        for k in (forbidden or []):                         # optional: forbidden zones, joined to the comb
+            kx0, ky0, kx1, ky1 = k.bounds
+            if abs(ky1 - lim) < 1e-3 and abs(k.area - (kx1 - kx0) * (ky1 - ky0)) < 1e-3:
+                parts.append(swept(sbox(kx0 + sk, ky0 + sk, kx1 - sk, ytb)))   # clamp of the top edge: a tooth
+                continue
+            fz = k.buffer(-sk, join_style=2)
+            if fz.is_empty:
+                continue
+            fz = max(fz.geoms, key=lambda g: g.area) if hasattr(fz, 'geoms') else fz
+            fz = swept(fz)
+            comb = unary_union(parts)
+            if not fz.intersects(comb):
+                bar = _bridge(fz, comb, free if free is not None else sbox(sx, sy, x1, lim), sx, sy, bt)
+                if bar is None:
+                    continue                                # then repair() does the work for this zone
+                parts.append(bar)
+            parts.append(fz)
         wall = unary_union(parts)
+        if play:                                            # the widened parts must not pass the outer bars
+            wall = wall.intersection(sbox(sx, sy, x1, ytb + bt)).simplify(0.001)
+            if wall.geom_type != 'Polygon':
+                wall = max(wall.geoms, key=lambda g: g.area) if hasattr(wall, 'geoms') else wall
+        if forbidden and wall.geom_type == 'Polygon' and list(wall.interiors):
+            from shapely.geometry import Polygon as SPoly
+            wall = SPoly(wall.exterior)                     # a pocket closed by the wall: nothing can go there
         if wall.geom_type != 'Polygon' or list(wall.interiors):
             wall = None                                     # should not happen; then repair() does the work
             x0, y0 = m['left'] - gap, m['bottom'] - gap
@@ -114,10 +195,13 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
     for s in specs:
         groups.setdefault('%s|%g' % (s['T'].kind, s['rot']), []).append(s)
     items = []
+    reach = {}                                              # forbidden path: top of each item above its origin
     for gid, ss in groups.items():
         g = affinity.rotate(polys[ss[0]['T'].kind], -90, origin=(0, 0))     # our +Y = +X of the strip
         a = ss[0]['rot']
         items.append([gid, [list(p) for p in g.exterior.coords[:-1]], len(ss), [a, (a + 180.0) % 360.0]])
+        if top_bar:
+            reach[gid] = {o: affinity.rotate(g, o, origin=(0, 0)).bounds[2] for o in (a, (a + 180.0) % 360.0)}
     if wall is not None:                                    # sheet (x, y) -> strip (y - y0, x1 - x), fixed angle
         items.append(['WALL', [[y - y0, x1 - x] for x, y in wall.exterior.coords[:-1]], 1, [0.0]])
     budget = 2 * seconds if target is not None else seconds    # time given to sparrow itself
@@ -145,9 +229,14 @@ def sparrow(specs, polys, W, gap, m, seconds, seed=1, target=None, stall=None, o
                 if msg['kind'] == 'error':
                     raise PlacementError('sparrow: %s' % msg['error'])
                 top = msg['width'] - sep + y0
+                if top_bar and wall is not None:            # forbidden path: real top of the specimens
+                    tops = [q[2] + min(reach[q[0]].items(), key=lambda kv: abs((q[1] - kv[0] + 180.0) % 360.0 -
+                                                                                  180.0))[1]
+                            for q in msg['placed'] if q[0] != 'WALL']
+                    top = y0 + max(tops) if tops else y0
                 if wall is not None:                        # the wall must be at its place, otherwise refused
                     w = [q for q in msg['placed'] if q[0] == 'WALL']
-                    if not w or abs(w[0][2]) > 0.3 or abs(w[0][3]) > 0.3 or \
+                    if not w or abs(w[0][2]) > 0.3 or not -(play + 0.3) <= w[0][3] <= 0.3 or \
                             abs((w[0][1] + 180.0) % 360.0 - 180.0) > 0.01:
                         top = math.inf
                 if top < best_top:
@@ -281,11 +370,22 @@ def repair(layout, keepouts, specs_polys, W, H, gap, m, seconds=10):
 
 
 def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_progress=None, log=None,
-          assign_seconds=30, fill_tries=8, fill_seconds=10, fill_max=0.85, keepouts=None):
+          assign_seconds=30, fill_tries=8, fill_seconds=10, fill_max=0.85, keepouts=None, forbidden=None):
     """All the specimens on sheets W x H (margins: {'left', 'bottom', 'right', 'top'} in mm). See the module docstring.
     Returns a list of sheets, each a list of (spec, rotation_deg, x, y, placed_outline).
-    on_progress(label, elapsed_seconds, best_height_or_None, planned_duration); log(message)."""
+    on_progress(label, elapsed_seconds, best_height_or_None, planned_duration); log(message).
+    forbidden (optional, partly used sheet): forbidden zones with their margin; obstacles for PackingSolver and
+    repair(), part of the wall for sparrow. Without it, the placement is exactly the same as before."""
     m = margins
+    allk = list(keepouts or []) + list(forbidden or [])     # every keep-out zone (== keepouts without forbidden)
+    free = bridged = None
+    if forbidden:
+        # parts of the sparrow wall joined by a bridge: the forbidden zones, and the clamp zones that do not touch the
+        # left or bottom edge (clamps on the top or right edge), which sparrow would otherwise ignore
+        bridged = list(forbidden) + [k for k in (keepouts or []) if not _touches(k, m)]
+        from shapely.geometry import box as sbox
+        from shapely.ops import unary_union
+        free = sbox(m['left'], m['bottom'], W - m['right'], H - m['top']).difference(unary_union(allk))
     uw, uh = W - m['left'] - m['right'], H - m['bottom'] - m['top']
     lim = H - m['top'] + 1e-6
     for s in specs:                                          # each piece must fit alone in the usable area
@@ -302,11 +402,11 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
 
     # 1. assignment
     sheets = packingsolver(specs, polys, W, H, gap, m, assign_seconds, prog('Assignment', assign_seconds),
-                           keepouts=keepouts)
-    U -= sum(k.area for k in (keepouts or []))              # usable area without the clamp zones
+                           keepouts=allk or keepouts)
+    U -= sum(k.area for k in allk)                          # usable area without the clamp (and forbidden) zones
     # with clamps, sparrow (which knows no forbidden zones) must leave room at the top for the specimens moved out
     # of the clamp zones by repair(): target lowered by the area of the zones / usable width
-    dk = sum(k.area for k in (keepouts or []) if not _touches(k, m)) / max(uw, 1.0)
+    dk = sum(k.area for k in (keepouts or []) if not _touches(k, m)) / max(uw, 1.0) if not forbidden else 0.0
     if len(sheets) > max_sheets:
         raise PlacementError('the specimens need %d sheets (max_sheets = %d)' % (len(sheets), max_sheets))
     if log:
@@ -315,9 +415,9 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
     if len(sheets) > 1 and sum(area(s) for s in sheets) <= fill_max * U:
         t1 = max(60.0, 4 * fill_seconds)
         trial, t = sparrow(specs, polys, W, gap, m, t1, seed, target=lim, on_progress=prog('One sheet', t1),
-                           keepouts=keepouts, lim=lim)
-        if trial is not None and t <= lim and keepouts:
-            trial = repair(trial, keepouts, polys, W, H, gap, m)
+                           keepouts=keepouts, lim=lim, forbidden=bridged, free=free)
+        if trial is not None and t <= lim and allk:
+            trial = repair(trial, allk, polys, W, H, gap, m)
         if trial is not None and t <= lim:
             sheets = [trial]
             if log:
@@ -328,9 +428,10 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
     def compact(k, label):
         """sparrow packs sheet k as low as possible; the result is kept only if it fits."""
         trial, t = sparrow([p[0] for p in sheets[k]], polys, W, gap, m, seconds, seed, stall=max(3.0, seconds / 3.0),
-                           on_progress=prog(label, seconds), keepouts=keepouts, lim=lim)
-        if trial is not None and t <= lim and keepouts:
-            trial = repair(trial, keepouts, polys, W, H, gap, m)
+                           on_progress=prog(label, seconds), keepouts=keepouts, lim=lim, forbidden=bridged,
+                           free=free)
+        if trial is not None and t <= lim and allk:
+            trial = repair(trial, allk, polys, W, H, gap, m)
         if trial is not None and t <= lim:
             sheets[k] = trial
         elif log:
@@ -344,9 +445,9 @@ def place(specs, polys, W, H, gap, margins, seconds, seed=1, max_sheets=20, on_p
         count[0] += 1                                       # a new seed for each try: more variety
         trial, t = sparrow(ss, polys, W, gap, m, fill_seconds, seed + count[0], target=lim - dk,
                            on_progress=prog('Sheet %d: +%s' % (k + 1, extra[0]['T'].alias), fill_seconds),
-                           keepouts=keepouts, lim=lim)
-        if trial is not None and t <= lim and keepouts:
-            trial = repair(trial, keepouts, polys, W, H, gap, m)
+                           keepouts=keepouts, lim=lim, forbidden=bridged, free=free)
+        if trial is not None and t <= lim and allk:
+            trial = repair(trial, allk, polys, W, H, gap, m)
             if trial is None:
                 t = max(t, lim + 0.1)                       # counted as a miss
         return (trial if trial is not None and t <= lim else None), t

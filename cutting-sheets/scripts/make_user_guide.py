@@ -203,7 +203,10 @@ specimens:
                                       'swaps after the placement separate them; the pairs left are a warning '
                                       '(orange circles on the preview)', '10'],
                   ['spread_tries', 'placements tried (seed, seed + 1, ...) to keep the repeats apart; the best is '
-                                   'kept (fewest sheets, then fewest pairs); time up to x tries', '1']],
+                                   'kept (fewest sheets, then fewest pairs); time up to x tries', '1'],
+                  ['forbidden', 'optional, partly used sheet: zone where nothing may be cut, list of rectangles '
+                                '{rd: [from, to], td: [from, to]} (mm from the bottom-left corner)', 'none'],
+                  ['forbidden_margin', 'minimum distance between a specimen and the forbidden zone (mm)', '5']],
                  [0.2, 0.62, 0.18]),
            P('4.3 Specimens', 'h2'),
            P('One line = <i>count</i> specimens of one <i>type</i> at one <i>angle</i>.'),

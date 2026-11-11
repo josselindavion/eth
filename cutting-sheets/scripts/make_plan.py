@@ -68,7 +68,7 @@ SIDES = ('left', 'bottom', 'right', 'top')       # bottom = start of the rolling
 # the only keys an order may contain (anything else is rejected, so that a typo or an old key is not ignored)
 ORDER_KEYS = ('name', 'templates', 'sheet', 'clamping', 'clamps', 'clamp_margin', 'machine_area', 'machine_position',
               'placement_margin', 'edge_margin', 'gap', 'assign_time', 'fill_tries', 'fill_time', 'time', 'seed', 'max_sheets',
-              'spread_distance', 'spread_tries', 'specimen_id', 'specimens')
+              'spread_distance', 'spread_tries', 'forbidden', 'forbidden_margin', 'specimen_id', 'specimens')
 
 
 class OrderError(Exception):
@@ -117,6 +117,27 @@ def _clamps(lst):
     return lst
 
 
+def _forbidden(lst):
+    """Optional forbidden zone (partly used sheet): list of {rd: [from, to], td: [from, to]} (mm, from the bottom-left
+    corner of the sheet; rd = along the rolling direction = y, td = across = x) -> shapely rectangles."""
+    if lst is None:
+        return None
+    from shapely.geometry import box
+    msg = 'forbidden: expected a list of {rd: [from, to], td: [from, to]} (mm, rolling direction first)'
+    if not isinstance(lst, list) or not lst:
+        raise OrderError(msg)
+    out = []
+    for r in lst:
+        try:
+            assert isinstance(r, dict) and set(r) == {'rd', 'td'}
+            (y0, y1), (x0, x1) = [float(v) for v in r['rd']], [float(v) for v in r['td']]
+            assert y1 > y0 and x1 > x0
+        except (AssertionError, TypeError, ValueError):
+            raise OrderError('%s; wrong entry: %s' % (msg, r))
+        out.append(box(x0, y0, x1, y1))
+    return out
+
+
 def read_order(path):
     """Order file -> configuration. The sheet is always described on the machine: complete sheet, clamping, machine
     area (wire travel), placement margin; the effective area and the margins per side follow (zones.py)."""
@@ -147,13 +168,15 @@ def read_order(path):
         'lines': list(o['specimens']),
     }
     cfg['W'], cfg['H'] = _size('sheet', o['sheet'], '600x500')     # W = TD (x), H = RD (y)
+    cfg['forbidden_rects'] = _forbidden(o.get('forbidden'))          # optional (partly used sheet), else None
     try:
         cfg['zones'] = zones.compute(cfg['W'], cfg['H'], _sides('clamping', o.get('clamping')),
                                      _size('machine_area', o['machine_area'], '250x350')
                                      if o.get('machine_area') is not None else None,
                                      float(o.get('placement_margin', 5.0)), float(o.get('edge_margin', 5.0)),
                                      _sides('machine_position', o.get('machine_position')),
-                                     _clamps(o.get('clamps')), float(o.get('clamp_margin', 5.0)))
+                                     _clamps(o.get('clamps')), float(o.get('clamp_margin', 5.0)),
+                                     cfg['forbidden_rects'], float(o.get('forbidden_margin', 5.0)))
     except ValueError as e:
         raise OrderError(str(e))
     cfg['margins'] = zones.margins_from_zones(cfg['zones'])     # what the engine and the checks use
@@ -378,6 +401,8 @@ def notice(path, cfg, dxf_path, sheets_rows, reg, specs_by_block, checks):
                         'usable area' if n.get('whole_sheet') else 'machine area',
                         n['machine_area'][1], n['machine_area'][0],
                         n['placement_margin'], ey1 - ey0, ex1 - ex0, ex0, ey0))
+            if n.get('forbidden_margin') is not None:       # optional: partly used sheet
+                where += '  ·  forbidden zone %.0f mm², margin %g' % (n['forbidden_area'], n['forbidden_margin'])
             fig.text(0.20, 0.925, 'DXF: %s\nunits mm  ·  gap between parts ≥ %g mm  ·  %s' % (
                 os.path.basename(dxf_path), cfg['gap'], where),
                      fontsize=7, color='#444444', va='top')
@@ -443,6 +468,9 @@ def _run(order_path, seconds, final, tmp, spread_tries=None):
              'usable area' if n.get('whole_sheet') else 'machine area', n['machine_area'][1], n['machine_area'][0],
              n['machine_position'][0], n['machine_position'][1], n['placement_margin'], ey1 - ey0, ex1 - ex0,
              ex0, ey0))
+    if n.get('forbidden_margin') is not None:               # optional: partly used sheet
+        print('    forbidden zone (sheet already used): %d rectangle(s), %.0f mm², margin %g mm'
+              % (len(cfg['forbidden_rects']), n['forbidden_area'], n['forbidden_margin']))
     for (alias, ang), grp in sorted(collections.Counter(
             (s['T'].alias, s['angle']) for s in specs).items(), key=lambda kv: (kv[0][0], kv[0][1])):
         grp_specs = [s for s in specs if (s['T'].alias, s['angle']) == (alias, ang)]
@@ -485,12 +513,14 @@ def _run(order_path, seconds, final, tmp, spread_tries=None):
             sh = sp.place(specs, polys, W, H, cfg['gap'], cfg['margins'], cfg['time'], seed,
                           max_sheets=cfg['max_sheets'], on_progress=on_progress, log=log,
                           assign_seconds=cfg['assign_time'], fill_tries=cfg['fill_tries'],
-                          fill_seconds=cfg['fill_time'], keepouts=cfg['zones']['keepouts'])
+                          fill_seconds=cfg['fill_time'], keepouts=cfg['zones']['keepouts'],
+                          forbidden=cfg['zones']['forbidden_keepouts'] or None)
         except sp.PlacementError as e:
             raise OrderError(str(e))
         # repeats of the same type and angle side by side: swaps (spread.py)
         n0 = len(spread.conflicts(sh, cfg['spread_distance']))
-        sh, n_sw = spread.improve(sh, place_fn, W, H, cfg['gap'], cfg['margins'], cfg['zones']['keepouts'],
+        sh, n_sw = spread.improve(sh, place_fn, W, H, cfg['gap'], cfg['margins'],
+                                  cfg['zones']['keepouts'] + cfg['zones']['forbidden_keepouts'],
                                   cfg['spread_distance'])
         n1 = len(spread.conflicts(sh, cfg['spread_distance']))
         log('%d sheet(s); repeats side by side: %d pair(s), %d after %d swap(s)' % (len(sh), n0, n1, n_sw))
@@ -517,7 +547,8 @@ def _run(order_path, seconds, final, tmp, spread_tries=None):
 
     step(5, N, 'Checking the final DXF')
     t0 = time.time()
-    R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'], keepouts=cfg['zones']['keepouts'])
+    R = check_sheet.analyse(dxf, cfg['gap'], cfg['gap'], cfg['margins'], keepouts=cfg['zones']['keepouts'],
+                            forbidden=cfg['zones']['forbidden_keepouts'] or None)
     R['zones'] = cfg['zones']                               # drawn in preview.png
     pairs = spread.conflicts(sheets, cfg['spread_distance'])
     for k, i, j, d in pairs:                                # orange circles on the preview, between the two repeats
