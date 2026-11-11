@@ -4,7 +4,8 @@ make_campaign_orders.py -- Writes the orders of campaigns A and B on 600 x 500 s
 rules of 11/11/2026 (same rules as make_campaigns_pdf.py). Sheet block, clamps and placement settings are copied from
 orders/CAMPAIGN_600x500mm_WATERJET.yaml.
 
-    py cutting-sheets/scripts/make_campaign_orders.py [n_laser]        (default 2 LASER strips)
+    py cutting-sheets/scripts/make_campaign_orders.py [n_laser]        (default 4 LASER strips: 2 at first, + 2 asked
+                                                                        by the user on 11/11/2026 for the last common sheet)
 
 Index of the notch code = strain rate, the same for every type: slow 1-3, medium 4-6, high 7-9 (shear, 2 repeats:
 1-2, 4-5, 7-8), so that specimens of the same type and angle at different rates have different codes.
@@ -17,7 +18,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ORDERS = os.path.join(HERE, '..', 'orders')
 BASE = os.path.join(ORDERS, 'CAMPAIGN_600x500mm_WATERJET.yaml')
-N_LASER = int(sys.argv[1]) if len(sys.argv) > 1 else 2
+N_LASER = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 
 ALL7 = (0, 15, 30, 45, 60, 75, 90)
 A3 = (0, 45, 90)

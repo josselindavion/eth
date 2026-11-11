@@ -1,6 +1,6 @@
 # Campaign B (A without SHLD, SHHD at 45, 90 deg) for one material, tension-type specimens, waterjet cutting on sheets of 600 (RD) x 500 (TD) mm,
 # written by scripts/make_campaign_orders.py from the campaign rules of 11/11/2026 (campaigns PDF
-# campaigns/DP_test_campaigns_Beerli2026.pdf): 156 specimens + 2 LASER strips.
+# campaigns/DP_test_campaigns_Beerli2026.pdf): 156 specimens + 4 LASER strips.
 # The shear specimens are in SHEAR_B_600x500mm_WATERJET.
 # Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).
 # Run from the repository root:
@@ -104,4 +104,4 @@ specimens:
   - {type: CHD48,           angle: 45,  count: 3, first_index: 7}
   - {type: CHD48,           angle: 90,  count: 3, first_index: 7}
   # speckle contrast strips (no code)
-  - {type: LASER,           angle: 0,   count: 2}
+  - {type: LASER,           angle: 0,   count: 4}
