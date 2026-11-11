@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 make_campaigns_pdf.py -- Test campaigns of one DP steel sheet as a sober PDF: for each campaign (slow, medium, high
-rate) the number of specimens per geometry and per orientation. Black and greys only. User requests and answers of the
-supervisors of 11/11/2026.
+rate) the number of specimens per geometry and per orientation, for campaigns A (full), B (space a little short) and
+C (space really short), one page each. Black and greys only. User requests and answers of the supervisors of
+11/11/2026.
 
 Sources: Beerli et al. (2026), Int. J. Impact Eng. 215, 105761 (programme); Roth & Mohr (2018), Int. J. Mech. Sci.
 149 (three shear geometries per material, LD / MD / HD); user, 11/11/2026: shear with 2 repeats.
@@ -15,7 +16,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -54,17 +55,35 @@ def row(geom, angles, n):
     return (geom, {a: n for a in angles})
 
 
-SHEAR3 = lambda angles: [row(g, angles, 2) for g in ('SHLD', 'SHMD', 'SHHD')]     # noqa: E731
-# answers of the supervisors (user, 11/11/2026): CH4.8 (catalogue CHD48) = 4.8 mm hole re-drilled to 5 mm (CH5 everywhere, no CH8);
-# MNAK_RECT_FULL = punch, 0 deg only, 3; MNAK_RECT_HOLE = mini-Nakazima; UT at all orientations at every rate
+SH = ('SHLD', 'SHMD', 'SHHD')
+
+
+def rates(shear_45_90=SH, elevated=A3):
+    """Slow, medium and high rate blocks. shear_45_90: shear geometries also cut at 45 and 90 deg (all rates);
+    elevated: orientations of the medium and high rate specimens (UT at all 7 orientations unless only 0 deg)."""
+    def shear(angles):
+        return [row(g, tuple(a for a in angles if a == 0 or g in shear_45_90), 2) for g in SH]
+    slow = [(TEN, [row('UT40', ALL7, 3), row('NT20', A3, 3), row('NT06', A3, 3), row('CH4.8', A3, 3),
+                   row('MNAK_RECT_FULL', (0,), 3), row('MNAK_RECT_HOLE', A3, 3)]),
+            (SHE, shear(A3))]
+    ut = ALL7 if elevated != (0,) else (0,)
+
+    def fast(uname):
+        return [(TEN, [row(uname, ut, 3), row('NT20', elevated, 3), row('NT06', elevated, 3),
+                       row('CH4.8', elevated, 3)]),
+                (SHE, shear(elevated))]
+    return [('SLOW RATE', slow), ('MEDIUM RATE', fast('UT40')), ('HIGH RATE', fast('UT19'))]
+
+
+# campaigns A, B, C (user, 11/11/2026); CH4.8 = catalogue CHD48 (4.8 mm hole re-drilled to 5 mm), MNAK_RECT_FULL =
+# punch (0 deg only), MNAK_RECT_HOLE = mini-Nakazima, shear 3 geometries (Roth & Mohr 2018) x 2 repeats
 CAMPAIGNS = [
-    ('SLOW RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', A3, 3), row('NT06', A3, 3), row('CH4.8', A3, 3),
-                          row('MNAK_RECT_FULL', (0,), 3), row('MNAK_RECT_HOLE', A3, 3)]),
-                   (SHE, SHEAR3(A3))]),
-    ('MEDIUM RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CH4.8', (0,), 3)]),
-                     (SHE, SHEAR3((0,)))]),
-    ('HIGH RATE', [(TEN, [row('UT19', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CH4.8', (0,), 3)]),
-                   (SHE, SHEAR3((0,)))]),
+    ('CAMPAIGN A  ·  FULL', 'All specimens. Medium and high rate: NT20, NT06, CH4.8 and shear also at 45° and 90°.',
+     rates()),
+    ('CAMPAIGN B  ·  SPACE A LITTLE SHORT', 'Campaign A without SHLD and SHHD at 45° and 90°.',
+     rates(shear_45_90=('SHMD',))),
+    ('CAMPAIGN C  ·  SPACE REALLY SHORT', 'Slow rate as campaign B. Medium and high rate: 0° only.',
+     [rates(shear_45_90=('SHMD',))[0]] + rates(shear_45_90=('SHMD',), elevated=(0,))[1:]),
 ]
 
 
@@ -94,7 +113,7 @@ def matrix(cols, blocks, width):
                 col_tot[j] += counts.get(a, 0)
     r = len(data)
     total = sum(col_tot)
-    data.append(['TOTAL'] + [str(v) for v in col_tot] + [str(total)])
+    data.append(['TOTAL'] + [str(v) if v else '' for v in col_tot] + [str(total)])
     style += [('FONT', (0, r), (-1, r), BOLD, 9.5), ('BACKGROUND', (0, r), (-1, r), G_TOT),
               ('LINEABOVE', (0, r), (-1, r), 1.0, BLACK)]
     t = Table(data, colWidths=[wg] + [wa] * len(cols) + [wt], hAlign='LEFT')
@@ -103,16 +122,21 @@ def matrix(cols, blocks, width):
 
 
 PAGE_W = A4[0] - 36 * mm
-story = [Paragraph('TEST CAMPAIGNS  ·  DP STEEL SHEET', st_title),
-         Paragraph('Number of specimens per geometry and orientation to the rolling direction, one material.', st_sub)]
-totals = []
-for title, blocks in CAMPAIGNS:
-    t, tot = matrix(ALL7, blocks, PAGE_W)
-    totals.append(tot)
-    story.append(KeepTogether([Paragraph('%s  ·  %d specimens' % (title, tot), st_h), Spacer(1, 3), t]))
-story += [Spacer(1, 12),
-          Paragraph('ALL RATES: %s = %d SPECIMENS' % (' + '.join(str(x) for x in totals), sum(totals)),
-                    ParagraphStyle('a', fontName=BOLD, fontSize=10.5, leading=13))]
+st_big = ParagraphStyle('a', fontName=BOLD, fontSize=10.5, leading=13)
+story, summary = [], []
+for k, (ctitle, csub, blocks) in enumerate(CAMPAIGNS):
+    if k:
+        story.append(PageBreak())
+    story += [Paragraph(ctitle, st_title), Paragraph(csub + '  Specimens per geometry and orientation to the '
+                                                     'rolling direction, one material.', st_sub)]
+    tots = []
+    for title, bl in blocks:
+        t, tot = matrix(ALL7, bl, PAGE_W)
+        tots.append(tot)
+        story.append(KeepTogether([Paragraph('%s  ·  %d specimens' % (title, tot), st_h), Spacer(1, 3), t]))
+    story += [Spacer(1, 10), Paragraph('TOTAL: %s = %d SPECIMENS' % (' + '.join(str(x) for x in tots), sum(tots)),
+                                       st_big)]
+    summary.append('%s %d' % (ctitle.split()[1], sum(tots)))
 
 
 def footer(canvas, doc):
@@ -126,4 +150,4 @@ def footer(canvas, doc):
 doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=15 * mm,
                         bottomMargin=15 * mm, title='Test campaigns, DP steel sheet', author='Mohr lab, ETH Zurich')
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
-print('written %s (%s)' % (OUT, ' + '.join(str(x) for x in totals)))
+print('written %s (%s)' % (OUT, ', '.join(summary)))
