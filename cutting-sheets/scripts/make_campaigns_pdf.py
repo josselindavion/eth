@@ -91,7 +91,6 @@ QUESTIONS = [
     'Shear: also 135°? The 3 geometries (LD / MD / HD) also at medium and high rate?',
     'MNAK_RECT_FULL = punch and MNAK_RECT_HOLE = mini-Nakazima? 0, 45, 90° × 3 each?',
     'Central hole: is the 4.8 mm hole reamed to 5 mm after cutting? Is CH8 needed?',
-    'Do the slow and medium machines take the fir-tree ends of our specimens?',
 ]
 
 
