@@ -7,9 +7,9 @@ from Beerli et al. (2026), Int. J. Impact Eng. 215, 105761 (literature/papers/).
     py cutting-sheets/scripts/make_campaigns_xlsx.py cutting-sheets/campaigns/DP_test_campaigns_Beerli2026.xlsx
 
 Each sheet: specimen (lab name), orientations to the rolling direction, repeats, number (formula), shear in its own
-block (3 geometries LD / MD / HD as recommended by Roth & Mohr 2018, 2 repeats at every rate, user
-11/11/2026), totals (formulas). * = to confirm with the supervisors (repeats at medium / high rate are not stated in the
-paper: 3 inferred from its 150 tests = 5 materials x 2 rates x 5 types x 3).
+block (3 geometries LD / MD / HD as recommended by Roth & Mohr 2018, 2 repeats), totals (formulas). Answers of the
+supervisors (11/11/2026): CH5 everywhere (4.8 mm hole re-drilled), MNAK_RECT_FULL at 0 deg only, UT at all
+orientations at every rate.
 """
 import sys
 from openpyxl import Workbook
@@ -36,21 +36,18 @@ mid = Alignment(horizontal='center', vertical='center')
 ALL7 = '0, 15, 30, 45, 60, 75, 90'
 A3 = '0, 45, 90'
 # sheet: (title, loading, tension rows, shear rows); row = (specimen, orientations, n orientations, repeats)
+SH3 = lambda ori, n: [(g, ori, n, 2) for g in ('SHLD', 'SHMD', 'SHHD')]      # noqa: E731
 RATES = [
-    ('Slow rate', 'Slow rate (quasi-static)',
-     'UT: 0.001 /s  ·  other specimens: 6.6e-6 m/s  ·  100 kN hydraulic testing machine',
-     [('UT40', ALL7, 7, 3), ('NT20', A3, 3, 3), ('NT06', A3, 3, 3), ('CHD48 (CH5)', A3, 3, 3),
-      ('MNAK_RECT_FULL (punch) *', A3, 3, 3), ('MNAK_RECT_HOLE (mini-Nakazima) *', A3, 3, 3)],
-     [('SHLD', A3, 3, 2), ('SHMD', A3, 3, 2), ('SHHD', A3, 3, 2)]),
-    ('Medium rate', 'Medium rate (intermediate)',
-     'UT: 1 /s  ·  other specimens: 6.6e-3 m/s  ·  Instron 8801 (100 kN)',
-     [('UT40', '0', 1, '3 *'), ('NT20', '0', 1, '3 *'), ('NT06', '0', 1, '3 *'), ('CHD48 (CH5)', '0', 1, '3 *')],
-     [('SHLD *', '0', 1, 2), ('SHMD *', '0', 1, 2), ('SHHD *', '0', 1, 2)]),
+    ('Slow rate', 'Slow rate',
+     [('UT40', ALL7, 7, 3), ('NT20', A3, 3, 3), ('NT06', A3, 3, 3), ('CHD48', A3, 3, 3),
+      ('MNAK_RECT_FULL', '0', 1, 3), ('MNAK_RECT_HOLE', A3, 3, 3)],
+     SH3(A3, 3)),
+    ('Medium rate', 'Medium rate',
+     [('UT40', ALL7, 7, 3), ('NT20', '0', 1, 3), ('NT06', '0', 1, 3), ('CHD48', '0', 1, 3)],
+     SH3('0', 1)),
     ('High rate', 'High rate',
-     'UT: 100 /s  ·  other specimens: about 1.4 m/s  ·  split Hopkinson tensile bar',
-     [('UT19 (small UT)', '0', 1, '3 *'), ('NT20', '0', 1, '3 *'), ('NT06', '0', 1, '3 *'),
-      ('CHD48 (CH5)', '0', 1, '3 *')],
-     [('SHLD *', '0', 1, 2), ('SHMD *', '0', 1, 2), ('SHHD *', '0', 1, 2)]),
+     [('UT19', ALL7, 7, 3), ('NT20', '0', 1, 3), ('NT06', '0', 1, 3), ('CHD48', '0', 1, 3)],
+     SH3('0', 1)),
 ]
 HEAD = ['Specimen', 'Orientations to RD (°)', 'Orientations', 'Repeats', 'Number']
 WIDTH = [36, 28, 14, 12, 12]
@@ -90,16 +87,14 @@ def block(ws, r, label, rows):
 
 wb = Workbook()
 wb.remove(wb.active)
-for name, title, loading, tension, shear in RATES:
+for name, title, tension, shear in RATES:
     ws = wb.create_sheet(name)
     for i, w in enumerate(WIDTH):
         ws.column_dimensions['ABCDE'[i]].width = w
     ws['A1'] = title
     ws['A1'].font = f_title
-    ws['A2'] = loading
+    ws['A2'] = 'Number of specimens per geometry and orientation, one material (one steel sheet)'
     ws['A2'].font = f_info
-    ws['A3'] = 'One material (one steel sheet)'
-    ws['A3'].font = f_info
     r = 5
     for c, h in enumerate(HEAD, 1):
         cell(ws, r, c, h, f_head, fill_head)
@@ -112,8 +107,7 @@ for name, title, loading, tension, shear in RATES:
     ws.cell(r, 5).value = '=%s+%s' % (s1, s2)
     ws.row_dimensions[r].height = 20
     r += 2
-    ws.cell(r, 1, '* to confirm with the supervisors.').font = f_foot
-    ws.cell(r + 1, 1, 'Source: Beerli et al. (2026), Int. J. Impact Eng. 215, 105761, sections 2.2, 4.1, 4.2.').font = \
+    ws.cell(r, 1, 'Sources: Beerli et al. (2026); shear geometries: Roth & Mohr (2018); supervisors, 11/11/2026.').font = \
         f_foot
     ws.sheet_view.showGridLines = False
     ws.page_setup.orientation = 'portrait'

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 make_campaigns_pdf.py -- Test campaigns of one DP steel sheet as a sober PDF: for each campaign (slow, medium, high
-rate) the number of specimens per geometry and per orientation, then short questions for the supervisors. Black and
-greys only; yellow = not sure. User requests of 11/11/2026.
+rate) the number of specimens per geometry and per orientation. Black and greys only. User requests and answers of the
+supervisors of 11/11/2026.
 
 Sources: Beerli et al. (2026), Int. J. Impact Eng. 215, 105761 (programme); Roth & Mohr (2018), Int. J. Mech. Sci.
 149 (three shear geometries per material, LD / MD / HD); user, 11/11/2026: shear with 2 repeats.
@@ -38,134 +38,81 @@ G_SEC = colors.Color(0.90, 0.90, 0.90)
 G_TOT = colors.Color(0.82, 0.82, 0.82)
 G_LINE = colors.Color(0.70, 0.70, 0.70)
 G_TEXT = colors.Color(0.40, 0.40, 0.40)
-YELLOW = colors.Color(1.0, 0.93, 0.35)
 
 st_title = ParagraphStyle('t', fontName=BOLD, fontSize=16, leading=20)
 st_sub = ParagraphStyle('s', fontName=FONT, fontSize=8.5, leading=11, textColor=G_TEXT)
 st_h = ParagraphStyle('h', fontName=BOLD, fontSize=11.5, leading=14, spaceBefore=12, spaceAfter=1)
-st_load = ParagraphStyle('l', fontName=FONT, fontSize=8, leading=10, textColor=G_TEXT, spaceAfter=4)
-st_q = ParagraphStyle('q', fontName=FONT, fontSize=8.8, leading=12, leftIndent=9 * mm, firstLineIndent=-9 * mm,
-                      spaceAfter=2.5)
 
 ALL7 = (0, 15, 30, 45, 60, 75, 90)
 A3 = (0, 45, 90)
 TEN = 'TENSION-TYPE  ·  waterjet'
-SHE = 'SHEAR  ·  wire EDM, 2 repeats'
+SHE = 'SHEAR  ·  wire EDM'
 
 
-def row(geom, angles, n, label=False, cells=False, q=''):
-    """(geometry, {angle: number}, geometry not sure, numbers not sure, question)."""
-    return (geom, {a: n for a in angles}, label, cells, q)
+def row(geom, angles, n):
+    """(geometry, {angle: number of specimens})."""
+    return (geom, {a: n for a in angles})
 
 
-# campaign: title, loading, orientation columns, blocks
+SHEAR3 = lambda angles: [row(g, angles, 2) for g in ('SHLD', 'SHMD', 'SHHD')]     # noqa: E731
+# answers of the supervisors (user, 11/11/2026): CHD48 = 4.8 mm hole re-drilled to 5 mm (CH5 everywhere, no CH8);
+# MNAK_RECT_FULL = punch, 0 deg only, 3; MNAK_RECT_HOLE = mini-Nakazima; UT at all orientations at every rate
 CAMPAIGNS = [
-    ('SLOW RATE', 'UT 0.001 /s  ·  others 6.6e-6 m/s', ALL7,
-     [(TEN, [row('UT40', ALL7, 3),
-             row('NT20', A3, 3),
-             row('NT06', A3, 3),
-             row('CHD48', A3, 3, True, False, 'Q1 Q6'),
-             row('MNAK_RECT_FULL', A3, 3, True, True, 'Q5'),
-             row('MNAK_RECT_HOLE', A3, 3, True, True, 'Q5')]),
-      (SHE, [row('SHLD', A3, 2, q='Q4'), row('SHMD', A3, 2, q='Q4'), row('SHHD', A3, 2, q='Q4')])]),
-    ('MEDIUM RATE', 'UT 1 /s  ·  others 6.6e-3 m/s', (0,),
-     [(TEN, [row('UT40', (0,), 3, False, True, 'Q2'),
-             row('NT20', (0,), 3, False, True, 'Q2'),
-             row('NT06', (0,), 3, False, True, 'Q2'),
-             row('CHD48', (0,), 3, True, True, 'Q1 Q2')]),
-      (SHE, [row('SHLD', (0,), 2, True, True, 'Q4'), row('SHMD', (0,), 2, True, True, 'Q4'),
-             row('SHHD', (0,), 2, True, True, 'Q4')])]),
-    ('HIGH RATE', 'UT 100 /s  ·  others about 1.4 m/s', (0,),
-     [(TEN, [row('UT19', (0,), 3, False, True, 'Q2'),
-             row('NT20', (0,), 3, False, True, 'Q2'),
-             row('NT06', (0,), 3, False, True, 'Q2'),
-             row('CHD48', (0,), 3, True, True, 'Q1 Q2')]),
-      (SHE, [row('SHLD', (0,), 2, True, True, 'Q4'), row('SHMD', (0,), 2, True, True, 'Q4'),
-             row('SHHD', (0,), 2, True, True, 'Q4')])]),
-]
-
-QUESTIONS = [
-    'Which steel grade? (CH5 up to DP1000, CH8 for DP1180 / DP1470.)',
-    'Medium and high rate: 3 repeats per tension-type specimen?',
-    'Medium and high rate: 0° only?',
-    'Shear: also 135°? The 3 geometries (LD / MD / HD) also at medium and high rate?',
-    'MNAK_RECT_FULL = punch and MNAK_RECT_HOLE = mini-Nakazima? 0, 45, 90° × 3 each?',
-    'Central hole: is the 4.8 mm hole reamed to 5 mm after cutting? Is CH8 needed?',
+    ('SLOW RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', A3, 3), row('NT06', A3, 3), row('CHD48', A3, 3),
+                          row('MNAK_RECT_FULL', (0,), 3), row('MNAK_RECT_HOLE', A3, 3)]),
+                   (SHE, SHEAR3(A3))]),
+    ('MEDIUM RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CHD48', (0,), 3)]),
+                     (SHE, SHEAR3((0,)))]),
+    ('HIGH RATE', [(TEN, [row('UT19', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CHD48', (0,), 3)]),
+                   (SHE, SHEAR3((0,)))]),
 ]
 
 
 def matrix(cols, blocks, width):
-    """Table: geometry | one column per orientation | total | question; returns (table, total)."""
-    wg, wt, wq = 34 * mm, 15 * mm, 15 * mm
-    wa = (width - wg - wt - wq) / len(cols)
-    head = ['GEOMETRY'] + ['%d°' % a for a in cols] + ['TOTAL', 'Q']
-    data, style = [head], [
-        ('FONT', (0, 0), (-1, -1), FONT, 9),
-        ('FONT', (0, 0), (-1, 0), BOLD, 8),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('BACKGROUND', (0, 0), (-1, 0), G_HEAD),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LINEBELOW', (0, 1), (-1, -1), 0.3, G_LINE),
-        ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]
+    """Table: geometry | one column per orientation | total; returns (table, total)."""
+    wg, wt = 40 * mm, 18 * mm
+    wa = (width - wg - wt) / len(cols)
+    data = [['GEOMETRY'] + ['%d°' % a for a in cols] + ['TOTAL']]
+    style = [('FONT', (0, 0), (-1, -1), FONT, 9),
+             ('FONT', (0, 0), (-1, 0), BOLD, 8),
+             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+             ('BACKGROUND', (0, 0), (-1, 0), G_HEAD),
+             ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+             ('LINEBELOW', (0, 1), (-1, -1), 0.3, G_LINE),
+             ('FONT', (-1, 1), (-1, -1), BOLD, 9),
+             ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]
     col_tot = [0] * len(cols)
     for bname, rows in blocks:
         r = len(data)
-        data.append([bname] + [''] * (len(cols) + 2))
+        data.append([bname] + [''] * (len(cols) + 1))
         style += [('SPAN', (0, r), (-1, r)), ('BACKGROUND', (0, r), (-1, r), G_SEC),
                   ('FONT', (0, r), (-1, r), BOLD, 7.5), ('ALIGN', (0, r), (-1, r), 'LEFT')]
-        for geom, counts, ulabel, ucells, q in rows:
-            r = len(data)
-            data.append([geom] + [str(counts.get(a, '')) for a in cols] + [str(sum(counts.values())), q])
-            style += [('FONT', (len(cols) + 1, r), (len(cols) + 1, r), BOLD, 9),
-                      ('FONT', (-1, r), (-1, r), FONT, 7.5), ('TEXTCOLOR', (-1, r), (-1, r), G_TEXT)]
-            if ulabel:
-                style.append(('BACKGROUND', (0, r), (0, r), YELLOW))
+        for geom, counts in rows:
+            data.append([geom] + [str(counts.get(a, '')) for a in cols] + [str(sum(counts.values()))])
             for j, a in enumerate(cols):
-                if a in counts:
-                    col_tot[j] += counts[a]
-                    if ucells:
-                        style.append(('BACKGROUND', (1 + j, r), (1 + j, r), YELLOW))
+                col_tot[j] += counts.get(a, 0)
     r = len(data)
     total = sum(col_tot)
-    data.append(['TOTAL'] + [str(v) for v in col_tot] + [str(total), ''])
+    data.append(['TOTAL'] + [str(v) for v in col_tot] + [str(total)])
     style += [('FONT', (0, r), (-1, r), BOLD, 9.5), ('BACKGROUND', (0, r), (-1, r), G_TOT),
               ('LINEABOVE', (0, r), (-1, r), 1.0, BLACK)]
-    t = Table(data, colWidths=[wg] + [wa] * len(cols) + [wt, wq], hAlign='LEFT')
+    t = Table(data, colWidths=[wg] + [wa] * len(cols) + [wt], hAlign='LEFT')
     t.setStyle(TableStyle(style))
     return t, total
 
 
 PAGE_W = A4[0] - 36 * mm
 story = [Paragraph('TEST CAMPAIGNS  ·  DP STEEL SHEET', st_title),
-         Paragraph('Specimens per geometry and orientation to the rolling direction, one material. '
-                   'Beerli et al. 2026; shear: 3 geometries (Roth &amp; Mohr 2018), 2 repeats.', st_sub)]
-legend = Table([['', 'not sure  ·  Q = question below']], colWidths=[7 * mm, 80 * mm], hAlign='LEFT')
-legend.setStyle(TableStyle([('BACKGROUND', (0, 0), (0, 0), YELLOW), ('FONT', (0, 0), (-1, -1), FONT, 8),
-                            ('TEXTCOLOR', (1, 0), (1, 0), G_TEXT), ('LEFTPADDING', (1, 0), (1, 0), 5),
-                            ('TOPPADDING', (0, 0), (-1, -1), 1), ('BOTTOMPADDING', (0, 0), (-1, -1), 1)]))
-story += [Spacer(1, 5), legend]
-
+         Paragraph('Number of specimens per geometry and orientation to the rolling direction, one material.', st_sub)]
 totals = []
-title, loading, cols, blocks = CAMPAIGNS[0]
-t, tot = matrix(cols, blocks, PAGE_W)
-totals.append(tot)
-story.append(KeepTogether([Paragraph('%s  ·  %d specimens' % (title, tot), st_h), Paragraph(loading, st_load), t]))
-half = (PAGE_W - 8 * mm) / 2                      # medium and high side by side
-pair = []
-for title, loading, cols, blocks in CAMPAIGNS[1:]:
-    t, tot = matrix(cols, blocks, half)
+for title, blocks in CAMPAIGNS:
+    t, tot = matrix(ALL7, blocks, PAGE_W)
     totals.append(tot)
-    pair.append([Paragraph('%s  ·  %d specimens' % (title, tot), st_h), Paragraph(loading, st_load), t])
-side = Table([pair], colWidths=[half + 8 * mm, half], hAlign='LEFT')
-side.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                          ('RIGHTPADDING', (0, 0), (-1, -1), 0)]))
-story += [side, Spacer(1, 8),
+    story.append(KeepTogether([Paragraph('%s  ·  %d specimens' % (title, tot), st_h), Spacer(1, 3), t]))
+story += [Spacer(1, 12),
           Paragraph('ALL RATES: %s = %d SPECIMENS' % (' + '.join(str(x) for x in totals), sum(totals)),
-                    ParagraphStyle('a', fontName=BOLD, fontSize=10.5, leading=13)),
-          Spacer(1, 6), Paragraph('QUESTIONS', st_h)]
-for i, q in enumerate(QUESTIONS, 1):
-    story.append(Paragraph('<b>Q%d</b>&nbsp;&nbsp;&nbsp;%s' % (i, q), st_q))
+                    ParagraphStyle('a', fontName=BOLD, fontSize=10.5, leading=13))]
 
 
 def footer(canvas, doc):
