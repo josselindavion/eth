@@ -30,21 +30,9 @@ if len(found) == 2:
     FONT, BOLD = 'Sans', 'Sans-Bold'
 
 PW, PH = landscape(A4)
-BLACK, WHITE = colors.black, colors.white
-G_COMMON = colors.Color(0.82, 0.82, 0.82)
-G_OWN = colors.Color(0.95, 0.95, 0.95)
-G_DARK = colors.Color(0.20, 0.20, 0.20)
+BLACK = colors.black
 G_TEXT = colors.Color(0.40, 0.40, 0.40)
 
-# sheets: key, title, order, content lines
-SHEETS = {
-    'C1': ('COMMON SHEET 1', 'COMMON_AB_600x500mm_WATERJET (sheet 1)', ['61 tension-type specimens']),
-    'C2': ('COMMON SHEET 2', 'COMMON_AB_600x500mm_WATERJET (sheet 2)', ['61 tension-type specimens']),
-    'A3': ('A · SHEET 3', 'A_SHEET3_600x500mm_WATERJET', ['34 tension-type specimens', '+ 4 LASER']),
-    'A4': ('A · SHEET 4', 'A_SHEET4_600x500mm_WATERJET', ['54 SHEAR specimens of A', '(alone on the sheet)']),
-    'B3': ('B · SHEET 3', 'B_SHEET3_600x500mm_WATERJET', ['30 SHEAR specimens of B', '+ 34 tension-type specimens',
-                                                         '(the same as A · sheet 3)', '+ 4 LASER']),
-}
 PAGES = [('COMMON_AB_600x500mm_WATERJET', 'COMMON SHEETS 1 AND 2  ·  campaigns A and B',
           '122 tension-type specimens (61 + 61)'),
          ('B_SHEET3_600x500mm_WATERJET', 'B · SHEET 3  ·  campaign B only',
@@ -61,22 +49,33 @@ def footer(c, page):
     c.drawRightString(PW - 15 * mm, 8 * mm, 'page %d' % page)
 
 
-def box(c, x, y, w, h, key, fill, shear=False):
-    title, order, lines = SHEETS[key]
-    c.setFillColor(fill)
+def sheet(c, x, y, w, h, lines, own, order):
+    """One sheet drawn as an outline (no fill): thick border = sheet of this campaign only, thin = common sheet."""
     c.setStrokeColor(BLACK)
-    c.setLineWidth(2.0 if shear else 0.8)
-    c.rect(x, y, w, h, fill=1, stroke=1)
+    c.setLineWidth(1.8 if own else 0.7)
+    if not own:
+        c.setDash(3, 2)
+    c.rect(x, y, w, h, fill=0, stroke=1)
+    c.setDash()
     c.setFillColor(BLACK)
-    c.setFont(BOLD, 11)
-    c.drawCentredString(x + w / 2, y + h - 9 * mm, title)
-    c.setFont(FONT, 8.5)
-    for i, l in enumerate(lines):
-        c.setFont(BOLD if 'SHEAR' in l else FONT, 8.5)
-        c.drawCentredString(x + w / 2, y + h - 17 * mm - i * 4.6 * mm, l)
+    for i, (txt, bold, size) in enumerate(lines):
+        c.setFont(BOLD if bold else FONT, size)
+        c.drawCentredString(x + w / 2, y + h - 9 * mm - i * 5.2 * mm, txt)
     c.setFont(FONT, 6.5)
     c.setFillColor(G_TEXT)
-    c.drawCentredString(x + w / 2, y + 3.5 * mm, 'order ' + order.replace('_600x500mm_WATERJET', ''))
+    c.drawCentredString(x + w / 2, y + 3.5 * mm, order)
+
+
+COMMON1 = [('SHEET 1', True, 11), ('COMMON', True, 8), ('61 tension-type', False, 8.5)]
+COMMON2 = [('SHEET 2', True, 11), ('COMMON', True, 8), ('61 tension-type', False, 8.5)]
+ROWS = [('CAMPAIGN A', '4 sheets', [(COMMON1, False, 'COMMON_AB'), (COMMON2, False, 'COMMON_AB'),
+                                    ([('SHEET 3', True, 11), ('A only', True, 8), ('34 tension-type', False, 8.5),
+                                      ('4 LASER', False, 8.5)], True, 'A_SHEET3'),
+                                    ([('SHEET 4', True, 11), ('A only', True, 8), ('54 SHEAR', True, 8.5),
+                                      ('nothing else', False, 8.5)], True, 'A_SHEET4')]),
+        ('CAMPAIGN B', '3 sheets', [(COMMON1, False, 'COMMON_AB'), (COMMON2, False, 'COMMON_AB'),
+                                    ([('SHEET 3', True, 11), ('B only', True, 8), ('30 SHEAR', True, 8.5),
+                                      ('34 tension-type', False, 8.5), ('4 LASER', False, 8.5)], True, 'B_SHEET3')])]
 
 
 def diagram(c):
@@ -85,68 +84,51 @@ def diagram(c):
     c.drawString(15 * mm, PH - 20 * mm, 'CAMPAIGNS A AND B  ·  SHEETS')
     c.setFont(FONT, 9)
     c.setFillColor(G_TEXT)
-    c.drawString(15 * mm, PH - 27 * mm, 'Which sheet is used by which campaign. A = 4 sheets, B = 3 sheets; the shear '
-                                       'specimens of each campaign are on one sheet only.')
-    x0, lab = 15 * mm, 42 * mm
-    gx = x0 + lab                                           # start of the boxes
-    bw, gap = 50 * mm, 6 * mm
-    rh, rgap = 52 * mm, 12 * mm
-    ya = PH - 45 * mm - rh                                  # row A
-    yb = ya - rgap - rh                                     # row B
-    # row labels
-    for y, t, n in ((ya, 'CAMPAIGN A', '4 sheets'), (yb, 'CAMPAIGN B', '3 sheets')):
-        c.setFillColor(G_DARK)
-        c.rect(x0, y, lab - 6 * mm, rh, fill=1, stroke=0)
-        c.setFillColor(WHITE)
-        c.setFont(BOLD, 12)
-        c.drawCentredString(x0 + (lab - 6 * mm) / 2, y + rh / 2 + 2 * mm, t)
-        c.setFont(FONT, 9)
-        c.drawCentredString(x0 + (lab - 6 * mm) / 2, y + rh / 2 - 5 * mm, n)
-    # common sheets: span both rows
-    for i, k in enumerate(('C1', 'C2')):
-        box(c, gx + i * (bw + gap), yb, bw, ya + rh - yb, k, G_COMMON)
-    c.setFont(BOLD, 8)
-    c.setFillColor(BLACK)
-    c.drawCentredString(gx + bw + gap / 2, ya + rh + 3 * mm, 'COMMON TO A AND B')
-    c.setLineWidth(0.6)
-    c.line(gx, ya + rh + 1.5 * mm, gx + 2 * bw + gap, ya + rh + 1.5 * mm)
-    # own sheets
-    ox = gx + 2 * (bw + gap) + 4 * mm
-    box(c, ox, ya, bw, rh, 'A3', G_OWN)
-    box(c, ox + bw + gap, ya, bw, rh, 'A4', G_OWN, shear=True)
-    box(c, ox, yb, bw, rh, 'B3', G_OWN, shear=True)
-    c.setFont(BOLD, 8)
-    c.drawCentredString(ox + bw + gap / 2, ya + rh + 3 * mm, 'OWN SHEETS')
-    c.line(ox, ya + rh + 1.5 * mm, ox + 2 * bw + gap, ya + rh + 1.5 * mm)
-    # link: same tension-type specimens on A3 and B3
-    c.setDash(2, 2)
-    c.setStrokeColor(G_TEXT)
-    c.line(ox + bw / 2, ya, ox + bw / 2, yb + rh)
-    c.setDash()
-    c.setFont(FONT, 7)
-    c.setFillColor(G_TEXT)
-    c.drawString(ox + bw / 2 + 2 * mm, (ya + yb + rh) / 2 - 1 * mm, 'same 34 tension-type specimens')
-    # legend
-    ly = yb - 11 * mm
-    for i, (fill, lw, t) in enumerate(((G_COMMON, 0.8, 'sheet common to A and B'),
-                                       (G_OWN, 0.8, 'sheet of one campaign'),
-                                       (G_OWN, 2.0, 'thick border: the sheet with the shear specimens'))):
-        x = x0 + i * 75 * mm
-        c.setFillColor(fill)
-        c.setLineWidth(lw)
-        c.setStrokeColor(BLACK)
-        c.rect(x, ly, 8 * mm, 5 * mm, fill=1, stroke=1)
+    c.drawString(15 * mm, PH - 27 * mm, 'One row per campaign, its sheets in order. Sheets 1 and 2 are the same in A and '
+                                       'B (order COMMON_AB). All the shear specimens of a campaign are on one sheet.')
+    x0, lab = 15 * mm, 45 * mm
+    sh = 52 * mm                                            # sheet height; width from 600 (RD) x 500 (TD)
+    sw = sh * 500.0 / 600.0
+    gap = 9 * mm
+    ys = [PH - 40 * mm - sh, PH - 40 * mm - 2 * sh - 14 * mm]
+    for (name, n, sheets), y in zip(ROWS, ys):
         c.setFillColor(BLACK)
-        c.setFont(FONT, 8)
-        c.drawString(x + 10 * mm, ly + 1.3 * mm, t)
+        c.setFont(BOLD, 13)
+        c.drawString(x0, y + sh / 2 + 2 * mm, name)
+        c.setFont(FONT, 9)
+        c.setFillColor(G_TEXT)
+        c.drawString(x0, y + sh / 2 - 5 * mm, n)
+        for i, (lines, own, order) in enumerate(sheets):
+            x = x0 + lab + i * (sw + gap)
+            sheet(c, x, y, sw, sh, lines, own, order)
+            if i:                                           # arrow from the previous sheet
+                c.setStrokeColor(G_TEXT)
+                c.setLineWidth(0.6)
+                ax = x - gap
+                c.line(ax + 1.5 * mm, y + sh / 2, x - 1.5 * mm, y + sh / 2)
+                c.line(x - 1.5 * mm, y + sh / 2, x - 3.5 * mm, y + sh / 2 + 1.5 * mm)
+                c.line(x - 1.5 * mm, y + sh / 2, x - 3.5 * mm, y + sh / 2 - 1.5 * mm)
+    # legend (outlines only)
+    ly = ys[1] - 12 * mm
+    for i, (own, t) in enumerate(((False, 'dashed: common sheet, identical in A and B'),
+                                  (True, 'thick: sheet of one campaign only'))):
+        x = x0 + i * 90 * mm
+        c.setStrokeColor(BLACK)
+        c.setLineWidth(1.8 if own else 0.7)
+        if not own:
+            c.setDash(3, 2)
+        c.rect(x, ly, 8 * mm, 5 * mm, fill=0, stroke=1)
+        c.setDash()
+        c.setFillColor(BLACK)
+        c.setFont(FONT, 8.5)
+        c.drawString(x + 11 * mm, ly + 1.4 * mm, t)
     c.setFont(FONT, 8)
     c.setFillColor(G_TEXT)
-    c.drawString(x0, ly - 9 * mm, 'Codes: the same specimen has the same notch code in A and B. Index of the code = '
-                                  'strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).')
-    c.drawString(x0, ly - 14 * mm, 'To cut campaign A: common sheets 1, 2 + A · sheet 3 + A · sheet 4.     '
-                                   'To cut campaign B: common sheets 1, 2 + B · sheet 3.')
-    c.drawString(x0, ly - 19 * mm, 'Orders (cutting-sheets/orders/): COMMON_AB, A_SHEET3, A_SHEET4, B_SHEET3, each '
-                                   'followed by _600x500mm_WATERJET.yaml.')
+    for k, t in enumerate(('A · sheet 3 and B · sheet 3 carry the same 34 tension-type specimens (same codes).',
+                           'Notch code: same specimen = same code in A and B; index = strain rate: slow 1-3, medium 4-6, '
+                           'high 7-9 (shear: 1-2, 4-5, 7-8).',
+                           'Orders in cutting-sheets/orders/: name shown under each sheet + _600x500mm_WATERJET.yaml.')):
+        c.drawString(x0, ly - 8 * mm - k * 5 * mm, t)
 
 
 def preview_page(c, order, title, sub):
