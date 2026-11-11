@@ -6,7 +6,7 @@ user's handwritten table (photo of 11/11/2026); yellow = hard to read on the pho
 
     py cutting-sheets/scripts/make_materials_pdf.py cutting-sheets/materials/materials_and_sheets.pdf
 
-Sizes are copied as written (which side is the rolling direction is not given). Sheet ID = material ID + "-" +
+Sizes: the first value is always the rolling direction (user, 11/11/2026). Sheet ID = material ID + "-" +
 number of the sheet in the user's list.
 """
 import os
@@ -44,23 +44,23 @@ U = '?'     # marks a value to check: the cell is highlighted, the mark is remov
 MATERIALS = [
     ('DP980', '2020_06_03A', '1.0',
      [('605 × 505', ''), ('598 × 502', ''), ('605 × 501', ''), ('598 × 500', 'edges not straight'),
-      ('?595 × 507', 'edges not straight'), ('603 × 502', 'edges not straight'), ('?596 × 500', 'edges not straight')],
+      ('599 × 507', 'edges not straight'), ('603 × 502', 'edges not straight'), ('?596 × 500', 'edges not straight')],
      ''),
     ('DC01', '2025_11_25_B', '2.0', [('599 × 500', ''), ('?custom size', '"dim perso" on the list')], ''),
     ('S235JR', '2023_02_28_D', '?3.0', [('600 × 500', '')] * 3, ''),
-    ('?S235JR', '2023_02_28_A', '3.0', [('600 × 500', '')] * 4, 'name not written'),
-    ('?S235JR', '2023_02_28_C', '3.0', [('600 × 500', '')] * 3, 'name not written'),
+    ('', '2023_02_28_A', '3.0', [('600 × 500', '')] * 4, 'no name yet'),
+    ('', '2023_02_28_C', '3.0', [('600 × 500', '')] * 3, 'no name yet'),
     ('RA980', '2022_05_04_D', '?1.4', [('900 × 1200', '')], ''),
     ('RA1200', '2022_05_04_E', '1.4', [('913–915 × 1146', 'width 913 to 915 mm')], ''),
-    ('?RA1200', '?2022_04_04_G', '1.4', [('?916 × 1260', 'last digit unclear')], 'name not written'),
+    ('', '?2022_04_04_G', '1.4', [('916 × 1267', '')], 'no name yet'),
 ]
 
 st_title = ParagraphStyle('t', fontName=BOLD, fontSize=16, leading=20)
 st_sub = ParagraphStyle('s', fontName=FONT, fontSize=8.5, leading=11, textColor=G_TEXT)
 st_note = ParagraphStyle('n', fontName=FONT, fontSize=8, leading=10.5, textColor=G_TEXT)
 
-HEAD = ['MATERIAL / SHEET', 'ID', 'SHEETS', 'SIZE (mm)', 'THICKN. (mm)', 'NOTES']
-W = [30 * mm, 33 * mm, 14 * mm, 29 * mm, 24 * mm, 44 * mm]     # 174 mm
+HEAD = ['MATERIAL / SHEET', 'ID', 'SHEETS', 'SIZE RD × TD (mm)', 'THICKN. (mm)', 'NOTES']
+W = [30 * mm, 32 * mm, 14 * mm, 34 * mm, 23 * mm, 41 * mm]     # 174 mm
 
 
 def val(v):
@@ -104,7 +104,7 @@ legend.setStyle(TableStyle([('BACKGROUND', (0, 0), (0, 0), YELLOW), ('FONT', (0,
                             ('TEXTCOLOR', (1, 0), (1, 0), G_TEXT), ('LEFTPADDING', (1, 0), (1, 0), 5),
                             ('TOPPADDING', (0, 0), (-1, -1), 1), ('BOTTOMPADDING', (0, 0), (-1, -1), 1)]))
 story = [Paragraph('MATERIALS AND SHEETS', st_title),
-         Paragraph('%d materials  ·  %d sheets  ·  sizes as written on the list (rolling direction not given)  ·  '
+         Paragraph('%d materials  ·  %d sheets  ·  sizes RD × TD (rolling direction first)  ·  '
                    'sheet ID = material ID + sheet number' % (len(MATERIALS), n_sheets), st_sub),
          Spacer(1, 5), legend, Spacer(1, 6), table]
 
