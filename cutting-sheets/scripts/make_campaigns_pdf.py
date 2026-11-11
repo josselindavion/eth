@@ -55,45 +55,49 @@ RATES = [
      [('UT40', ALL7, 7, 3, (), ''),
       ('NT20', A3, 3, 3, (), ''),
       ('NT06', A3, 3, 3, (), ''),
-      ('CHD48 (CH5)', A3, 3, 3, (0,), 'Q1, Q8'),
-      ('MNAK_RECT_FULL (punch)', A3, 3, 3, (0, 1, 3), 'Q7'),
-      ('MNAK_RECT_HOLE (mini-Nakazima)', A3, 3, 3, (0, 1, 3), 'Q7')],
-     [('SHMD', A3, 3, 2, (0, 1, 3), 'Q6')]),
+      ('CHD48 (CH5)', A3, 3, 3, (0,), 'Q1, Q6'),
+      ('MNAK_RECT_FULL (punch)', A3, 3, 3, (0, 1, 3), 'Q5'),
+      ('MNAK_RECT_HOLE (mini-Nakazima)', A3, 3, 3, (0, 1, 3), 'Q5')],
+     [('SHMD', A3, 3, 2, (0, 1), 'Q4')]),
     ('2.  MEDIUM RATE (INTERMEDIATE)',
      'UT: 1 /s  ·  other specimens: 6.6e-3 m/s  ·  Instron 8801 (100 kN)',
-     [('UT40', '0', 1, 3, (3,), 'Q3'),
-      ('NT20', '0', 1, 3, (3,), 'Q3'),
-      ('NT06', '0', 1, 3, (3,), 'Q3'),
-      ('CHD48 (CH5)', '0', 1, 3, (0, 3), 'Q1, Q3, Q8')],
-     [('SHMD', '0', 1, 3, (0, 3), 'Q3, Q6')]),
+     [('UT40', '0', 1, 3, (3,), 'Q2'),
+      ('NT20', '0', 1, 3, (3,), 'Q2'),
+      ('NT06', '0', 1, 3, (3,), 'Q2'),
+      ('CHD48 (CH5)', '0', 1, 3, (0, 3), 'Q1, Q2, Q6')],
+     [('SHMD', '0', 1, 2, (0,), 'Q4')]),
     ('3.  HIGH RATE',
      'UT: 100 /s  ·  other specimens: about 1.4 m/s  ·  split Hopkinson tensile bar',
-     [('UT19 (small UT)', '0', 1, 3, (0, 3), 'Q3, Q5'),
-      ('NT20', '0', 1, 3, (3,), 'Q3'),
-      ('NT06', '0', 1, 3, (3,), 'Q3'),
-      ('CHD48 (CH5)', '0', 1, 3, (0, 3), 'Q1, Q3, Q8')],
-     [('SHMD', '0', 1, 3, (0, 3), 'Q3, Q6')]),
+     [('UT19 (small UT)', '0', 1, 3, (3,), 'Q2'),
+      ('NT20', '0', 1, 3, (3,), 'Q2'),
+      ('NT06', '0', 1, 3, (3,), 'Q2'),
+      ('CHD48 (CH5)', '0', 1, 3, (0, 3), 'Q1, Q2, Q6')],
+     [('SHMD', '0', 1, 2, (0,), 'Q4')]),
 ]
+# shear: 2 repeats at every rate (user, 11/11/2026)
 
 QUESTIONS = [
-    ('Material', 'Which steel grade (and thickness) is this campaign for? This decides the central-hole size '
-                 '(CH5 or CH8) and the shear geometry.'),
-    ('Sheets', 'Should the medium- and high-rate specimens (24 tension + 6 shear) come from the same 600 × 500 sheet, '
-               'or from another sheet? The 600 × 500 sheet is already full with the slow-rate campaign (61 '
-               'specimens).'),
-    ('Repeats at medium and high rate', '3 per specimen? The paper does not say; 3 is inferred from its 150 tests '
-                                        '(5 materials × 2 rates × 5 specimen types × 3).'),
+    ('Material', 'Which steel grade and which sheet thickness is this campaign for? The grade sets the shear '
+                 'geometry (low, medium or high ductility). Grade and thickness together set the maximum force of '
+                 'the central-hole specimen, hence CH5 or CH8 (see Q6).'),
+    ('Repeats at medium and high rate', '3 per tension-type specimen? The paper does not say; 3 is inferred from its '
+                                        '150 tests (5 materials × 2 rates × 5 specimen types × 3).'),
     ('Orientations at medium and high rate', 'Only 0° to the rolling direction, as in the paper?'),
-    ('High-rate uniaxial tension', 'Is UT19 the small UT specimen of the paper (gauge 15 × 5 mm)?'),
     ('Shear', 'Only SHMD (the paper uses the "medium ductility" geometry), or all three LD / MD / HD? Orientations '
-              '0, 45, 90° (paper) or also 135° (2025 plan)? 2 repeats (paper) or 3? (See also the e-mail about '
-              'pre-cut blanks.)'),
+              '0, 45, 90° (paper) or also 135° (2025 plan)? (2 repeats: confirmed.)'),
     ('Punch and mini-Nakazima', 'Is MNAK_RECT_FULL the punch specimen (equi-biaxial) and MNAK_RECT_HOLE the dihedral '
                                 'mini-Nakazima (plane strain)? 0, 45, 90° × 3 for both? (The current 600 × 500 order '
                                 'has MNAK_RECT_FULL at 0° only.)'),
-    ('Central hole', 'Cut at 4.8 mm and then reamed to 5 mm? Is an 8 mm version needed (CH8, for DP1180 / DP1470)?'),
-    ('Clamping ends', 'The paper uses a different clamping end for each rate. Are the same fir-tree ends used at all '
-                      'rates?'),
+    ('Central hole', 'Our catalogue central-hole specimen has a 4.8 mm hole. In the paper the hole is reamed to its '
+                     'final size after waterjet cutting, for a clean edge. (a) Is the 4.8 mm hole a pre-hole, to be '
+                     'reamed to 5 mm (CH5) after cutting? (b) For high-strength grades (DP1180, DP1470) the paper uses '
+                     'an 8 mm hole (CH8) to keep the force below the limit of the clamps. Does this material need '
+                     'CH8? (Then a new template is needed: it is not in the catalogue.)'),
+    ('Clamping ends', 'In the paper the ends of the specimens (the part held by the grips) have a different shape for '
+                      'each rate: one for the slow machine, one for the Instron, a fir-tree shape for the Hopkinson '
+                      'bar (Fig. 2f-h). All specimens of our catalogue have fir-tree ends. Do the grips of the slow '
+                      'and medium machines take these fir-tree specimens, or do the slow and medium specimens need '
+                      'other ends (other templates)?'),
 ]
 
 W_COL = [61 * mm, 40 * mm, 19 * mm, 16 * mm, 16 * mm, 22 * mm]   # 174 mm = A4 - margins
@@ -158,8 +162,7 @@ story += [Spacer(1, 8),
           Paragraph('QUESTIONS FOR THE SUPERVISORS', st_title), Spacer(1, 6)]
 for i, (topic, text) in enumerate(QUESTIONS, 1):
     story.append(Paragraph('<b>Q%d</b>&nbsp;&nbsp;&nbsp;<b>%s.</b> %s' % (i, topic.upper(), text), st_q))
-story += [Spacer(1, 8), Paragraph('Q1 and Q2 first: they decide the central-hole type, the shear geometry and the '
-                                  'number of sheets to cut.', st_note)]
+story += [Spacer(1, 8), Paragraph('Q1 first: it decides the central-hole type and the shear geometry.', st_note)]
 
 
 def footer(canvas, doc):

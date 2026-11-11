@@ -7,7 +7,7 @@ from Beerli et al. (2026), Int. J. Impact Eng. 215, 105761 (literature/papers/).
     py cutting-sheets/scripts/make_campaigns_xlsx.py cutting-sheets/campaigns/DP_test_campaigns_Beerli2026.xlsx
 
 Each sheet: specimen (lab name), orientations to the rolling direction, repeats, number (formula), shear in its own
-block, totals (formulas). * = to confirm with the supervisors (repeats at medium / high rate are not stated in the
+block (2 repeats at every rate, user 11/11/2026), totals (formulas). * = to confirm with the supervisors (repeats at medium / high rate are not stated in the
 paper: 3 inferred from its 150 tests = 5 materials x 2 rates x 5 types x 3).
 """
 import sys
@@ -44,12 +44,12 @@ RATES = [
     ('Medium rate', 'Medium rate (intermediate)',
      'UT: 1 /s  ·  other specimens: 6.6e-3 m/s  ·  Instron 8801 (100 kN)',
      [('UT40', '0', 1, '3 *'), ('NT20', '0', 1, '3 *'), ('NT06', '0', 1, '3 *'), ('CHD48 (CH5)', '0', 1, '3 *')],
-     [('SHMD *', '0', 1, '3 *')]),
+     [('SHMD *', '0', 1, 2)]),
     ('High rate', 'High rate',
      'UT: 100 /s  ·  other specimens: about 1.4 m/s  ·  split Hopkinson tensile bar',
-     [('UT19 (small UT) *', '0', 1, '3 *'), ('NT20', '0', 1, '3 *'), ('NT06', '0', 1, '3 *'),
+     [('UT19 (small UT)', '0', 1, '3 *'), ('NT20', '0', 1, '3 *'), ('NT06', '0', 1, '3 *'),
       ('CHD48 (CH5)', '0', 1, '3 *')],
-     [('SHMD *', '0', 1, '3 *')]),
+     [('SHMD *', '0', 1, 2)]),
 ]
 HEAD = ['Specimen', 'Orientations to RD (°)', 'Orientations', 'Repeats', 'Number']
 WIDTH = [36, 28, 14, 12, 12]
