@@ -1,6 +1,5 @@
-# Sheets common to campaigns A and B (tension-type specimens + 4 LASER), 600 (RD) x 500 (TD) mm, waterjet
-# Written by scripts/orders_from_registry.py: specimens of sheet(s) 1,2 of the plan TENSION_AB_4LASER (codes kept);
-# 102 specimens + 4 LASER strips.
+# Campaigns A and B: the 2 common sheets (tension-type specimens only)
+# Written by scripts/split_campaigns.py (rules of the user, 11/11/2026): 122 specimens + 0 LASER.
 # Run from the repository root:
 #   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/COMMON_AB_600x500mm_WATERJET.yaml
 
@@ -25,14 +24,14 @@ gap: 5                 # minimum distance between two specimens (rule of the sup
 
 # ---------- Placement (time budget) ----------
 assign_time: 30        # seconds of PackingSolver to put all the specimens on sheets (step 1)
-fill_tries: 8          # failed tries allowed when moving specimens to empty one sheet (step 2; 0 = no reduction)
-fill_time: 10          # seconds of sparrow at most per try (a try that succeeds usually stops after 1-3 s)
-time: 10               # seconds of sparrow at most per sheet for the final compaction (step 3; 0 = no compaction)
+fill_tries: 14         # failed tries allowed when moving specimens to empty one sheet (step 2; 0 = no reduction)
+fill_time: 15          # seconds of sparrow at most per try (a try that succeeds usually stops after 1-3 s)
+time: 15               # seconds of sparrow at most per sheet for the final compaction (step 3; 0 = no compaction)
 seed: 1                # seed of the random draws of sparrow (change it to get another layout)
 max_sheets: 20         # the order is rejected if it needs more sheets than this
 spread_distance: 10    # two repeats (same type and angle) closer than this (mm) are "side by side": swaps
                        #   separate them after the placement; the pairs left are a warning (orange circles)
-spread_tries: 1        # placements tried to keep the repeats apart
+spread_tries: 1        # placements tried (3 gave the same result on 11/11: PackingSolver is deterministic)
                        #   (seed, seed + 1, ...; best kept: fewest sheets, then fewest pairs); time x tries
 
 # ---------- Specimens: one line = "count specimens of this type at this angle" ----------
@@ -46,35 +45,21 @@ spread_tries: 1        # placements tried to keep the repeats apart
 # count: number of specimens of this line
 # first_index: index (number in the notch code) of the first specimen, then +1 for each one (default 0; max 9)
 specimens:
-  # from sheet(s) 1,2 of cutting-sheets/runs/_kept/TENSION_AB_4LASER/registry.csv
-  - {type: CHD48,           angle: 0,   count: 2, first_index: 1}
-  - {type: CHD48,           angle: 0,   count: 3, first_index: 4}
-  - {type: CHD48,           angle: 45,  count: 1, first_index: 2}
-  - {type: CHD48,           angle: 45,  count: 1, first_index: 4}
-  - {type: CHD48,           angle: 45,  count: 2, first_index: 6}
+  - {type: CHD48,           angle: 0,   count: 9, first_index: 1}
+  - {type: CHD48,           angle: 90,  count: 9, first_index: 1}
   - {type: MNAK_RECT_FULL,  angle: 0,   count: 3, first_index: 1}
   - {type: MNAK_RECT_HOLE,  angle: 0,   count: 3, first_index: 1}
-  - {type: MNAK_RECT_HOLE,  angle: 45,  count: 3, first_index: 1}
   - {type: MNAK_RECT_HOLE,  angle: 90,  count: 3, first_index: 1}
-  - {type: NT06,            angle: 0,   count: 2, first_index: 1}
-  - {type: NT06,            angle: 0,   count: 6, first_index: 4}
-  - {type: NT06,            angle: 45,  count: 3, first_index: 1}
-  - {type: NT06,            angle: 45,  count: 3, first_index: 6}
-  - {type: NT06,            angle: 90,  count: 1, first_index: 1}
-  - {type: NT06,            angle: 90,  count: 1, first_index: 6}
-  - {type: NT20,            angle: 0,   count: 8, first_index: 1}
-  - {type: NT20,            angle: 45,  count: 2, first_index: 1}
-  - {type: NT20,            angle: 45,  count: 6, first_index: 4}
-  - {type: NT20,            angle: 90,  count: 8, first_index: 2}
-  - {type: UT19,            angle: 0,   count: 1, first_index: 7}
-  - {type: UT40,            angle: 0,   count: 3, first_index: 1}
-  - {type: UT40,            angle: 0,   count: 2, first_index: 5}
+  - {type: NT06,            angle: 0,   count: 9, first_index: 1}
+  - {type: NT06,            angle: 45,  count: 8, first_index: 2}
+  - {type: NT06,            angle: 90,  count: 9, first_index: 1}
+  - {type: NT20,            angle: 0,   count: 9, first_index: 1}
+  - {type: NT20,            angle: 45,  count: 9, first_index: 1}
+  - {type: NT20,            angle: 90,  count: 9, first_index: 1}
+  - {type: UT40,            angle: 0,   count: 6, first_index: 1}
   - {type: UT40,            angle: 15,  count: 6, first_index: 1}
   - {type: UT40,            angle: 30,  count: 6, first_index: 1}
-  - {type: UT40,            angle: 45,  count: 1, first_index: 1}
-  - {type: UT40,            angle: 45,  count: 4, first_index: 3}
+  - {type: UT40,            angle: 45,  count: 6, first_index: 1}
   - {type: UT40,            angle: 60,  count: 6, first_index: 1}
   - {type: UT40,            angle: 75,  count: 6, first_index: 1}
   - {type: UT40,            angle: 90,  count: 6, first_index: 1}
-  # speckle contrast strips (no code)
-  - {type: LASER,           angle: 0,   count: 4}

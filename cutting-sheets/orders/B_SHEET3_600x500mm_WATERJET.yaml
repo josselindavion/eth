@@ -1,12 +1,10 @@
-# Campaign B (A without SHLD, SHHD at 45, 90 deg) for one material, SHEAR SPECIMENS ONLY, waterjet cutting on sheets of 600 (RD) x 500 (TD) mm,
-# written by scripts/make_campaign_orders.py from the campaign rules of 11/11/2026 (campaigns PDF
-# campaigns/DP_test_campaigns_Beerli2026.pdf): 30 specimens + 0 LASER strips.
-# Shear specimens alone on their sheets (then finished by wire EDM).
-# Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).
+# Campaign B, sheet 3: all the shear of B + tension-type specimens + LASER
+# Written by scripts/split_campaigns.py (rules of the user, 11/11/2026): 64 specimens + 4 LASER (1 at first, 4 checked
+# afterwards with make_plan: they fit).
 # Run from the repository root:
-#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/SHEAR_B_600x500mm_WATERJET.yaml
+#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/B_SHEET3_600x500mm_WATERJET.yaml
 
-name: SHEAR_B_600x500mm_WATERJET
+name: B_SHEET3_600x500mm_WATERJET
 templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the waterjet machine; all lengths in mm; see preview.png ----------
@@ -34,7 +32,7 @@ seed: 1                # seed of the random draws of sparrow (change it to get a
 max_sheets: 20         # the order is rejected if it needs more sheets than this
 spread_distance: 10    # two repeats (same type and angle) closer than this (mm) are "side by side": swaps
                        #   separate them after the placement; the pairs left are a warning (orange circles)
-spread_tries: 1        # placements tried to keep the repeats apart
+spread_tries: 3        # 3 placements tried: the one with the fewest sheets is kept
                        #   (seed, seed + 1, ...; best kept: fewest sheets, then fewest pairs); time x tries
 
 # ---------- Specimens: one line = "count specimens of this type at this angle" ----------
@@ -48,21 +46,30 @@ spread_tries: 1        # placements tried to keep the repeats apart
 # count: number of specimens of this line
 # first_index: index (number in the notch code) of the first specimen, then +1 for each one (default 0; max 9)
 specimens:
-  # slow rate
-  - {type: SHLD,            angle: 0,   count: 2, first_index: 1}
-  - {type: SHMD,            angle: 0,   count: 2, first_index: 1}
-  - {type: SHMD,            angle: 45,  count: 2, first_index: 1}
-  - {type: SHMD,            angle: 90,  count: 2, first_index: 1}
+  - {type: CHD48,           angle: 45,  count: 9, first_index: 1}
+  - {type: MNAK_RECT_HOLE,  angle: 45,  count: 3, first_index: 1}
+  - {type: NT06,            angle: 45,  count: 1, first_index: 1}
+  - {type: UT19,            angle: 0,   count: 3, first_index: 7}
+  - {type: UT19,            angle: 15,  count: 3, first_index: 7}
+  - {type: UT19,            angle: 30,  count: 3, first_index: 7}
+  - {type: UT19,            angle: 45,  count: 3, first_index: 7}
+  - {type: UT19,            angle: 60,  count: 3, first_index: 7}
+  - {type: UT19,            angle: 75,  count: 3, first_index: 7}
+  - {type: UT19,            angle: 90,  count: 3, first_index: 7}
   - {type: SHHD,            angle: 0,   count: 2, first_index: 1}
-  # medium rate
-  - {type: SHLD,            angle: 0,   count: 2, first_index: 4}
-  - {type: SHMD,            angle: 0,   count: 2, first_index: 4}
-  - {type: SHMD,            angle: 45,  count: 2, first_index: 4}
-  - {type: SHMD,            angle: 90,  count: 2, first_index: 4}
   - {type: SHHD,            angle: 0,   count: 2, first_index: 4}
-  # high rate
-  - {type: SHLD,            angle: 0,   count: 2, first_index: 7}
-  - {type: SHMD,            angle: 0,   count: 2, first_index: 7}
-  - {type: SHMD,            angle: 45,  count: 2, first_index: 7}
-  - {type: SHMD,            angle: 90,  count: 2, first_index: 7}
   - {type: SHHD,            angle: 0,   count: 2, first_index: 7}
+  - {type: SHLD,            angle: 0,   count: 2, first_index: 1}
+  - {type: SHLD,            angle: 0,   count: 2, first_index: 4}
+  - {type: SHLD,            angle: 0,   count: 2, first_index: 7}
+  - {type: SHMD,            angle: 0,   count: 2, first_index: 1}
+  - {type: SHMD,            angle: 0,   count: 2, first_index: 4}
+  - {type: SHMD,            angle: 0,   count: 2, first_index: 7}
+  - {type: SHMD,            angle: 45,  count: 2, first_index: 1}
+  - {type: SHMD,            angle: 45,  count: 2, first_index: 4}
+  - {type: SHMD,            angle: 45,  count: 2, first_index: 7}
+  - {type: SHMD,            angle: 90,  count: 2, first_index: 1}
+  - {type: SHMD,            angle: 90,  count: 2, first_index: 4}
+  - {type: SHMD,            angle: 90,  count: 2, first_index: 7}
+  # speckle contrast strips (no code)
+  - {type: LASER,           angle: 0,   count: 4}

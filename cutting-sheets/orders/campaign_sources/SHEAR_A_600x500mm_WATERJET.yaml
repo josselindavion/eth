@@ -1,10 +1,10 @@
 # Campaign A (full) for one material, SHEAR SPECIMENS ONLY, waterjet cutting on sheets of 600 (RD) x 500 (TD) mm,
 # written by scripts/make_campaign_orders.py from the campaign rules of 11/11/2026 (campaigns PDF
 # campaigns/DP_test_campaigns_Beerli2026.pdf): 54 specimens + 0 LASER strips.
-# Shear specimens alone on their sheets (then finished by wire EDM).
+# Shear specimens alone on their sheets (then finished by wire EDM). SOURCE of split_campaigns.py.
 # Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).
 # Run from the repository root:
-#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/SHEAR_A_600x500mm_WATERJET.yaml
+#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/campaign_sources/SHEAR_A_600x500mm_WATERJET.yaml
 
 name: SHEAR_A_600x500mm_WATERJET
 templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
