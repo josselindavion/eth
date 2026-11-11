@@ -8,6 +8,8 @@ orders/CAMPAIGN_600x500mm_WATERJET.yaml.
 
 Index of the notch code = strain rate, the same for every type: slow 1-3, medium 4-6, high 7-9 (shear, 2 repeats:
 1-2, 4-5, 7-8), so that specimens of the same type and angle at different rates have different codes.
+The shear specimens are ALONE on their sheets (user, 11/11/2026): each campaign gives two orders,
+CAMPAIGN_<X>_600x500mm_WATERJET (tension-type specimens + LASER strips) and SHEAR_<X>_600x500mm_WATERJET (shear only).
 """
 import os
 import sys
@@ -36,21 +38,24 @@ def campaign(shear_45_90):
     return out
 
 
-def write(letter, title, rows):
+def write(letter, title, rows, shear=False):
     base = open(BASE, encoding='utf-8').read()
     i0 = base.index("templates:")
     i1 = base.index("# ---------- Specimens: one line")
     i2 = base.index("specimens:\n")
-    name = 'CAMPAIGN_%s_600x500mm_WATERJET' % letter
+    rows = [r for r in rows if r[1].startswith('SH') == shear]
+    name = ('SHEAR_%s_600x500mm_WATERJET' if shear else 'CAMPAIGN_%s_600x500mm_WATERJET') % letter
+    n_laser = 0 if shear else N_LASER
     n = sum(r[3] for r in rows)
-    head = ("# Campaign %s (%s) for one material, waterjet cutting on sheets of 600 (RD) x 500 (TD) mm, written by\n"
-            "# scripts/make_campaign_orders.py from the campaign rules of 11/11/2026 (campaigns PDF\n"
-            "# campaigns/DP_test_campaigns_Beerli2026.pdf): %d specimens + %d LASER strips. Shear specimens are cut here\n"
-            "# (waterjet), then finished by wire EDM. Index of the notch code = strain rate: slow 1-3, medium 4-6,\n"
-            "# high 7-9 (shear: 1-2, 4-5, 7-8).\n"
+    head = ("# Campaign %s (%s) for one material, %s, waterjet cutting on sheets of 600 (RD) x 500 (TD) mm,\n"
+            "# written by scripts/make_campaign_orders.py from the campaign rules of 11/11/2026 (campaigns PDF\n"
+            "# campaigns/DP_test_campaigns_Beerli2026.pdf): %d specimens + %d LASER strips.\n# %s\n"
+            "# Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).\n"
             "# Run from the repository root:\n"
             "#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/%s.yaml\n\n"
-            "name: %s\n" % (letter, title, n, N_LASER, name, name))
+            "name: %s\n" % (letter, title, 'SHEAR SPECIMENS ONLY' if shear else 'tension-type specimens', n,
+                             n_laser, 'Shear specimens alone on their sheets (then finished by wire EDM).' if shear
+                             else 'The shear specimens are in SHEAR_%s_600x500mm_WATERJET.' % letter, name, name))
     body = base[i0:i1].replace("spread_tries: 3        # 3 here: seed 1, 2, 3 tried (seed 2 left 1 pair on 10/11)",
                                "spread_tries: 1        # placements tried to keep the repeats apart")
     lines = ["specimens:"]
@@ -60,14 +65,15 @@ def write(letter, title, rows):
             if r == rate:
                 lines.append("  - {type: %-16s angle: %-4s count: %d, first_index: %d}"
                              % (t + ',', '%d,' % a, c, FIRST[rate]))
-    if N_LASER:
+    if n_laser:
         lines.append("  # speckle contrast strips (no code)")
-        lines.append("  - {type: LASER,           angle: 0,   count: %d}" % N_LASER)
+        lines.append("  - {type: LASER,           angle: 0,   count: %d}" % n_laser)
     path = os.path.join(ORDERS, name + '.yaml')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(head + body + base[i1:i2] + '\n'.join(lines) + '\n')
-    print('written %s (%d specimens + %d LASER)' % (path, n, N_LASER))
+    print('written %s (%d specimens + %d LASER)' % (path, n, n_laser))
 
 
-write('A', 'full', campaign(SH))
-write('B', 'space a little short: A without SHLD and SHHD at 45 and 90 deg', campaign(('SHMD',)))
+for shear in (False, True):
+    write('A', 'full', campaign(SH), shear)
+    write('B', 'A without SHLD, SHHD at 45, 90 deg', campaign(('SHMD',)), shear)
