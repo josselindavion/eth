@@ -46,7 +46,7 @@ st_h = ParagraphStyle('h', fontName=BOLD, fontSize=11.5, leading=14, spaceBefore
 ALL7 = (0, 15, 30, 45, 60, 75, 90)
 A3 = (0, 45, 90)
 TEN = 'TENSION-TYPE  ·  waterjet'
-SHE = 'SHEAR  ·  wire EDM'
+SHE = 'SHEAR  ·  waterjet + wire EDM'
 
 
 def row(geom, angles, n):
@@ -55,15 +55,15 @@ def row(geom, angles, n):
 
 
 SHEAR3 = lambda angles: [row(g, angles, 2) for g in ('SHLD', 'SHMD', 'SHHD')]     # noqa: E731
-# answers of the supervisors (user, 11/11/2026): CHD48 = 4.8 mm hole re-drilled to 5 mm (CH5 everywhere, no CH8);
+# answers of the supervisors (user, 11/11/2026): CH4.8 (catalogue CHD48) = 4.8 mm hole re-drilled to 5 mm (CH5 everywhere, no CH8);
 # MNAK_RECT_FULL = punch, 0 deg only, 3; MNAK_RECT_HOLE = mini-Nakazima; UT at all orientations at every rate
 CAMPAIGNS = [
-    ('SLOW RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', A3, 3), row('NT06', A3, 3), row('CHD48', A3, 3),
+    ('SLOW RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', A3, 3), row('NT06', A3, 3), row('CH4.8', A3, 3),
                           row('MNAK_RECT_FULL', (0,), 3), row('MNAK_RECT_HOLE', A3, 3)]),
                    (SHE, SHEAR3(A3))]),
-    ('MEDIUM RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CHD48', (0,), 3)]),
+    ('MEDIUM RATE', [(TEN, [row('UT40', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CH4.8', (0,), 3)]),
                      (SHE, SHEAR3((0,)))]),
-    ('HIGH RATE', [(TEN, [row('UT19', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CHD48', (0,), 3)]),
+    ('HIGH RATE', [(TEN, [row('UT19', ALL7, 3), row('NT20', (0,), 3), row('NT06', (0,), 3), row('CH4.8', (0,), 3)]),
                    (SHE, SHEAR3((0,)))]),
 ]
 

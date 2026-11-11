@@ -39,14 +39,14 @@ A3 = '0, 45, 90'
 SH3 = lambda ori, n: [(g, ori, n, 2) for g in ('SHLD', 'SHMD', 'SHHD')]      # noqa: E731
 RATES = [
     ('Slow rate', 'Slow rate',
-     [('UT40', ALL7, 7, 3), ('NT20', A3, 3, 3), ('NT06', A3, 3, 3), ('CHD48', A3, 3, 3),
+     [('UT40', ALL7, 7, 3), ('NT20', A3, 3, 3), ('NT06', A3, 3, 3), ('CH4.8', A3, 3, 3),
       ('MNAK_RECT_FULL', '0', 1, 3), ('MNAK_RECT_HOLE', A3, 3, 3)],
      SH3(A3, 3)),
     ('Medium rate', 'Medium rate',
-     [('UT40', ALL7, 7, 3), ('NT20', '0', 1, 3), ('NT06', '0', 1, 3), ('CHD48', '0', 1, 3)],
+     [('UT40', ALL7, 7, 3), ('NT20', '0', 1, 3), ('NT06', '0', 1, 3), ('CH4.8', '0', 1, 3)],
      SH3('0', 1)),
     ('High rate', 'High rate',
-     [('UT19', ALL7, 7, 3), ('NT20', '0', 1, 3), ('NT06', '0', 1, 3), ('CHD48', '0', 1, 3)],
+     [('UT19', ALL7, 7, 3), ('NT20', '0', 1, 3), ('NT06', '0', 1, 3), ('CH4.8', '0', 1, 3)],
      SH3('0', 1)),
 ]
 HEAD = ['Specimen', 'Orientations to RD (°)', 'Orientations', 'Repeats', 'Number']
@@ -101,7 +101,7 @@ for name, title, tension, shear in RATES:
     ws.row_dimensions[r].height = 22
     r += 1
     r, s1 = block(ws, r, 'Tension-type specimens (waterjet)', tension)
-    r, s2 = block(ws, r, 'Shear (wire EDM)', shear)
+    r, s2 = block(ws, r, 'Shear (waterjet + wire EDM)', shear)
     for c in range(1, 6):
         cell(ws, r, c, 'TOTAL' if c == 1 else None, f_bold, fill_total, left if c == 1 else mid)
     ws.cell(r, 5).value = '=%s+%s' % (s1, s2)
