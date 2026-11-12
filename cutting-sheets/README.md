@@ -33,7 +33,7 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_600x500mm_
 | `orders/modules/` | the **modules** (modular strategy of 12/11/2026), written by `make_module_orders.py`: SLOW78, MEDIUM66, HIGH66 (campaign A), SLOW70 (B and C), MEDIUM54, HIGH54 (B), MH18 (C, medium + high on one sheet), A_LARGE (whole campaign A on one sheet of 900 × 1140, for the large sheets); modules of each material in `scripts/materials_data.py`; PDF `campaigns/modules.pdf` |
 | `orders/PARTLY_USED_600x500mm_WATERJET_TEST.yaml` | test of the optional forbidden zone (partly used 600 × 500 sheet of 11/11/2026): 24 specimens for the test (campaign C, medium and high rate, tension-type at 0°) |
 
-Campaigns A, B and C are nested (C inside B inside A, same notch codes), so they share their first sheets (`make_nested_orders.py`, journal of 12/11/2026; plans and campaigns in `campaigns/cutting_plans.pdf`). Every campaign has 4 LASER (1 on sheet 1 + 3).
+Campaigns A, B and C are nested (C inside B inside A, same notch codes), so they share their first sheets (`make_nested_orders.py`, journal of 12/11/2026; strategy of the morning of 12/11, replaced by the modules below). Every campaign has 4 LASER (1 on sheet 1 + 3).
 
 | Campaign | Sheets | Orders |
 |---|---|---|
