@@ -6,11 +6,13 @@ Shared by make_materials_pdf.py (inventory) and make_material_cuts_pdf.py (templ
 
 Sizes: RD x TD in mm, the first value is always the rolling direction (user, 11/11/2026). Sheet ID = material ID +
 "-" + number of the sheet in the user's list. A TEMPLATE = one sheet of a module (one DXF sheet, the same every time
-it is cut); a module has 1 or 2 templates (see make_module_orders.py).
+it is cut); a module has 1 or 2 templates (see make_module_orders.py). A module entry 'MEDHIGH66@high' = the module
+MEDHIGH66 cut for the high rate (same template as for the medium rate, user 12/11/2026).
 """
 import csv
 import functools
 import os
+import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..')
@@ -21,13 +23,15 @@ MATERIALS = [
      [(605, 505, '605 × 505', ''), (598, 502, '598 × 502', ''), (605, 501, '605 × 501', ''),
       (598, 500, '598 × 500', 'edges not straight'), (599, 507, '599 × 507', 'edges not straight'),
       (603, 502, '603 × 502', 'edges not straight'), (596, 500, '596 × 500', 'edges not straight')], '',
-     ['SLOW78', 'MEDIUM66', 'HIGH66']),
+     ['SLOW78', 'MEDHIGH66@medium', 'MEDHIGH66@high']),
     ('DC01', '2025_11_25_B', '2.0', 'C medium + high', [(599, 500, '599 × 500', ''), (None, None, 'custom size', '')],
      '', ['MH18']),
-    ('S235JR', '2023_02_28_D', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '', ['MEDIUM66', 'HIGH66']),
+    ('S235JR', '2023_02_28_D', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '',
+     ['MEDHIGH66@medium', 'MEDHIGH66@high']),
     ('AW5754-H22', '2023_02_28_A', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 4, '',
-     ['MEDIUM66', 'HIGH66']),
-    ('S355MC', '2023_02_28_C', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '', ['MEDIUM66', 'HIGH66']),
+     ['MEDHIGH66@medium', 'MEDHIGH66@high']),
+    ('S355MC', '2023_02_28_C', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '',
+     ['MEDHIGH66@medium', 'MEDHIGH66@high']),
     ('RA980', '2022_05_04_D', '1.4', 'A (one large plan)', [(900, 1200, '900 × 1200', '')], '', ['A_LARGE']),
     ('RA1200', '2022_05_04_E', '1.4', 'A (one large plan)', [(913, 1146, '913–915 × 1146', 'RD 913 to 915')], '',
      ['A_LARGE']),
@@ -36,8 +40,7 @@ MATERIALS = [
 ]
 
 # module -> (order, RD, TD); its templates = the sheets of the order's plan (runs/<order>/ or output/<order>/)
-MODULE_ORDERS = {m: ('MOD_%s_600x500mm_WATERJET' % m, 600, 500)
-                 for m in ('SLOW78', 'MEDIUM66', 'HIGH66', 'SLOW70', 'MEDIUM54', 'HIGH54', 'MH18')}
+MODULE_ORDERS = {m: ('MOD_%s_600x500mm_WATERJET' % m, 600, 500) for m in ('SLOW78', 'MEDHIGH66', 'MEDHIGH54', 'MH18')}
 MODULE_ORDERS['A_LARGE'] = ('MOD_A_LARGE_900x1140mm_WATERJET', 900, 1140)
 PLAN_RD, PLAN_TD = 600, 500
 
@@ -65,11 +68,33 @@ def pieces(order, idx):
     return [r for r in registry(order) if int(r['sheet']) == idx + 1]
 
 
-def templates(module):
-    """[(template id, order, index of the sheet in the DXF, RD, TD, module)] of a module."""
+def templates(entry):
+    """[(template id, order, index of the sheet in the DXF, RD, TD, module entry)] of a module entry ('MEDHIGH66' or
+    'MEDHIGH66@high')."""
+    module = entry.split('@')[0]
     order, rd, td = MODULE_ORDERS[module]
     n = n_sheets(order)
-    return [(module + ('-%d' % (k + 1) if n > 1 else ''), order, k, rd, td, module) for k in range(n)]
+    return [(module + ('-%d' % (k + 1) if n > 1 else ''), order, k, rd, td, entry) for k in range(n)]
+
+
+def label(t):
+    """Template id shown on a sheet: 'MEDHIGH66 · high' for a module cut for one rate."""
+    return t[0] + (' · ' + t[5].split('@')[1] if '@' in t[5] else '')
+
+
+def base_tid(tid):
+    """'MEDHIGH66 · high' -> 'MEDHIGH66'"""
+    return tid.split(' · ')[0]
+
+
+def module_of(tid):
+    """'SLOW78-2' or 'MEDHIGH66 · high' -> module name"""
+    return re.sub(r'-\d+$', '', base_tid(tid))
+
+
+def pretty(entry):
+    """'MEDHIGH66@high' -> 'MEDHIGH66 (high)'"""
+    return entry.replace('@', ' (') + ')' if '@' in entry else entry
 
 
 def plans_of(material):
@@ -125,6 +150,7 @@ def assign(material):
                 break
             plans.pop(0)
             placed.append((pos[0], pos[1], prd, ptd))
-            put.append((tid, order, idx, pos[0], pos[1], prd, ptd))
+            put.append((label((tid, order, idx, prd, ptd, module)), order, idx, pos[0], pos[1],
+                        prd, ptd))
         out.append((i, put))
     return out, plans

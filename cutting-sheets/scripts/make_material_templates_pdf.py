@@ -26,7 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import sheetlib                                              # noqa: E402
 from make_module_orders import LARGE, MODULES                # noqa: E402
-from materials_data import MATERIALS, assign, pieces, plan_dir, plans_of   # noqa: E402
+from materials_data import MATERIALS, assign, base_tid, module_of, pieces, plan_dir, plans_of, pretty   # noqa: E402
 
 ROOT = os.path.join(HERE, '..')
 FONT, BOLD = 'Helvetica', 'Helvetica-Bold'
@@ -66,11 +66,19 @@ def plan(order, idx):
                       max(bx[3], max(ys) - fy)]
         cfg = yaml.safe_load(open(os.path.join(ROOT, 'orders', 'modules', order + '.yaml'), encoding='utf-8'))
         cl = []
+        band = cfg.get('clamping') or {}
+        if band.get('left'):                                 # full L clamping: bands along the edges
+            cl.append((0, 0, band['left'], float(cfg['sheet'].split('x')[0])))
+        if band.get('bottom'):
+            cl.append((0, 0, float(cfg['sheet'].split('x')[1]), band['bottom']))
         for k in cfg.get('clamps', []):
             if k['side'] == 'left':
                 cl.append((0, k['at'] - k['width'] / 2.0, k['depth'], k['width']))
             elif k['side'] == 'bottom':
                 cl.append((k['at'] - k['width'] / 2.0, 0, k['width'], k['depth']))
+            elif k['side'] == 'right':
+                W = float(cfg['sheet'].split('x')[1])
+                cl.append((W - k['depth'], k['at'] - k['width'] / 2.0, k['depth'], k['width']))
         _PLANS[(order, idx)] = (lines, bx, cl)
     return _PLANS[(order, idx)]
 
@@ -161,8 +169,8 @@ def legend(c, y):
     c.setFillColor(BLACK)
     c.drawString(31 * mm, y + 0.9 * mm, 'real sheet')
     c.drawString(61 * mm, y + 0.9 * mm, 'template')
-    c.drawString(95 * mm, y + 0.9 * mm, 'clamp (50 × 40)')
-    x = 125 * mm
+    c.drawString(95 * mm, y + 0.9 * mm, 'clamp / clamping band')
+    x = 133 * mm
     for q, t in ((3, 'Q3'), (4, 'Q4'), (5, 'Q5 (codes)')):
         c.setStrokeColor(Q_COL[q])
         c.setLineWidth(1.2)
@@ -216,7 +224,7 @@ def summary(c, rows):
 def sheet_table(c, m, use, y):
     name, mid, thk, camp, sheets, note, mods = m
     use = dict(use)
-    cols = [22, 56, 84, 112, 150, 166]
+    cols = [22, 54, 79, 115, 150, 164]
     c.setFont(BOLD, 7)
     c.setFillColor(BLACK)
     for x, t in zip(cols, ('SHEET', 'SIZE RD × TD', 'TEMPLATE', 'MODULE', 'PIECES', 'NOTE')):
@@ -232,11 +240,12 @@ def sheet_table(c, m, use, y):
         c.drawString(cols[0] * mm, y, '%s-%d' % (mid, i + 1))
         c.drawString(cols[1] * mm, y, size)
         if put:
-            c.setFont(BOLD, 8.5)
+            c.setFont(BOLD, 7.8)
             c.drawString(cols[2] * mm, y, ' + '.join(p[0] for p in put))
             c.setFont(FONT, 7.5)
-            c.drawString(cols[3] * mm, y, ', '.join(p[0].split('-')[0] + (' sheet %s of 2' % p[0].split('-')[1]
-                                                                          if '-' in p[0] else '') for p in put))
+            c.drawString(cols[3] * mm, y, ', '.join(module_of(p[0]) + (' sheet %s of 2' % base_tid(p[0])[-1]
+                                                                       if base_tid(p[0]) != module_of(p[0]) else '')
+                                                    for p in put))
             c.drawString(cols[4] * mm, y, '%d' % sum(len(pieces(p[1], p[2])) for p in put))
         else:
             c.drawString(cols[2] * mm, y, 'spare' if rd else '–')
@@ -254,9 +263,9 @@ def material_page(c, m, use, missing):
     name, mid, thk, camp, sheets, note, mods = m
     used = [(i, put) for i, put in use if put]
     header(c, '%s  ·  %s' % (name, mid),
-           ['thickness %s mm  ·  %d sheet(s)  ·  campaign %s  ·  modules: %s  ·  %d template(s)' % (
-               thk, len(sheets), camp, ' + '.join(mods), len(plans_of(m)))])
-    y = sheet_table(c, m, use, PH - 34 * mm)
+           ['thickness %s mm  ·  %d sheet(s)  ·  campaign %s' % (thk, len(sheets), camp),
+            'modules: %s  ·  %d sheet(s) to cut' % (' + '.join(pretty(e) for e in mods), len(plans_of(m)))])
+    y = sheet_table(c, m, use, PH - 38 * mm)
     legend(c, y - 5 * mm)
     top = y - 13 * mm
     big = any(sheets[i][1] > 700 for i, _ in used)
@@ -268,11 +277,12 @@ def material_page(c, m, use, missing):
         ytop = top - (0 if big else (k // 2) * ch)
         c.setFont(BOLD, 8.5)
         c.setFillColor(BLACK)
-        c.drawString(x, ytop, '%s-%d  ·  %s  →  %s' % (mid, i + 1, size, ' + '.join(p[0] for p in put)))
+        c.setFont(BOLD, 8 if big else 7.6)
+        c.drawString(x, ytop, '%s-%d · %s → %s' % (mid, i + 1, size, ' + '.join(p[0] for p in put)))
         c.setFont(FONT, 7.2)
         c.setFillColor(G_TEXT)
         c.drawString(x, ytop - 3.6 * mm, ', '.join('%s · %d pieces' % (
-            TITLES[p[0].split('-')[0]], len(pieces(p[1], p[2]))) for p in put))
+            TITLES[module_of(p[0])].split(' (')[0], len(pieces(p[1], p[2]))) for p in put))
         oy = ytop - 6 * mm - rd * sc
         mg = draw_sheet(c, x, oy, rd, td, put, sc)
         c.setFont(FONT, 6.5)
@@ -282,7 +292,7 @@ def material_page(c, m, use, missing):
             area = sum(p[5] * p[6] for p in put)
             c.setFont(FONT, 8)
             c.setFillColor(BLACK)
-            c.drawString(x, oy - 10 * mm, '%s = SLOW78 + MEDIUM66 + HIGH66 in one template of 900 × 1140 (RD × TD), '
+            c.drawString(x, oy - 10 * mm, '%s = slow 78 + medium 66 + high 66 in one template of 900 × 1140 (RD × TD), '
                          'bottom-left corner, RD kept.' % put[0][0])
             c.drawString(x, oy - 14.4 * mm, 'Rest of the sheet (outside the template): %.0f %% of its area.'
                          % (100.0 * (1 - area / float(rd * td))))
@@ -320,6 +330,7 @@ def templates_page(c, uses):
         c.drawString(cols[2] * mm, y, '%d' % len(pieces(order, idx)))
         c.setFont(BOLD, 9)
         c.drawString(cols[3] * mm, y, '× %d' % len(where))
+        mod = mod.split('@')[0]
         c.setFont(FONT, 7.3)
         c.drawString(cols[4] * mm, y, mod)
         c.setFillColor(G_TEXT)
@@ -327,11 +338,13 @@ def templates_page(c, uses):
             c.drawString(cols[5] * mm, y - (k // 2) * 3.3 * mm, ', '.join(where[k:k + 2]))
         c.setFont(FONT, 6.5)
         c.setFont(FONT, 6.2)
-        c.drawString(cols[1] * mm, y - 3.6 * mm, TITLES[mod])
+        c.drawString(cols[1] * mm, y - 3.6 * mm, TITLES[mod].split(' (')[0])
+        nl = (len(where) + 1) // 2
+        dy = max(5.5, 2.2 + nl * 3.3) * mm
         c.setStrokeColor(G_ROW)
         c.setLineWidth(0.3)
-        c.line(15 * mm, y - 5.5 * mm, PW - 15 * mm, y - 5.5 * mm)
-        y -= 10 * mm
+        c.line(15 * mm, y - dy, PW - 15 * mm, y - dy)
+        y -= dy + 4.5 * mm
         total_cuts += len(where)
     y -= 6 * mm
     c.setStrokeColor(BLACK)
@@ -342,7 +355,8 @@ def templates_page(c, uses):
     c.drawString(20 * mm, y, 'In total: %d different templates' % len(uses))
     c.setFont(FONT, 9)
     c.drawString(20 * mm, y - 4.2 * mm, 'cut %d times in all (%d sheets of material), from %d modules: %s' % (
-        total_cuts, total_cuts, len(set(t[0][5] for t in uses)), ', '.join(sorted(set(t[0][5] for t in uses)))))
+        total_cuts, total_cuts, len(set(t[0][5].split('@')[0] for t in uses)),
+        ', '.join(sorted(set(t[0][5].split('@')[0] for t in uses)))))
 
 
 OUT = sys.argv[1]
@@ -355,15 +369,16 @@ order_t = []
 for m in MATERIALS:
     name, mid, thk, camp, sheets, note, mods = m
     use, missing = assign(m)
-    rows.append((name, mid, ' + '.join(mods), ' · '.join('-%d → %s' % (i + 1, ' + '.join(p[0] for p in put))
+    rows.append((name, mid, ' + '.join(pretty(e) for e in mods), ' · '.join('-%d → %s' % (i + 1, ' + '.join(p[0] for p in put))
                                                         for i, put in use if put)))
     pages.append((m, use, missing))
     for t in plans_of(m):
-        if t not in order_t:
+        if t[0] not in [q[0] for q in order_t]:
             order_t.append(t)
     for i, put in use:
         for p in put:
-            where.setdefault(p[0], []).append('%s-%d' % (mid, i + 1))
+            where.setdefault(base_tid(p[0]), []).append('%s-%d' % (mid, i + 1) + (
+                ' (%s)' % p[0].split(' · ')[1] if ' · ' in p[0] else ''))
 summary(cv, rows)
 footer(cv, 1)
 cv.showPage()

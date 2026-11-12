@@ -1,4 +1,4 @@
-# Module A_LARGE: campaign A on one large sheet (= SLOW78 + MEDIUM66 + HIGH66), waterjet, sheets of 900 (RD) x 1140 (TD) mm.
+# Module A_LARGE: campaign A on one large sheet (= SLOW78 + MEDHIGH66 medium + MEDHIGH66 high), waterjet, sheets of 900 (RD) x 1140 (TD) mm.
 # Written by scripts/make_module_orders.py (modular strategy, user 12/11/2026): 210 specimens + 4 LASER.
 # Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).
 # Run from the repository root:
@@ -9,19 +9,20 @@ templates: catalogue/CTLG_261102              # templates without code: lab cata
 
 # ---------- Sheet on the waterjet machine; all lengths in mm; see preview.png ----------
 sheet: 900x1140       # complete sheet, RD x TD: rolling direction first (required)
-clamps:                # single clamps of the L (user, 10/11/2026): 2 on the left edge, 2 on the bottom edge
-                       #   at = centre of the clamp, in mm from the bottom-left corner along that edge;
-                       #   width = along the edge, depth = into the sheet (40 = depth of the L)
-  - {side: left,   at: 175, width: 50, depth: 40}
-  - {side: left,   at: 475, width: 50, depth: 40}
-  - {side: bottom, at: 140, width: 50, depth: 40}
-  - {side: bottom, at: 375, width: 50, depth: 40}
+clamps:                # 7 single clamps 50 x 40 (user, 12/11/2026): 2 on each short side (left, right),
+                       #   spread at 300 and 600 mm; 3 on the long bottom side, spread at 285, 570, 855 mm
+  - {side: left,   at: 300, width: 50, depth: 40}
+  - {side: left,   at: 600, width: 50, depth: 40}
+  - {side: right,  at: 300, width: 50, depth: 40}
+  - {side: right,  at: 600, width: 50, depth: 40}
+  - {side: bottom, at: 285, width: 50, depth: 40}
+  - {side: bottom, at: 570, width: 50, depth: 40}
+  - {side: bottom, at: 855, width: 50, depth: 40}
 clamp_margin: 5        # minimum distance between a specimen and a clamp (room for the waterjet nozzle)
 edge_margin: 5         # minimum distance to the edges of the sheet (also between the clamps)
 placement_margin: 5    # 5 mm more between the really usable area and the area used for the specimens
 gap: 5                 # minimum distance between two specimens (rule of the supervisors)
-# -> effective area (where the specimens go) = 880 (RD) x 1120 (TD) mm from x 10, y 10, minus a zone of 70 mm (along
-#    the edge) x 50 mm (into the sheet) around each clamp (clamp + clamp_margin + placement_margin)
+# -> effective area: see preview.png (zones of the sheet)
 
 # ---------- Placement (time budget) ----------
 assign_time: 30        # seconds of PackingSolver to put all the specimens on sheets (step 1)
@@ -103,13 +104,13 @@ specimens:
   - {type: SHHD,            angle: 45,  count: 2, first_index: 4}
   - {type: SHHD,            angle: 90,  count: 2, first_index: 4}
   # high rate
-  - {type: UT19,            angle: 0,   count: 3, first_index: 7}
-  - {type: UT19,            angle: 15,  count: 3, first_index: 7}
-  - {type: UT19,            angle: 30,  count: 3, first_index: 7}
-  - {type: UT19,            angle: 45,  count: 3, first_index: 7}
-  - {type: UT19,            angle: 60,  count: 3, first_index: 7}
-  - {type: UT19,            angle: 75,  count: 3, first_index: 7}
-  - {type: UT19,            angle: 90,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 0,   count: 3, first_index: 7}
+  - {type: UT40,            angle: 15,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 30,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 45,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 60,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 75,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 90,  count: 3, first_index: 7}
   - {type: NT20,            angle: 0,   count: 3, first_index: 7}
   - {type: NT20,            angle: 45,  count: 3, first_index: 7}
   - {type: NT20,            angle: 90,  count: 3, first_index: 7}

@@ -27,7 +27,7 @@ from reportlab.pdfgen import canvas
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from make_module_orders import LARGE, MODULES                        # noqa: E402
-from materials_data import MATERIALS, MODULE_ORDERS, assign, pieces, plan_dir, templates   # noqa: E402
+from materials_data import MATERIALS, MODULE_ORDERS, assign, base_tid, pieces, plan_dir, templates   # noqa: E402
 
 FONT, BOLD = 'Helvetica', 'Helvetica-Bold'
 found = []
@@ -96,8 +96,9 @@ def users():
         use, missing = assign(m)
         for i, put in use:
             for p in put:
-                u[p[0]].append('%s %s-%d' % ({'CR1200Y1500T-MS-UNCOATED': 'CR1200Y1500T'}.get(m[0], m[0]), m[1],
-                                             i + 1))
+                u[base_tid(p[0])].append('%s %s-%d' % ({'CR1200Y1500T-MS-UNCOATED': 'CR1200Y1500T'}.get(m[0], m[0]),
+                                                       m[1], i + 1) + (' (%s)' % p[0].split(' · ')[1]
+                                                                       if ' · ' in p[0] else ''))
     return u
 
 
@@ -117,9 +118,11 @@ def page_list(c, tlist, u):
     c.drawString(15 * mm, PH - 24.5 * mm, 'A module = the specimens of one campaign at one strain rate; a template = one '
                  'sheet of a module, always cut the same way (one DXF sheet).')
     c.drawString(15 * mm, PH - 29 * mm, 'Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear '
-                 '1-2, 4-5, 7-8). Medium: UT40; high: UT19. MH18 = medium 18 + high 18 of campaign C on one sheet.')
+                 '1-2, 4-5, 7-8). UT40 at every rate since 12/11/2026.')
+    c.drawString(15 * mm, PH - 33.5 * mm, 'MEDHIGH = one template for medium and high (cut twice, codes 4-6 on both); '
+                 'MH18 = medium + high of campaign C on one sheet (codes 4-6 and 7-9).')
     cols = [15, 46, 132, 152, 168]
-    y = PH - 40 * mm
+    y = PH - 44 * mm
     c.setFillColor(G_HEAD)
     c.rect(15 * mm, y - 2 * mm, PW - 30 * mm, 6.5 * mm, fill=1, stroke=0)
     c.setFillColor(colors.white)
@@ -133,7 +136,7 @@ def page_list(c, tlist, u):
         c.setFont(BOLD, 10)
         c.drawString(cols[0] * mm, y, tid)
         c.setFont(FONT, 7.8)
-        c.drawString(cols[1] * mm, y, ALL[mod][0].split(' (=')[0] + (' (sheet %d of %d)' % (idx + 1, len(templates(mod)))
+        c.drawString(cols[1] * mm, y, ALL[mod][0].split(' (')[0] + (' (sheet %d of %d)' % (idx + 1, len(templates(mod)))
                                                      if len(templates(mod)) > 1 else ''))
         c.drawString(cols[2] * mm, y, '%d × %d' % (rd, td))
         c.setFont(BOLD, 9)
@@ -176,9 +179,14 @@ def page_module(c, mod, u, tmp):
     c.drawString(15 * mm, PH - 24.5 * mm, sub)
     c.setFillColor(G_TEXT)
     c.setFont(FONT, 8)
-    c.drawString(15 * mm, PH - 29.5 * mm, 'used for: ' + used + '  ·  order %s' % order)
+    parts = ('used for: ' + used).split(', ')
+    lines = [', '.join(parts[k:k + 3]) for k in range(0, len(parts), 3)]
+    lines = [t + (',' if k < len(lines) - 1 else '') for k, t in enumerate(lines)]
+    lines[-1] += '  ·  order %s' % order
+    for k, t in enumerate(lines):
+        c.drawString(15 * mm, PH - 29.5 * mm - k * 3.8 * mm, t)
     # content table (left)
-    x0, y = 15 * mm, PH - 40 * mm
+    x0, y = 15 * mm, PH - 40 * mm - (len(lines) - 1) * 3.8 * mm
     cols = [0, 13, 42, 70, 80]
     c.setFont(BOLD, 7)
     c.setFillColor(BLACK)
@@ -233,7 +241,7 @@ def page_module(c, mod, u, tmp):
     # preview (right)
     img = preview(order, 0, 1, tmp)            # whole preview: both sheets of a 2-sheet module
     iw, ih = Image.open(img).size
-    bx, bw, bh = 106 * mm, PW - 106 * mm - 8 * mm, PH - 47 * mm
+    bx, bw, bh = 106 * mm, PW - 106 * mm - 8 * mm, PH - 47 * mm - (len(lines) - 1) * 3.8 * mm
     sc = min(bw / iw, bh / ih)
     c.drawImage(ImageReader(img), bx + (bw - iw * sc) / 2, 14 * mm + (bh - ih * sc), iw * sc, ih * sc)
 

@@ -39,7 +39,7 @@ G_LINE = colors.Color(0.75, 0.75, 0.75)
 G_TEXT = colors.Color(0.40, 0.40, 0.40)
 YELLOW = colors.Color(1.0, 0.93, 0.35)
 
-from materials_data import MATERIALS, assign, pid, plans_of, templates
+from materials_data import MATERIALS, assign, pid, plans_of, pretty, templates
 from make_module_orders import LARGE, MODULES
 
 U = '?'     # marks a value to check: the cell is highlighted, the mark is removed from the text
@@ -75,7 +75,7 @@ for m in MATERIALS:
     use, missing = assign(m) if drawn else ([], [])
     use = dict(use)
     pl = plans_of(m)
-    mnote = (mnote + '; ' if mnote else '') + ' + '.join(drawn)
+    mnote = (mnote + '; ' if mnote else '') + ' + '.join(pretty(e) for e in drawn)
     if missing:
         mnote += '; %s does not fit' % ', '.join(p[0] for p in missing)
     r = len(data)
@@ -122,12 +122,12 @@ story = [Paragraph('MATERIALS AND SHEETS', st_title),
 TITLES = {k: v[0] for k, v in list(MODULES.items()) + list(LARGE.items())}
 used = []
 for m in MATERIALS:
-    for mod in m[6]:
+    for mod in [e.split('@')[0] for e in m[6]]:
         if mod not in used:
             used.append(mod)
 mod_rows = [['MODULE', 'CONTENT', 'TEMPLATES', 'MATERIALS']]
 for mod in used:
-    mats = [m[0] for m in MATERIALS if mod in m[6]]
+    mats = [m[0] for m in MATERIALS if mod in [e.split('@')[0] for e in m[6]]]
     mod_rows.append([mod, Paragraph(TITLES[mod], st_nt), ', '.join(t[0] for t in templates(mod)),
                      Paragraph(', '.join(mats), st_nt)])
 ct = Table(mod_rows, colWidths=[26 * mm, 58 * mm, 34 * mm, 56 * mm])
