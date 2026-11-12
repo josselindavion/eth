@@ -2,13 +2,12 @@
 """
 make_materials_pdf.py -- Inventory of the materials and of their sheets as a sober PDF: one line per material (name,
 ID, number of sheets, notes), its sheets below as indented bullets (sheet ID, size, thickness). Data copied from the
-user's handwritten table (photo of 11/11/2026), values confirmed by the user. CAMPAIGN (A, B or C, see
-make_campaigns_pdf.py) is left empty, to fill in.
+user's handwritten table (photo of 11/11/2026), values confirmed by the user; names and campaigns of 12/11/2026
+(data in materials_data.py). CAMPAIGN: A, B or C per material (see make_campaigns_pdf.py); per sheet, the 600 x 500
+cutting sheet of the campaign it carries (make_material_cuts_pdf.py), or spare.
 
     py cutting-sheets/scripts/make_materials_pdf.py cutting-sheets/materials/materials_and_sheets.pdf
 
-Sizes: the first value is always the rolling direction (user, 11/11/2026). Sheet ID = material ID + "-" +
-number of the sheet in the user's list.
 """
 import os
 import sys
@@ -40,28 +39,16 @@ G_LINE = colors.Color(0.75, 0.75, 0.75)
 G_TEXT = colors.Color(0.40, 0.40, 0.40)
 YELLOW = colors.Color(1.0, 0.93, 0.35)
 
+from materials_data import MATERIALS, assign
+
 U = '?'     # marks a value to check: the cell is highlighted, the mark is removed from the text
-# material: (name, ID, thickness mm, sheets [(size, note)], material note); a leading '?' = hard to read, to check
-MATERIALS = [
-    ('DP980', '2020_06_03A', '1.0',
-     [('605 × 505', ''), ('598 × 502', ''), ('605 × 501', ''), ('598 × 500', 'edges not straight'),
-      ('599 × 507', 'edges not straight'), ('603 × 502', 'edges not straight'), ('596 × 500', 'edges not straight')],
-     ''),
-    ('DC01', '2025_11_25_B', '2.0', [('599 × 500', ''), ('custom size', '')], ''),
-    ('S235JR', '2023_02_28_D', '3.0', [('600 × 500', '')] * 3, ''),
-    ('', '2023_02_28_A', '3.0', [('600 × 500', '')] * 4, 'no name yet'),
-    ('', '2023_02_28_C', '3.0', [('600 × 500', '')] * 3, 'no name yet'),
-    ('RA980', '2022_05_04_D', '1.4', [('900 × 1200', '')], ''),
-    ('RA1200', '2022_05_04_E', '1.4', [('913–915 × 1146', 'RD 913 to 915')], ''),
-    ('', '2022_04_04_G', '1.4', [('916 × 1267', '')], 'no name yet'),
-]
 
 st_title = ParagraphStyle('t', fontName=BOLD, fontSize=16, leading=20)
 st_sub = ParagraphStyle('s', fontName=FONT, fontSize=8.5, leading=11, textColor=G_TEXT)
 st_note = ParagraphStyle('n', fontName=FONT, fontSize=8, leading=10.5, textColor=G_TEXT)
 
 HEAD = ['MATERIAL', 'ID', 'SHEETS', 'CAMPAIGN', 'SIZE RD × TD', 'THICKNESS', 'NOTES']
-W = [26 * mm, 31 * mm, 15 * mm, 22 * mm, 29 * mm, 20 * mm, 31 * mm]     # 174 mm
+W = [40 * mm, 27 * mm, 13 * mm, 24 * mm, 26 * mm, 16 * mm, 28 * mm]     # 174 mm
 
 
 def val(v):
@@ -78,24 +65,43 @@ style = [('FONT', (0, 0), (-1, -1), FONT, 8.8),
          ('ALIGN', (2, 0), (5, -1), 'CENTER'),
          ('LINEBELOW', (0, 1), (-1, -1), 0.3, G_LINE),
          ('TOPPADDING', (0, 0), (-1, -1), 2.6), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.6)]
+st_mat = ParagraphStyle('m', fontName=BOLD, fontSize=9.5, leading=11)
+st_nt = ParagraphStyle('nt', fontName=FONT, fontSize=7.5, leading=9, textColor=G_TEXT)
 n_sheets = 0
-for name, mid, thk, sheets, mnote in MATERIALS:
+for m in MATERIALS:
+    name, mid, thk, camp, sheets, mnote, drawn = m
+    use, missing = assign(m) if drawn else ([], [])
+    use = dict(use)
+    if missing:
+        mnote = (mnote + '; ' if mnote else '') + '%s does not fit' % (
+            ', '.join(p[0] for p in missing))
     r = len(data)
-    cells = [val(name), val(mid), (str(len(sheets)), False), ('', False), ('', False), ('', False), (mnote, False)]
+    cells = [(Paragraph(name.replace('-', '-\u200b'), st_mat), False), val(mid), (str(len(sheets)), False),
+             (camp, False), ('', False), ('', False), (Paragraph(mnote, st_nt), False)]
     data.append([c[0] for c in cells])
     style += [('BACKGROUND', (0, r), (-1, r), G_MAT), ('FONT', (0, r), (2, r), BOLD, 9.5),
+              ('FONT', (3, r), (3, r), BOLD, 10),
               ('LINEABOVE', (0, r), (-1, r), 0.8, BLACK), ('TOPPADDING', (0, r), (-1, r), 4),
               ('BOTTOMPADDING', (0, r), (-1, r), 4), ('TEXTCOLOR', (6, r), (6, r), G_TEXT),
               ('FONT', (6, r), (6, r), FONT, 7.5), ('BOX', (3, r), (3, r), 0.5, G_TEXT),
               ('BACKGROUND', (3, r), (3, r), colors.white)]
     style += [('BACKGROUND', (c, r), (c, r), YELLOW) for c, x in enumerate(cells) if x[1]]
-    for i, (size, note) in enumerate(sheets, 1):
+    for i, (rd, td, size, note) in enumerate(sheets):
         r = len(data)
-        cells = [('•  Sheet %d' % i, False), ('%s-%d' % (val(mid)[0], i), False), ('', False), ('', False), val(size),
-                 val(thk), (note, False)]
+        if i in use and use[i]:
+            role = ', '.join(p[0] for p in use[i])
+        elif drawn and rd:
+            role = 'spare'
+        else:
+            role = ''
+        cells = [('•  Sheet %d' % (i + 1), False), ('%s-%d' % (val(mid)[0], i + 1), False), ('', False),
+                 (role, False), val(size), val(thk), (Paragraph(note, st_nt), False)]
         data.append([c[0] for c in cells])
         style += [('LEFTPADDING', (0, r), (0, r), 14), ('TEXTCOLOR', (1, r), (1, r), G_TEXT),
-                  ('TEXTCOLOR', (6, r), (6, r), G_TEXT), ('FONT', (6, r), (6, r), FONT, 7.5)]
+                  ('TEXTCOLOR', (6, r), (6, r), G_TEXT), ('FONT', (6, r), (6, r), FONT, 7.5),
+                  ('FONT', (3, r), (3, r), FONT, 7.5)]
+        if role == 'spare':
+            style += [('TEXTCOLOR', (3, r), (3, r), G_TEXT)]
         style += [('BACKGROUND', (c, r), (c, r), YELLOW) for c, x in enumerate(cells) if x[1]]
         n_sheets += 1
 
@@ -103,7 +109,8 @@ table = Table(data, colWidths=W, repeatRows=1)
 table.setStyle(TableStyle(style))
 story = [Paragraph('MATERIALS AND SHEETS', st_title),
          Paragraph('%d materials  ·  %d sheets  ·  sizes RD × TD and thickness in mm (rolling direction first)  ·  '
-                   'sheet ID = material ID + sheet number' % (len(MATERIALS), n_sheets), st_sub),
+                   'sheet ID = material ID + sheet number  ·  campaign of each sheet: the 600 × 500 cutting sheet '
+                   'it carries (see material_cuts.pdf), spare = not used' % (len(MATERIALS), n_sheets), st_sub),
          Spacer(1, 8), table]
 
 
@@ -111,7 +118,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont(FONT, 7)
     canvas.setFillColor(G_TEXT)
-    canvas.drawString(18 * mm, 10 * mm, 'Mohr lab, ETH Zurich  ·  11/11/2026')
+    canvas.drawString(18 * mm, 10 * mm, 'Mohr lab, ETH Zurich  ·  12/11/2026')
     canvas.restoreState()
 
 
