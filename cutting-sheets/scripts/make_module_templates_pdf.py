@@ -2,7 +2,8 @@
 """
 make_module_templates_pdf.py -- PDF of every template (one sheet of a module; modular strategy, user 12/11/2026):
 page 1 = list of the templates (module, content, pieces, materials that use it); then one page per template with its
-name, its content (strain rate, specimen type, angles, number, notch-code index) and the cutting plan in colour
+name, its content (strain rate, specimen type, angles, number, notch-code index; a module on 2 sheets, SLOW78 and
+SLOW70, on one page) and the cutting plan in colour
 (preview of the plan, EDM quality colours).
 
     py cutting-sheets/scripts/make_module_templates_pdf.py cutting-sheets/campaigns/module_templates.pdf
@@ -154,47 +155,52 @@ def page_list(c, tlist, u):
         len(tlist), len({t[5] for t in tlist}), len(used)))
 
 
-def page_template(c, t, u, tmp):
-    tid, order, idx, rd, td, mod = t
-    n = len(templates(mod))
-    rows = pieces(order, idx)
+def page_module(c, mod, u, tmp):
+    """One page per module: a module on 2 sheets (SLOW78, SLOW70) shows its 2 templates on the same page."""
+    ts = templates(mod)
+    tid, order, idx, rd, td, mod = ts[0]
+    n = len(ts)
+    rows = [r for t in ts for r in pieces(t[1], t[2])]
     c.setFillColor(BLACK)
     c.setFont(BOLD, 18)
-    c.drawString(15 * mm, PH - 18 * mm, tid)
+    c.drawString(15 * mm, PH - 18 * mm, mod if n > 1 else tid)
     c.setFont(FONT, 9)
-    title, rows_m, n_laser, n_spec = ALL[mod][:4]
-    c.drawString(15 * mm, PH - 24.5 * mm, '%s%s  ·  %d (RD) × %d (TD) mm  ·  %d pieces%s' % (
-        title, ' · sheet %d of %d' % (idx + 1, n) if n > 1 else '', rd, td, len(rows),
-        '  ·  whole module %s: %d specimens%s on %d sheets' % (mod, n_spec, ' + %d LASER' % n_laser if n_laser else '',
-                                                               n) if n > 1 else ''))
+    title = ALL[mod][0]
+    if n > 1:
+        sub = '%s  ·  %d sheets of %d (RD) × %d (TD) mm: %s  ·  %d pieces' % (
+            title, n, rd, td, ' + '.join('%s (%d pieces)' % (t[0], len(pieces(t[1], t[2]))) for t in ts), len(rows))
+        used = '; '.join('%s: %s' % (t[0], ', '.join(u.get(t[0], [])) or 'not used yet') for t in ts)
+    else:
+        sub = '%s  ·  %d (RD) × %d (TD) mm  ·  %d pieces' % (title, rd, td, len(rows))
+        used = ', '.join(u.get(tid, [])) or 'not used yet'
+    c.drawString(15 * mm, PH - 24.5 * mm, sub)
     c.setFillColor(G_TEXT)
     c.setFont(FONT, 8)
-    c.drawString(15 * mm, PH - 29.5 * mm, 'used for: ' + (', '.join(u.get(tid, [])) or 'not used yet') +
-                 '  ·  order %s' % order)
+    c.drawString(15 * mm, PH - 29.5 * mm, 'used for: ' + used + '  ·  order %s' % order)
     # content table (left)
     x0, y = 15 * mm, PH - 40 * mm
-    cols = [0, 15, 46, 82, 92]
+    cols = [0, 13, 42, 70, 80]
     c.setFont(BOLD, 7)
     c.setFillColor(BLACK)
-    for x, h in zip(cols[:3] + [79], ('RATE', 'TYPE', 'ANGLES (deg)', 'EACH')):
+    for x, h in zip(cols[:3] + [67], ('RATE', 'TYPE', 'ANGLES (deg)', 'EACH')):
         c.drawString(x0 + x * mm, y, h)
-    c.drawRightString(x0 + 97 * mm, y, 'TOTAL')
+    c.drawRightString(x0 + 85 * mm, y, 'TOTAL')
     c.setStrokeColor(BLACK)
     c.setLineWidth(0.6)
-    c.line(x0, y - 1.5 * mm, x0 + 98 * mm, y - 1.5 * mm)
+    c.line(x0, y - 1.5 * mm, x0 + 86 * mm, y - 1.5 * mm)
     y -= 5 * mm
     last = None
     for rate, a, per, tot, idxs in content(rows):
         if last is not None and rate != last:
             c.setStrokeColor(BLACK)
             c.setLineWidth(0.4)
-            c.line(x0, y + 3.3 * mm, x0 + 98 * mm, y + 3.3 * mm)
+            c.line(x0, y + 3.3 * mm, x0 + 86 * mm, y + 3.3 * mm)
         c.setFont(BOLD if rate != last else FONT, 7.5)
         c.setFillColor(BLACK if rate != last else colors.white)
         c.drawString(x0 + cols[0] * mm, y, rate if rate != '–' else 'no code')
         last = rate
         c.setFillColor(BLACK)
-        c.setFont(BOLD, 7.8)
+        c.setFont(BOLD, 7.0)
         c.drawString(x0 + cols[1] * mm, y, a)
         each = sorted(set(per.values()), reverse=True)
         if len(each) == 1:
@@ -206,28 +212,28 @@ def page_template(c, t, u, tmp):
             c.drawString(x0 + cols[2] * mm, y, '   '.join('×%d: %s' % (e, ' '.join(str(v) for v in sorted(per)
                                                                               if per[v] == e)) for e in each))
         c.setFont(BOLD, 8)
-        c.drawRightString(x0 + 97 * mm, y, '%d' % tot)
+        c.drawRightString(x0 + 85 * mm, y, '%d' % tot)
         c.setStrokeColor(G_ROW)
         c.setLineWidth(0.3)
-        c.line(x0, y - 1.5 * mm, x0 + 98 * mm, y - 1.5 * mm)
+        c.line(x0, y - 1.5 * mm, x0 + 86 * mm, y - 1.5 * mm)
         y -= 4.6 * mm
     c.setStrokeColor(BLACK)
     c.setLineWidth(0.8)
-    c.line(x0, y + 3 * mm, x0 + 98 * mm, y + 3 * mm)
+    c.line(x0, y + 3 * mm, x0 + 86 * mm, y + 3 * mm)
     c.setFont(BOLD, 9)
     c.drawString(x0, y - 1 * mm, 'Total')
-    c.drawRightString(x0 + 97 * mm, y - 1 * mm, '%d' % len(rows))
+    c.drawRightString(x0 + 85 * mm, y - 1 * mm, '%d' % len(rows))
     c.setFont(FONT, 6.8)
     c.setFillColor(G_TEXT)
     c.drawString(x0, y - 6 * mm, 'Notch code index: slow 1-3, medium 4-6, high 7-9')
     c.drawString(x0, y - 9.3 * mm, '(shear 1-2, 4-5, 7-8); LASER: no code.')
     if n > 1:
-        c.drawString(x0, y - 12.6 * mm, '"×2: 60 75" = 2 at 60 deg and 2 at 75 deg on this sheet; the rest of the')
-        c.drawString(x0, y - 15.9 * mm, 'module is on its other sheet.')
+        c.drawString(x0, y - 12.6 * mm, 'Whole module (both sheets); plan: sheet 1 on the left,')
+        c.drawString(x0, y - 15.9 * mm, 'sheet 2 on the right.')
     # preview (right)
-    img = preview(order, idx, n, tmp)
+    img = preview(order, 0, 1, tmp)            # whole preview: both sheets of a 2-sheet module
     iw, ih = Image.open(img).size
-    bx, bw, bh = 120 * mm, PW - 120 * mm - 12 * mm, PH - 50 * mm
+    bx, bw, bh = 106 * mm, PW - 106 * mm - 8 * mm, PH - 47 * mm
     sc = min(bw / iw, bh / ih)
     c.drawImage(ImageReader(img), bx + (bw - iw * sc) / 2, 14 * mm + (bh - ih * sc), iw * sc, ih * sc)
 
@@ -243,9 +249,10 @@ page_list(cv, tlist, u)
 footer(cv, 1)
 cv.showPage()
 with tempfile.TemporaryDirectory() as tmp:
-    for k, t in enumerate(tlist, 2):
-        page_template(cv, t, u, tmp)
+    mods = [m for m in ALL if m in MODULE_ORDERS]
+    for k, m in enumerate(mods, 2):
+        page_module(cv, m, u, tmp)
         footer(cv, k)
         cv.showPage()
     cv.save()
-print('written %s (%d pages, %d templates)' % (OUT, len(tlist) + 1, len(tlist)))
+print('written %s (%d pages, %d templates)' % (OUT, len(mods) + 1, len(tlist)))
