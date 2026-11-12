@@ -176,7 +176,7 @@ def legend(c, y):
     c.setFont(FONT, 7.5)
     c.setFillColor(BLACK)
     c.drawString(24 * mm, y + 0.9 * mm, 'real sheet')
-    c.drawString(77 * mm, y + 0.9 * mm, 'cutting sheet 600 × 500 (plan)')
+    c.drawString(77 * mm, y + 0.9 * mm, 'cutting plan (blank)')
     c.drawString(141 * mm, y + 0.9 * mm, 'clamp (50 × 40)')
 
 
@@ -221,8 +221,8 @@ def summary(c, rows):
     for t in ('Plans of each campaign (orders in cutting-sheets/orders/, + _600x500mm_WATERJET.yaml):',
               '   A: sheet 1 CAMPAIGN · sheets 2, 3 AB_SHEETS23 · sheet 4 A_SHEET4',
               '   B: sheet 1 CAMPAIGN · sheets 2, 3 AB_SHEETS23        C: sheet 1 CAMPAIGN · sheet 2 C_SHEET2',
-              '   * B on the large sheets (RD ≥ 900): sheet 3 = B_SHEET3_LARGE, strip of 300 × 1146 with the same 68 '
-              'specimens and codes',
+              '   B on the large sheets (RD ≥ 900): one plan B_LARGE of 900 × 1146 instead of the 3 sheets (same specimens '
+              'and codes)',
               'Margins under each sheet: smallest distance from the cut pieces to the edges of the real sheet '
               '(at least 5 mm).'):
         c.drawString(15 * mm, y, t)
@@ -236,10 +236,11 @@ def material_page(c, m, use, missing):
     header(c, '%s  ·  %s  ·  campaign %s' % (name, mid, camp),
            ['thickness %s mm  ·  %d sheet(s)  ·  campaign %s = %d cutting sheet(s):' % (
                thk, len(sheets), camp, len(plans_of(m))),
-            ', '.join('%s = %s (%d × %d)' % (p[0], short(p[1]), p[3], p[4]) for p in plans_of(m)[:2]) + ',',
+            ', '.join('%s = %s (%d × %d)' % (p[0], short(p[1]), p[3], p[4]) for p in plans_of(m)[:2]) +
+            (',' if len(plans_of(m)) > 2 else ''),
             ', '.join('%s = %s (%d × %d)' % (p[0], short(p[1]), p[3], p[4]) for p in plans_of(m)[2:])])
     legend(c, PH - 41 * mm)
-    big = any(len(put) > 1 for _, put in used)
+    big = any(sheets[i][1] > 700 for i, _ in used)
     top = PH - 48 * mm
     if not big:                                              # grid 2 x 2 of 600 x 500 sheets
         cw, ch = 92 * mm, 101 * mm
@@ -280,10 +281,9 @@ def material_page(c, m, use, missing):
             yb = oy - 14 * mm
             c.setFont(FONT, 8)
             c.setFillColor(BLACK)
-            lines = ['Cut the sheet into blanks first (dashed): %s (RD × TD), the RD kept;' % ', '.join(
-                         '%d × %d' % (p[5], p[6]) for p in put),
-                     'then cut each blank with its plan (the clamps of the plans are on the edges of the blanks).',
-                     'Rest of the sheet (outside the blanks): %.0f %% of its area.' % (100.0 * (1 - used_area /
+            lines = ['Plan of %s (RD × TD) in the bottom-left corner (clamp corner), RD kept: it replaces the 3 '
+                     'sheets of B.' % ', '.join('%d × %d' % (p[5], p[6]) for p in put),
+                     'Rest of the sheet (outside the plan): %.0f %% of its area.' % (100.0 * (1 - used_area /
                                                                                           float(rd * td)))]
             for t in lines:
                 c.drawString(22 * mm, yb, t)
@@ -325,8 +325,8 @@ for m in MATERIALS:
         rows.append((name, mid, camp, '–', note or 'not drawn'))
         continue
     use, missing = assign(m)
-    used = ['-%d' % (i + 1) + (' (sheets %s)' % ', '.join(p[0].split()[1] + ('*' if 'variant' in p[0] else '')
-                                                          for p in put) if len(put) > 1 else '') for i, put in use if put]
+    used = ['-%d' % (i + 1) + (' (%s)' % ', '.join(short(p[1]) for p in put) if put[0][5] != 600 else '')
+            for i, put in use if put]
     rows.append((name, mid, camp, ', '.join(used),
                  'does not fit: %s' % ', '.join(p[0] for p in missing) if missing else 'complete'))
     pages.append((m, use, missing))

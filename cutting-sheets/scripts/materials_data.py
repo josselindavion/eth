@@ -33,10 +33,9 @@ P_AB = [('sheet 2', 'AB_SHEETS23_600x500mm_WATERJET', 0, 600, 500),
 PLANS = {'A': [P1] + P_AB + [('sheet 4', 'A_SHEET4_600x500mm_WATERJET', 0, 600, 500)],
          'B': [P1] + P_AB,
          'C': [P1, ('sheet 2', 'C_SHEET2_600x500mm_WATERJET', 0, 600, 500)]}
-# on the large sheets, sheet 3 of B is the variant on a strip of 300 x 1146 (user, 12/11/2026): the same 68
-# specimens and codes as the classic sheet 3, which stays for the 600 x 500 sheets
-PLANS_LARGE = {'B': [P1, P_AB[0], ('sheet 3 (large-sheet variant)', 'B_SHEET3_LARGE_300x1146mm_WATERJET', 0, 300,
-                                   1146)]}
+# on the large sheets, campaign B is one plan of 900 x 1146 that replaces its 3 sheets (user, 12/11/2026): the same
+# specimens and codes; the 600 x 500 plans stay for the 600 x 500 sheets
+PLANS_LARGE = {'B': [('campaign B (one plan)', 'B_LARGE_900x1146mm_WATERJET', 0, 900, 1146)]}
 PLAN_RD, PLAN_TD = 600, 500
 LARGE_RD = 900                                               # a sheet with RD >= 900 mm is a large sheet
 

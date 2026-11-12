@@ -30,6 +30,12 @@ def group(spec):
     return (spec['T'].alias, spec['angle']) if spec['T'].has_code else None
 
 
+def _far(a, b, d):
+    """True when the bounding boxes a and b (minx, miny, maxx, maxy) are at least d apart: then the outlines are too
+    (cheap test before the exact distance; same result, faster on large sheets)."""
+    return a[0] - b[2] >= d or b[0] - a[2] >= d or a[1] - b[3] >= d or b[1] - a[3] >= d
+
+
 def conflicts(sheets, dist):
     """Pairs of repeats side by side: list of (sheet index, i, j, distance) with i < j indices in the sheet."""
     out = []
@@ -42,6 +48,8 @@ def conflicts(sheets, dist):
         for idx in by_group.values():
             for a in range(len(idx)):
                 for b in range(a + 1, len(idx)):
+                    if _far(s[idx[a]][4].bounds, s[idx[b]][4].bounds, dist):
+                        continue
                     d = s[idx[a]][4].distance(s[idx[b]][4])
                     if d < dist:
                         out.append((k, idx[a], idx[b], d))
@@ -69,7 +77,8 @@ def improve(sheets, place_fn, W, H, gap, m, keepouts=None, dist=10.0, max_swaps=
         P = new[4]
         if not inner.contains(P) or any(P.intersection(z).area > 1e-6 for z in keepouts):
             return False
-        return all(P.distance(q[4]) >= gap + SAFETY for j, q in enumerate(sheets[k]) if j not in skip)
+        pb, g = P.bounds, gap + SAFETY
+        return all(_far(pb, q[4].bounds, g) or P.distance(q[4]) >= g for j, q in enumerate(sheets[k]) if j not in skip)
 
     swaps = 0
     while swaps < max_swaps:

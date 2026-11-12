@@ -88,10 +88,9 @@ for m in MATERIALS:
     style += [('BACKGROUND', (c, r), (c, r), YELLOW) for c, x in enumerate(cells) if x[1]]
     for i, (rd, td, size, note) in enumerate(sheets):
         r = len(data)
-        if i in use and len(use[i]) > 1:
-            role = 'sheets ' + ', '.join(p[0].split()[1] + ('*' if 'variant' in p[0] else '') for p in use[i])
-            if any('variant' in p[0] for p in use[i]):
-                note = (note + '; ' if note else '') + '* sheet 3: variant 300 × 1146'
+        if i in use and use[i] and use[i][0][5] != 600:
+            role = 'B_LARGE (all of B)'
+            note = (note + '; ' if note else '') + 'one plan 900 × 1146'
         elif i in use and use[i]:
             role = use[i][0][0]
         elif drawn and rd:
