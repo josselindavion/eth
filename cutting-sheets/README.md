@@ -28,6 +28,7 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_600x500mm_
 | `orders/AB_SHEETS23_600x500mm_WATERJET.yaml` | campaigns A and B, sheets 2 and 3 (common to both): the rest of campaign B, 126 specimens (tension-type and shear) + 3 LASER, 61 + 68 pieces |
 | `orders/A_SHEET4_600x500mm_WATERJET.yaml` | campaign A only, sheet 4: the 24 shear of A not in B (SHLD and SHHD at 45 and 90°) |
 | `orders/C_SHEET2_600x500mm_WATERJET.yaml` | campaign C only, its sheet 2: the rest of campaign C, 46 specimens + 3 LASER |
+| `orders/B_SHEET3_LARGE_300x1146mm_WATERJET.yaml` | campaign B, sheet 3, **variant for the large sheets** (RA980, RA1200, CR1200Y1500T): the same 68 specimens and codes as the classic sheet 3, on the strip of 300 (RD) × 1146 (TD) left above the two 600 × 500 blanks; 3 clamps (the left clamp at 475 is off the strip). The classic sheet 3 stays for the 600 × 500 sheets |
 | `orders/campaign_sources/` | written by `make_campaign_orders.py`: `TENSION_AB` (156 tension-type + 4 LASER), `SHEAR_A` (54), `SHEAR_B` (30) |
 | `orders/PARTLY_USED_600x500mm_WATERJET_TEST.yaml` | test of the optional forbidden zone (partly used 600 × 500 sheet of 11/11/2026): 24 specimens for the test (campaign C, medium and high rate, tension-type at 0°) |
 
@@ -37,6 +38,7 @@ Campaigns A, B and C are nested (C inside B inside A, same notch codes), so they
 |---|---|---|
 | A | 4 | `CAMPAIGN` (sheet 1) + `AB_SHEETS23` (sheets 2 and 3) + `A_SHEET4` |
 | B | 3 | `CAMPAIGN` (sheet 1) + `AB_SHEETS23` (sheets 2 and 3) |
+| B on a large sheet | 3 | `CAMPAIGN` + sheet 2 of `AB_SHEETS23` + `B_SHEET3_LARGE` (variant), all three on the one large sheet |
 | C | 2 | `CAMPAIGN` (sheet 1) + `C_SHEET2` |
 
 The result of the campaign order is kept in `output/CAMPAIGN_600x500mm_WATERJET/` (one sheet, all checks OK, 1 pair of repeats side by side:

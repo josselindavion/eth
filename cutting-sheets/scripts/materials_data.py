@@ -25,12 +25,32 @@ MATERIALS = [
     ('CR1200Y1500T-MS-UNCOATED', '2022_04_04_G', '1.4', 'B', [(916, 1267, '916 × 1267', '')], '', True),
 ]
 
-# cutting plans of 600 (RD) x 500 (TD) of each campaign, in order: (label, order, index of the sheet in its DXF)
-PLANS = {'A': [('sheet 1', 'CAMPAIGN', 0), ('sheet 2', 'AB_SHEETS23', 0), ('sheet 3', 'AB_SHEETS23', 1),
-               ('sheet 4', 'A_SHEET4', 0)],
-         'B': [('sheet 1', 'CAMPAIGN', 0), ('sheet 2', 'AB_SHEETS23', 0), ('sheet 3', 'AB_SHEETS23', 1)],
-         'C': [('sheet 1', 'CAMPAIGN', 0), ('sheet 2', 'C_SHEET2', 0)]}
+# cutting plans of each campaign, in order: (label, order, index of the sheet in its DXF, RD, TD). Orders in orders/
+# (name + '.yaml'); the plans are read from their DXF in output/ or runs/.
+P1 = ('sheet 1', 'CAMPAIGN_600x500mm_WATERJET', 0, 600, 500)
+P_AB = [('sheet 2', 'AB_SHEETS23_600x500mm_WATERJET', 0, 600, 500),
+        ('sheet 3', 'AB_SHEETS23_600x500mm_WATERJET', 1, 600, 500)]
+PLANS = {'A': [P1] + P_AB + [('sheet 4', 'A_SHEET4_600x500mm_WATERJET', 0, 600, 500)],
+         'B': [P1] + P_AB,
+         'C': [P1, ('sheet 2', 'C_SHEET2_600x500mm_WATERJET', 0, 600, 500)]}
+# on the large sheets, sheet 3 of B is the variant on a strip of 300 x 1146 (user, 12/11/2026): the same 68
+# specimens and codes as the classic sheet 3, which stays for the 600 x 500 sheets
+PLANS_LARGE = {'B': [P1, P_AB[0], ('sheet 3 (large-sheet variant)', 'B_SHEET3_LARGE_300x1146mm_WATERJET', 0, 300,
+                                   1146)]}
 PLAN_RD, PLAN_TD = 600, 500
+LARGE_RD = 900                                               # a sheet with RD >= 900 mm is a large sheet
+
+
+def short(order):
+    """CAMPAIGN_600x500mm_WATERJET -> CAMPAIGN"""
+    return order.rsplit('_', 2)[0]
+
+
+def plans_of(material):
+    camp, sheets = material[3], material[4]
+    if camp in PLANS_LARGE and any(sh[0] and sh[0] >= LARGE_RD for sh in sheets):
+        return PLANS_LARGE[camp]
+    return PLANS.get(camp, [])
 
 
 def rank(sheets):
@@ -41,22 +61,36 @@ def rank(sheets):
                                      -sheets[i][0] * sheets[i][1], i))
 
 
+def _fit(rd, td, placed, prd, ptd):
+    """Bottom-left position (x = TD, y = RD) of a plan prd x ptd on a sheet rd x td next to the plans placed, or None.
+    A plan of 600 x 500 always goes on a sheet of about 600 x 500 (a few mm less allowed: the pieces keep 10 mm)."""
+    cands = [(0, 0)] + [(x + w, y) for x, y, h, w in placed] + [(x, y + h) for x, y, h, w in placed]
+    for x, y in sorted(set(cands), key=lambda c: (c[1], c[0])):
+        if y + prd > rd + 5 or x + ptd > td + 5:
+            continue
+        if all(x >= qx + qw or x + ptd <= qx or y >= qy + qh or y + prd <= qy for qx, qy, qh, qw in placed):
+            return x, y
+    return None
+
+
 def assign(material):
-    """[(sheet index, [(plan label, order, dxf index, x0, y0)])]: the plans of the campaign of the material placed on
-    its sheets. Plans are kept with their RD along the RD of the sheet (no 90 deg turn): a 600 x 500 sheet holds 1
-    plan, a large sheet holds floor(RD / 600) x floor(TD / 500) plans side by side. The fullest plans go on the best
-    sheets. Returns also the plans that do not fit."""
-    name, mid, thk, camp, sheets, note, drawn = material
-    plans = list(PLANS.get(camp, []))
+    """[(sheet index, [(plan label, order, dxf index, x0, y0, RD, TD)])] and the plans that do not fit: the plans of
+    the campaign of the material placed on its sheets, best sheets first, the fullest plans on the best sheets. Plans
+    keep their RD along the RD of the sheet (no 90 deg turn), bottom-left first (clamp corner); a large sheet holds
+    several plans side by side (cut it into blanks first)."""
+    sheets = material[4]
+    plans = list(plans_of(material))
     out = []
     for i in rank(sheets):
         rd, td = sheets[i][0], sheets[i][1]
-        slots = [(k * PLAN_TD, j * PLAN_RD) for j in range(max(1, rd // PLAN_RD)) for k in range(max(1, td // PLAN_TD))]
-        put = []
-        for x0, y0 in slots:
-            if not plans:
+        placed, put = [], []
+        while plans:
+            label, order, idx, prd, ptd = plans[0]
+            pos = _fit(rd, td, placed, prd, ptd)
+            if pos is None:
                 break
-            label, order, idx = plans.pop(0)
-            put.append((label, order, idx, x0, y0))
+            plans.pop(0)
+            placed.append((pos[0], pos[1], prd, ptd))
+            put.append((label, order, idx, pos[0], pos[1], prd, ptd))
         out.append((i, put))
     return out, plans
