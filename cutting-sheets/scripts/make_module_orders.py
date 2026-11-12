@@ -6,16 +6,19 @@ a combination of modules.
 
     py cutting-sheets/scripts/make_module_orders.py        -> cutting-sheets/orders/modules/MOD_<NAME>_<size>mm_WATERJET.yaml
 
-Changes of 12/11/2026 afternoon (user): every UT19 replaced by UT40, so medium and high rate are the same specimens:
-ONE template for both (MEDHIGH66, MEDHIGH54; cut once for medium and once for high; notch-code index 4-6 on both,
-the two cuts must be kept apart after cutting). SLOW70 removed. Clamping per module (see CLAMPS).
+Changes of 12/11/2026 afternoon (user): every UT19 replaced by UT40, so medium and high rate have the same
+specimens; they stay separate templates (MEDIUM66 / HIGH66, MEDIUM54 / HIGH54) so that every specimen of a material
+keeps a unique notch code (index 4-6 medium, 7-9 high). SLOW70 removed. Clamping per module (see CLAMPS).
+(A single MEDHIGH template for both rates was tried on 12/11 and dropped: same codes on the medium and high cuts.)
 
 Modules (specimens; shear 2 repeats, the others 3):
     SLOW78     campaign A, slow: 60 tension-type + 18 shear (SHLD, SHMD, SHHD at 0/45/90) + 4 LASER;
                full L clamping 60 mm, edge margin 15 mm
-    MEDHIGH66  campaign A, medium or high: 48 tension-type (UT40) + 18 shear; 4 clamps 50 x 40, edge margin 5 mm
-    MEDHIGH54  campaign B, medium or high: 48 tension-type (UT40) + 6 shear (SHMD 0/45/90; no SHLD, SHHD);
+    MEDIUM66   campaign A, medium: 48 tension-type (UT40) + 18 shear; 4 clamps 50 x 40, edge margin 5 mm
+    HIGH66     campaign A, high: the same specimens with the high codes (7-9); same clamping
+    MEDIUM54   campaign B, medium: 48 tension-type (UT40) + 6 shear (SHMD 0/45/90; no SHLD, SHHD);
                4 clamps 60 x 40, edge margin 10 mm
+    HIGH54     campaign B, high: the same specimens with the high codes (7-9); same clamping
     MH18       campaign C, medium + high on one sheet: 2 x (12 tension-type at 0 deg + 6 shear at 0 deg) = 36 (medium
                codes 4-6, high codes 7-9: both on the same sheet); full L clamping 60 mm, edge margin 15 mm
     A_LARGE    campaign A on one sheet of 900 x 1140 (large sheets): slow 78 + medium 66 + high 66 = 210 + 4 LASER
@@ -72,16 +75,16 @@ CLAMPS = {   # clamping block of each module: (YAML text, edge_margin)
 # name: (title, rows, LASER, expected number of coded specimens, sheet, clamping)
 MODULES = {
     'SLOW78': ('campaign A, slow rate', part('slow', SH_ALL), 4, 78, '600x500', 'L60'),
-    'MEDHIGH66': ('campaign A, medium or high rate (one template for both)', part('medium', SH_ALL), 0, 66,
-                  '600x500', 'C50'),
-    'MEDHIGH54': ('campaign B, medium or high rate (one template for both; no SHLD, SHHD)',
-                  part('medium', SH_B_FAST), 0, 54, '600x500', 'C60'),
+    'MEDIUM66': ('campaign A, medium rate', part('medium', SH_ALL), 0, 66, '600x500', 'C50'),
+    'HIGH66': ('campaign A, high rate', part('high', SH_ALL), 0, 66, '600x500', 'C50'),
+    'MEDIUM54': ('campaign B, medium rate (no SHLD, SHHD)', part('medium', SH_B_FAST), 0, 54, '600x500', 'C60'),
+    'HIGH54': ('campaign B, high rate (no SHLD, SHHD)', part('high', SH_B_FAST), 0, 54, '600x500', 'C60'),
     'MH18': ('campaign C, medium + high on one sheet',
              part('medium', SH_C_FAST, (0,), (0,)) + part('high', SH_C_FAST, (0,), (0,)), 0, 36, '600x500', 'L60'),
 }
 # large sheets (user, 12/11/2026): the whole campaign A on one plan of 900 (RD) x 1140 (TD) mm, which fits on the
 # three large sheets (900 x 1200, 913 x 1146, 916 x 1267)
-LARGE = {'A_LARGE': ('campaign A on one large sheet (= SLOW78 + MEDHIGH66 medium + MEDHIGH66 high)',
+LARGE = {'A_LARGE': ('campaign A on one large sheet (= SLOW78 + MEDIUM66 + HIGH66)',
                      part('slow', SH_ALL) + part('medium', SH_ALL) + part('high', SH_ALL), 4, 210, '900x1140', 'LARGE')}
 
 

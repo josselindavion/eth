@@ -26,7 +26,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import sheetlib                                              # noqa: E402
 from make_module_orders import LARGE, MODULES                # noqa: E402
-from materials_data import MATERIALS, assign, base_tid, module_of, pieces, plan_dir, plans_of, pretty   # noqa: E402
+from materials_data import (MATERIALS, assign, base_tid, code_check, module_of, pieces, plan_dir, plans_of,  # noqa: E402
+                            pretty)
 
 ROOT = os.path.join(HERE, '..')
 FONT, BOLD = 'Helvetica', 'Helvetica-Bold'
@@ -186,21 +187,22 @@ def fmt(m):
 
 def summary(c, rows):
     header(c, 'MATERIALS  ·  TEMPLATES ON EACH SHEET',
-           ['One page per material: the modules it gets, the template (one sheet of a module) on each of its sheets, '
-            'and the', 'templates drawn on the real sheets. Best sheets first, fullest templates on the best sheets; '
-            'RD of the template = RD', 'of the sheet; template in the bottom-left corner (clamp corner). Last page: '
-            'the different templates and their total.'])
-    cols = [15, 60, 84, 122]
-    y = PH - 46 * mm
+           ['One page per material: the modules it gets, the template (one sheet of a module) on each of its sheets,',
+            'and the templates drawn on the real sheets. Best sheets first, fullest templates on the best sheets;',
+            'RD of the template = RD of the sheet; template in the bottom-left corner (clamp corner).',
+            'CODES: notch codes of all the specimens of the material, checked unique per specimen type',
+            '(code = angle digit + index). Last page: the different templates and their total.'])
+    cols = [15, 60, 84, 122, 178]
+    y = PH - 50 * mm
     c.setFont(BOLD, 7.5)
     c.setFillColor(BLACK)
-    for x, t in zip(cols, ('MATERIAL', 'ID', 'MODULES', 'SHEET → TEMPLATE')):
+    for x, t in zip(cols, ('MATERIAL', 'ID', 'MODULES', 'SHEET → TEMPLATE', 'CODES')):
         c.drawString(x * mm, y, t)
     c.setStrokeColor(BLACK)
     c.setLineWidth(0.6)
     c.line(15 * mm, y - 1.8 * mm, PW - 15 * mm, y - 1.8 * mm)
     y -= 6.5 * mm
-    for name, mid, mods, used in rows:
+    for name, mid, mods, used, codes in rows:
         c.setFont(BOLD, 8.5 if len(name) < 16 else 6.8)
         c.setFillColor(BLACK)
         c.drawString(cols[0] * mm, y, name)
@@ -214,6 +216,9 @@ def summary(c, rows):
         uu = used.split(' · ')
         for k in range(0, len(uu), 2):
             c.drawString(cols[3] * mm, y - (k // 2) * 3.4 * mm, ' · '.join(uu[k:k + 2]))
+        c.setFont(BOLD, 7.3)
+        c.drawString(cols[4] * mm, y, codes)
+        c.setFont(FONT, 7.3)
         nl = max((len(mm_) + 1) // 2, (len(uu) + 1) // 2)
         c.setStrokeColor(G_ROW)
         c.setLineWidth(0.3)
@@ -266,6 +271,13 @@ def material_page(c, m, use, missing):
            ['thickness %s mm  ·  %d sheet(s)  ·  campaign %s' % (thk, len(sheets), camp),
             'modules: %s  ·  %d sheet(s) to cut' % (' + '.join(pretty(e) for e in mods), len(plans_of(m)))])
     y = sheet_table(c, m, use, PH - 38 * mm)
+    n, dups, shared = code_check(m)
+    c.setFont(BOLD, 8)
+    c.setFillColor(BLACK)
+    c.drawString(22 * mm, y - 1.5 * mm, ('Notch codes: %d coded specimens, every code unique per specimen type.' % n)
+                 if not dups else ('Notch codes: %d NOT unique: %s' % (len(dups), ', '.join(
+                     '%s %s ×%d' % d for d in dups[:6]))))
+    y -= 5.5 * mm
     legend(c, y - 5 * mm)
     top = y - 13 * mm
     big = any(sheets[i][1] > 700 for i, _ in used)
@@ -369,8 +381,10 @@ order_t = []
 for m in MATERIALS:
     name, mid, thk, camp, sheets, note, mods = m
     use, missing = assign(m)
+    n, dups, shared = code_check(m)
     rows.append((name, mid, ' + '.join(pretty(e) for e in mods), ' · '.join('-%d → %s' % (i + 1, ' + '.join(p[0] for p in put))
-                                                        for i, put in use if put)))
+                                                        for i, put in use if put),
+                 'unique (%d)' % n if not dups else '%d DUPLICATE' % len(dups)))
     pages.append((m, use, missing))
     for t in plans_of(m):
         if t[0] not in [q[0] for q in order_t]:

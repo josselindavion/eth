@@ -1,4 +1,4 @@
-# Module A_LARGE: campaign A on one large sheet (= SLOW78 + MEDHIGH66 medium + MEDHIGH66 high), waterjet, sheets of 900 (RD) x 1140 (TD) mm.
+# Module A_LARGE: campaign A on one large sheet (= SLOW78 + MEDIUM66 + HIGH66), waterjet, sheets of 900 (RD) x 1140 (TD) mm.
 # Written by scripts/make_module_orders.py (modular strategy, user 12/11/2026): 210 specimens + 4 LASER.
 # Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).
 # Run from the repository root:

@@ -1,10 +1,10 @@
-# Module MEDHIGH66: campaign A, medium or high rate (one template for both), waterjet, sheets of 600 (RD) x 500 (TD) mm.
+# Module HIGH66: campaign A, high rate, waterjet, sheets of 600 (RD) x 500 (TD) mm.
 # Written by scripts/make_module_orders.py (modular strategy, user 12/11/2026): 66 specimens + 0 LASER.
 # Index of the notch code = strain rate: slow 1-3, medium 4-6, high 7-9 (shear: 1-2, 4-5, 7-8).
 # Run from the repository root:
-#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/modules/MOD_MEDHIGH66_600x500mm_WATERJET.yaml
+#   py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/modules/MOD_HIGH66_600x500mm_WATERJET.yaml
 
-name: MOD_MEDHIGH66_600x500mm_WATERJET
+name: MOD_HIGH66_600x500mm_WATERJET
 templates: catalogue/CTLG_261102              # templates without code: lab catalogue (+ MNAK_RECT)
 
 # ---------- Sheet on the waterjet machine; all lengths in mm; see preview.png ----------
@@ -45,29 +45,29 @@ spread_tries: 3        # 3 placements tried: seed 1, 2, 3
 # count: number of specimens of this line
 # first_index: index (number in the notch code) of the first specimen, then +1 for each one (default 0; max 9)
 specimens:
-  # medium rate
-  - {type: UT40,            angle: 0,   count: 3, first_index: 4}
-  - {type: UT40,            angle: 15,  count: 3, first_index: 4}
-  - {type: UT40,            angle: 30,  count: 3, first_index: 4}
-  - {type: UT40,            angle: 45,  count: 3, first_index: 4}
-  - {type: UT40,            angle: 60,  count: 3, first_index: 4}
-  - {type: UT40,            angle: 75,  count: 3, first_index: 4}
-  - {type: UT40,            angle: 90,  count: 3, first_index: 4}
-  - {type: NT20,            angle: 0,   count: 3, first_index: 4}
-  - {type: NT20,            angle: 45,  count: 3, first_index: 4}
-  - {type: NT20,            angle: 90,  count: 3, first_index: 4}
-  - {type: NT06,            angle: 0,   count: 3, first_index: 4}
-  - {type: NT06,            angle: 45,  count: 3, first_index: 4}
-  - {type: NT06,            angle: 90,  count: 3, first_index: 4}
-  - {type: CHD48,           angle: 0,   count: 3, first_index: 4}
-  - {type: CHD48,           angle: 45,  count: 3, first_index: 4}
-  - {type: CHD48,           angle: 90,  count: 3, first_index: 4}
-  - {type: SHLD,            angle: 0,   count: 2, first_index: 4}
-  - {type: SHLD,            angle: 45,  count: 2, first_index: 4}
-  - {type: SHLD,            angle: 90,  count: 2, first_index: 4}
-  - {type: SHMD,            angle: 0,   count: 2, first_index: 4}
-  - {type: SHMD,            angle: 45,  count: 2, first_index: 4}
-  - {type: SHMD,            angle: 90,  count: 2, first_index: 4}
-  - {type: SHHD,            angle: 0,   count: 2, first_index: 4}
-  - {type: SHHD,            angle: 45,  count: 2, first_index: 4}
-  - {type: SHHD,            angle: 90,  count: 2, first_index: 4}
+  # high rate
+  - {type: UT40,            angle: 0,   count: 3, first_index: 7}
+  - {type: UT40,            angle: 15,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 30,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 45,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 60,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 75,  count: 3, first_index: 7}
+  - {type: UT40,            angle: 90,  count: 3, first_index: 7}
+  - {type: NT20,            angle: 0,   count: 3, first_index: 7}
+  - {type: NT20,            angle: 45,  count: 3, first_index: 7}
+  - {type: NT20,            angle: 90,  count: 3, first_index: 7}
+  - {type: NT06,            angle: 0,   count: 3, first_index: 7}
+  - {type: NT06,            angle: 45,  count: 3, first_index: 7}
+  - {type: NT06,            angle: 90,  count: 3, first_index: 7}
+  - {type: CHD48,           angle: 0,   count: 3, first_index: 7}
+  - {type: CHD48,           angle: 45,  count: 3, first_index: 7}
+  - {type: CHD48,           angle: 90,  count: 3, first_index: 7}
+  - {type: SHLD,            angle: 0,   count: 2, first_index: 7}
+  - {type: SHLD,            angle: 45,  count: 2, first_index: 7}
+  - {type: SHLD,            angle: 90,  count: 2, first_index: 7}
+  - {type: SHMD,            angle: 0,   count: 2, first_index: 7}
+  - {type: SHMD,            angle: 45,  count: 2, first_index: 7}
+  - {type: SHMD,            angle: 90,  count: 2, first_index: 7}
+  - {type: SHHD,            angle: 0,   count: 2, first_index: 7}
+  - {type: SHHD,            angle: 45,  count: 2, first_index: 7}
+  - {type: SHHD,            angle: 90,  count: 2, first_index: 7}

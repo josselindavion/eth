@@ -23,15 +23,15 @@ MATERIALS = [
      [(605, 505, '605 × 505', ''), (598, 502, '598 × 502', ''), (605, 501, '605 × 501', ''),
       (598, 500, '598 × 500', 'edges not straight'), (599, 507, '599 × 507', 'edges not straight'),
       (603, 502, '603 × 502', 'edges not straight'), (596, 500, '596 × 500', 'edges not straight')], '',
-     ['SLOW78', 'MEDHIGH66@medium', 'MEDHIGH66@high']),
+     ['SLOW78', 'MEDIUM66', 'HIGH66']),
     ('DC01', '2025_11_25_B', '2.0', 'C medium + high', [(599, 500, '599 × 500', ''), (None, None, 'custom size', '')],
      '', ['MH18']),
     ('S235JR', '2023_02_28_D', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '',
-     ['MEDHIGH66@medium', 'MEDHIGH66@high']),
+     ['MEDIUM66', 'HIGH66']),
     ('AW5754-H22', '2023_02_28_A', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 4, '',
-     ['MEDHIGH66@medium', 'MEDHIGH66@high']),
+     ['MEDIUM66', 'HIGH66']),
     ('S355MC', '2023_02_28_C', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '',
-     ['MEDHIGH66@medium', 'MEDHIGH66@high']),
+     ['MEDIUM66', 'HIGH66']),
     ('RA980', '2022_05_04_D', '1.4', 'A (one large plan)', [(900, 1200, '900 × 1200', '')], '', ['A_LARGE']),
     ('RA1200', '2022_05_04_E', '1.4', 'A (one large plan)', [(913, 1146, '913–915 × 1146', 'RD 913 to 915')], '',
      ['A_LARGE']),
@@ -40,7 +40,7 @@ MATERIALS = [
 ]
 
 # module -> (order, RD, TD); its templates = the sheets of the order's plan (runs/<order>/ or output/<order>/)
-MODULE_ORDERS = {m: ('MOD_%s_600x500mm_WATERJET' % m, 600, 500) for m in ('SLOW78', 'MEDHIGH66', 'MEDHIGH54', 'MH18')}
+MODULE_ORDERS = {m: ('MOD_%s_600x500mm_WATERJET' % m, 600, 500) for m in ('SLOW78', 'MEDIUM66', 'HIGH66', 'MEDIUM54', 'HIGH54', 'MH18')}
 MODULE_ORDERS['A_LARGE'] = ('MOD_A_LARGE_900x1140mm_WATERJET', 900, 1140)
 PLAN_RD, PLAN_TD = 600, 500
 
@@ -154,3 +154,23 @@ def assign(material):
                         prd, ptd))
         out.append((i, put))
     return out, plans
+
+
+def code_check(material):
+    """Notch codes of all the specimens cut for a material (every template on its sheets): (number of coded specimens,
+    [(alias, code, n)] cut more than once = NOT unique, number of codes shared by different types (told apart by their
+    shape: convention of the 2025 drawings)). A code = angle digit + index (index = repeat and strain rate), so it is
+    unique per specimen type; two different types may carry the same code."""
+    use, missing = assign(material)
+    seen = {}
+    for i, put in use:
+        for p in put:
+            for r in pieces(p[1], p[2]):
+                if r['notch_code']:
+                    seen.setdefault((r['alias'], r['notch_code']), []).append('%s-%d' % (material[1], i + 1))
+    dups = [(a, c, len(v)) for (a, c), v in sorted(seen.items()) if len(v) > 1]
+    by_code = {}
+    for a, c in seen:
+        by_code.setdefault(c, set()).add(a)
+    shared = sum(1 for c, al in by_code.items() if len(al) > 1)
+    return sum(len(v) for v in seen.values()), dups, shared
