@@ -35,7 +35,7 @@ PLANS = {'A': [P1] + P_AB + [('sheet 4', 'A_SHEET4_600x500mm_WATERJET', 0, 600, 
          'C': [P1, ('sheet 2', 'C_SHEET2_600x500mm_WATERJET', 0, 600, 500)]}
 # on the large sheets, campaign B is one plan of 900 x 1146 that replaces its 3 sheets (user, 12/11/2026): the same
 # specimens and codes; the 600 x 500 plans stay for the 600 x 500 sheets
-PLANS_LARGE = {'B': [('campaign B (one plan)', 'B_LARGE_900x1146mm_WATERJET', 0, 900, 1146)]}
+PLANS_LARGE = {'B': [('all of B (one plan)', 'B_LARGE_900x1146mm_WATERJET', 0, 900, 1146)]}
 PLAN_RD, PLAN_TD = 600, 500
 LARGE_RD = 900                                               # a sheet with RD >= 900 mm is a large sheet
 
@@ -93,3 +93,17 @@ def assign(material):
             put.append((label, order, idx, pos[0], pos[1], prd, ptd))
         out.append((i, put))
     return out, plans
+
+
+# short names of the cutting plans, the same in all the PDFs (P1 ... P6): (order, index of the sheet in its DXF) -> id
+PLAN_IDS = {('CAMPAIGN_600x500mm_WATERJET', 0): 'P1',
+            ('AB_SHEETS23_600x500mm_WATERJET', 0): 'P2',
+            ('AB_SHEETS23_600x500mm_WATERJET', 1): 'P3',
+            ('A_SHEET4_600x500mm_WATERJET', 0): 'P4',
+            ('C_SHEET2_600x500mm_WATERJET', 0): 'P5',
+            ('B_LARGE_900x1146mm_WATERJET', 0): 'P6'}
+
+
+def pid(plan):
+    """Short name (P1 ...) of a plan tuple (label, order, index, ...)."""
+    return PLAN_IDS[(plan[1], plan[2])]
