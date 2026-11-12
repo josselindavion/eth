@@ -20,7 +20,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ORDERS = os.path.join(HERE, '..', 'orders', 'campaign_sources')    # sources of split_campaigns.py
 BASE = os.path.join(HERE, '..', 'orders', 'CAMPAIGN_600x500mm_WATERJET.yaml')
-N_LASER = int(sys.argv[1]) if len(sys.argv) > 1 else 4
+N_LASER = int(sys.argv[1]) if len(sys.argv) > 1 and __name__ == '__main__' else 4
 
 ALL7 = (0, 15, 30, 45, 60, 75, 90)
 A3 = (0, 45, 90)
@@ -28,16 +28,19 @@ SH = ('SHLD', 'SHMD', 'SHHD')
 FIRST = {'slow': 1, 'medium': 4, 'high': 7}
 
 
-def campaign(shear_45_90):
-    """[(rate, type, angle, count)] of campaign A (shear_45_90 = SH) or B (shear_45_90 = ('SHMD',))."""
+def campaign(shear_45_90, fast_angles=None):
+    """[(rate, type, angle, count)] of campaign A (shear_45_90 = SH), B (shear_45_90 = ('SHMD',)) or C (as B, and
+    fast_angles = (0,): medium and high rate at 0 deg only, UT included)."""
     out = []
     for rate in ('slow', 'medium', 'high'):
         ut = 'UT19' if rate == 'high' else 'UT40'
-        out += [(rate, ut, a, 3) for a in ALL7]
-        out += [(rate, t, a, 3) for t in ('NT20', 'NT06', 'CHD48') for a in A3]
+        ang7 = ALL7 if rate == 'slow' or fast_angles is None else fast_angles
+        ang3 = A3 if rate == 'slow' or fast_angles is None else fast_angles
+        out += [(rate, ut, a, 3) for a in ang7]
+        out += [(rate, t, a, 3) for t in ('NT20', 'NT06', 'CHD48') for a in ang3]
         if rate == 'slow':
             out += [(rate, 'MNAK_RECT_FULL', 0, 3)] + [(rate, 'MNAK_RECT_HOLE', a, 3) for a in A3]
-        out += [(rate, g, a, 2) for g in SH for a in A3 if a == 0 or g in shear_45_90]
+        out += [(rate, g, a, 2) for g in SH for a in ang3 if a == 0 or g in shear_45_90]
     return out
 
 
@@ -79,6 +82,7 @@ def write(letter, title, rows, shear=False):
     print('written %s (%d specimens + %d LASER)' % (path, n, n_laser))
 
 
-write('A', 'full', campaign(SH))                        # tension-type: the same for A and B
-write('A', 'full', campaign(SH), True)
-write('B', 'A without SHLD, SHHD at 45, 90 deg', campaign(('SHMD',)), True)
+if __name__ == '__main__':                              # campaign() is also used by make_nested_orders.py
+    write('A', 'full', campaign(SH))                    # tension-type: the same for A and B
+    write('A', 'full', campaign(SH), True)
+    write('B', 'A without SHLD, SHHD at 45, 90 deg', campaign(('SHMD',)), True)

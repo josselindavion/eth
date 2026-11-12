@@ -25,12 +25,19 @@ py cutting-sheets/scripts/make_plan.py cutting-sheets/orders/CAMPAIGN_600x500mm_
 | Order | Content |
 |---|---|
 | `orders/CAMPAIGN_600x500mm_WATERJET.yaml` | complete testing campaign of one material (no shear: EDM) for waterjet cutting on **one 600 (RD) × 500 (TD) sheet**: 61 specimens (UT40 at 7 angles, NT20, NT06, CHD48, MNAK_RECT at 0/45/90°, 3 repeats; 1 LASER strip), 4 single clamps 50 × 40 mm (2 per side of the L), 5 mm edge, clamp and placement margins, gap 5 mm, `spread_tries: 3` |
-| `orders/COMMON_AB_600x500mm_WATERJET.yaml` | campaigns A and B: the **2 sheets common** to both (122 tension-type specimens, 61 + 61) |
-| `orders/A_SHEET3_600x500mm_WATERJET.yaml` | campaign A, sheet 3: 34 tension-type specimens (the same as on B's sheet 3) + 4 LASER |
-| `orders/A_SHEET4_600x500mm_WATERJET.yaml` | campaign A, sheet 4: the 54 shear specimens of A, alone |
-| `orders/B_SHEET3_600x500mm_WATERJET.yaml` | campaign B, sheet 3 (its only other sheet): the 30 shear of B + the same 34 tension-type specimens + 4 LASER |
-| `orders/campaign_sources/` | sources of `split_campaigns.py`, written by `make_campaign_orders.py`: `TENSION_AB` (156 tension-type + 4 LASER), `SHEAR_A` (54), `SHEAR_B` (30) |
+| `orders/AB_SHEETS23_600x500mm_WATERJET.yaml` | campaigns A and B, sheets 2 and 3 (common to both): the rest of campaign B, 126 specimens (tension-type and shear) + 3 LASER, 61 + 68 pieces |
+| `orders/A_SHEET4_600x500mm_WATERJET.yaml` | campaign A only, sheet 4: the 24 shear of A not in B (SHLD and SHHD at 45 and 90°) |
+| `orders/C_SHEET2_600x500mm_WATERJET.yaml` | campaign C only, its sheet 2: the rest of campaign C, 46 specimens + 3 LASER |
+| `orders/campaign_sources/` | written by `make_campaign_orders.py`: `TENSION_AB` (156 tension-type + 4 LASER), `SHEAR_A` (54), `SHEAR_B` (30) |
 | `orders/PARTLY_USED_600x500mm_WATERJET_TEST.yaml` | test of the optional forbidden zone (partly used 600 × 500 sheet of 11/11/2026): 24 specimens for the test (campaign C, medium and high rate, tension-type at 0°) |
+
+Campaigns A, B and C are nested (C inside B inside A, same notch codes), so they share their first sheets (`make_nested_orders.py`, journal of 12/11/2026; diagram and previews in `campaigns/campaigns_A_B_C_sheets.pdf`). Every campaign has 4 LASER (1 on sheet 1 + 3).
+
+| Campaign | Sheets | Orders |
+|---|---|---|
+| A | 4 | `CAMPAIGN` (sheet 1) + `AB_SHEETS23` (sheets 2 and 3) + `A_SHEET4` |
+| B | 3 | `CAMPAIGN` (sheet 1) + `AB_SHEETS23` (sheets 2 and 3) |
+| C | 2 | `CAMPAIGN` (sheet 1) + `C_SHEET2` |
 
 The result of the campaign order is kept in `output/CAMPAIGN_600x500mm_WATERJET/` (one sheet, all checks OK, 1 pair of repeats side by side:
 UT40 60°). The other orders (lab plans of 2025 for the EDM, campaigns on the other sheet sizes) were removed on
@@ -223,7 +230,7 @@ campaign). Example: `orders/PARTLY_USED_600x500mm_WATERJET_TEST.yaml` (user's sh
 | `orders/` | the orders (one YAML file per plan) |
 | `catalogue/` | the catalogues in DXF: lab catalogue `specimen_templates_261029_barcoded.dxf`, complementary catalogue `specimen_templates_extra_MNAK_RECT.dxf` and its source (Erik's SolidWorks export `RoundSample_Dual_Hole_rectange.dxf`) |
 | `catalogue/CTLG_261102/` | the templates used by the program (without code), made from both catalogues: `templates.dxf`, `templates.csv`, `validation.csv`, `templates.png` (every type with its code and its Mikrosteg recesses), `README.md` |
-| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area, optional forbidden zone), `spread.py` (repeats kept apart), `make_campaign_orders.py` + `split_campaigns.py` (orders of campaigns A and B, see the journal of 11/11/2026), `orders_from_registry.py` (order from chosen sheets of a plan), `make_campaigns_pdf.py` / `make_campaigns_xlsx.py` (campaign tables), `make_materials_pdf.py` (materials and sheets inventory), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading), `mikrosteg.py` (Mikrosteg recesses), `make_user_guide.py` (rebuilds `user_guide.pdf` after a run of the shear plan order) |
+| `scripts/` | `make_plan.py` (order → plan), `placement.py` (placement with PackingSolver and sparrow + DXF), `sparrow_worker.py` (one sparrow run in its own process), `zones.py` (zones of the sheet on the machine: clamping, machine area, placement margin, effective area, optional forbidden zone), `spread.py` (repeats kept apart), `make_campaign_orders.py` + `make_nested_orders.py` (orders of the nested campaigns A, B and C, see the journal of 12/11/2026; `split_campaigns.py` = older A/B split of 11/11/2026), `make_campaign_sheets_pdf.py` (PDF: diagram of the campaign sheets + previews), `orders_from_registry.py` (order from chosen sheets of a plan), `make_campaigns_pdf.py` / `make_campaigns_xlsx.py` (campaign tables), `make_materials_pdf.py` (materials and sheets inventory), `progress.py` (progress bar), `notchcode.py` (notch code), `make_templates.py` (templates from the catalogues), `build_mnak_rect.py` (complementary catalogue of the rectangular Mini-Nakajima), `check_sheet.py` (check of a DXF), `sheetlib.py` (DXF reading), `mikrosteg.py` (Mikrosteg recesses), `make_user_guide.py` (rebuilds `user_guide.pdf` after a run of the shear plan order) |
 | `runs/` | **ignored by git**: everything that is run |
 | `user_guide.pdf` | user guide (installation, running, writing an order, results, checks, error messages) |
 
