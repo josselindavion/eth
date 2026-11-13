@@ -26,8 +26,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import sheetlib                                              # noqa: E402
 from make_module_orders import LARGE, MODULES                # noqa: E402
-from materials_data import (MATERIALS, assign, base_tid, code_check, module_of, pieces, plan_dir, plans_of,  # noqa: E402
-                            pretty)
+from materials_data import (MATERIALS, assign, base_tid, code_check, dxf_name, module_of, pieces, plan_dir,  # noqa: E402
+                            plans_of, pretty)
 
 ROOT = os.path.join(HERE, '..')
 FONT, BOLD = 'Helvetica', 'Helvetica-Bold'
@@ -47,7 +47,7 @@ G_LINE = colors.Color(0.55, 0.55, 0.55)
 G_ROW = colors.Color(0.85, 0.85, 0.85)
 Q_COL = {3: colors.Color(0.17, 0.63, 0.17), 4: colors.Color(0.0, 0.62, 0.72), 5: colors.Color(0.16, 0.24, 0.80)}
 PW, PH = A4
-DATE = '12/11/2026'
+DATE = '13/11/2026'
 TITLES = {k: v[0] for k, v in list(MODULES.items()) + list(LARGE.items())}
 _PLANS = {}
 
@@ -229,10 +229,10 @@ def summary(c, rows):
 def sheet_table(c, m, use, y):
     name, mid, thk, camp, sheets, note, mods = m
     use = dict(use)
-    cols = [22, 54, 79, 115, 150, 164]
+    cols = [22, 52, 74, 99, 147, 161]
     c.setFont(BOLD, 7)
     c.setFillColor(BLACK)
-    for x, t in zip(cols, ('SHEET', 'SIZE RD × TD', 'TEMPLATE', 'MODULE', 'PIECES', 'NOTE')):
+    for x, t in zip(cols, ('SHEET', 'SIZE RD × TD', 'TEMPLATE', 'DXF FILE (folder dxf/)', 'PIECES', 'NOTE')):
         c.drawString(x * mm, y, t)
     c.setStrokeColor(BLACK)
     c.setLineWidth(0.6)
@@ -248,9 +248,9 @@ def sheet_table(c, m, use, y):
             c.setFont(BOLD, 7.8)
             c.drawString(cols[2] * mm, y, ' + '.join(p[0] for p in put))
             c.setFont(FONT, 7.5)
-            c.drawString(cols[3] * mm, y, ', '.join(module_of(p[0]) + (' sheet %s of 2' % base_tid(p[0])[-1]
-                                                                       if base_tid(p[0]) != module_of(p[0]) else '')
-                                                    for p in put))
+            c.setFont(FONT, 7.2)
+            c.drawString(cols[3] * mm, y, ', '.join(dxf_name((p[0], None, None, p[5], p[6])) for p in put))
+            c.setFont(FONT, 7.5)
             c.drawString(cols[4] * mm, y, '%d' % sum(len(pieces(p[1], p[2])) for p in put))
         else:
             c.drawString(cols[2] * mm, y, 'spare' if rd else '–')

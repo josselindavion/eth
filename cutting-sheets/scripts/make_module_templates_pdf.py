@@ -27,7 +27,7 @@ from reportlab.pdfgen import canvas
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from make_module_orders import LARGE, MODULES                        # noqa: E402
-from materials_data import MATERIALS, MODULE_ORDERS, assign, base_tid, pieces, plan_dir, templates   # noqa: E402
+from materials_data import MATERIALS, MODULE_ORDERS, assign, base_tid, dxf_name, pieces, plan_dir, templates   # noqa: E402
 
 FONT, BOLD = 'Helvetica', 'Helvetica-Bold'
 found = []
@@ -44,7 +44,7 @@ G_TEXT = colors.Color(0.40, 0.40, 0.40)
 G_ROW = colors.Color(0.85, 0.85, 0.85)
 G_HEAD = colors.Color(0.20, 0.20, 0.20)
 PW, PH = landscape(A4)
-DATE = '12/11/2026'
+DATE = '13/11/2026'
 ALL = dict(list(MODULES.items()) + list(LARGE.items()))
 ORDER_ALIAS = ['UT40', 'UT19', 'NT20', 'NT06', 'CHD48', 'MNAK_RECT_FULL', 'MNAK_RECT_HOLE', 'SHLD', 'SHMD', 'SHHD',
                'LASER']
@@ -182,7 +182,7 @@ def page_module(c, mod, u, tmp):
     parts = ('used for: ' + used).split(', ')
     lines = [', '.join(parts[k:k + 3]) for k in range(0, len(parts), 3)]
     lines = [t + (',' if k < len(lines) - 1 else '') for k, t in enumerate(lines)]
-    lines[-1] += '  ·  order %s' % order
+    lines[-1] += '  ·  DXF: %s' % ', '.join(dxf_name(t) for t in ts)
     for k, t in enumerate(lines):
         c.drawString(15 * mm, PH - 29.5 * mm - k * 3.8 * mm, t)
     # content table (left)
@@ -235,6 +235,12 @@ def page_module(c, mod, u, tmp):
     c.setFillColor(G_TEXT)
     c.drawString(x0, y - 6 * mm, 'Notch code index: slow 1-3, medium 4-6, high 7-9')
     c.drawString(x0, y - 9.3 * mm, '(shear 1-2, 4-5, 7-8); LASER: no code.')
+    c.setFont(BOLD, 7.5)
+    c.setFillColor(BLACK)
+    c.drawString(x0, y - 22 * mm, 'Rolling direction (RD): vertical on the plan (arrow),')
+    c.drawString(x0, y - 25.5 * mm, 'along the %d mm side; angles measured from RD.' % rd)
+    c.setFont(FONT, 6.8)
+    c.setFillColor(G_TEXT)
     if n > 1:
         c.drawString(x0, y - 12.6 * mm, 'Whole module (both sheets); plan: sheet 1 on the left,')
         c.drawString(x0, y - 15.9 * mm, 'sheet 2 on the right.')

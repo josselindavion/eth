@@ -174,3 +174,8 @@ def code_check(material):
         by_code.setdefault(c, set()).add(a)
     shared = sum(1 for c, al in by_code.items() if len(al) > 1)
     return sum(len(v) for v in seen.values()), dups, shared
+
+
+def dxf_name(t):
+    """File name of the DXF of a template in the delivery folder: SLOW78-1_600x500mm.dxf"""
+    return '%s_%dx%dmm.dxf' % (base_tid(t[0]), t[3], t[4])
