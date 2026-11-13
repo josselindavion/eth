@@ -229,7 +229,7 @@ def summary(c, rows):
 def sheet_table(c, m, use, y):
     name, mid, thk, camp, sheets, note, mods = m
     use = dict(use)
-    cols = [22, 52, 74, 99, 147, 161]
+    cols = [22, 49, 69, 90, 159, 169]
     c.setFont(BOLD, 7)
     c.setFillColor(BLACK)
     for x, t in zip(cols, ('SHEET', 'SIZE RD × TD', 'TEMPLATE', 'DXF FILE (folder dxf/)', 'PIECES', 'NOTE')):
@@ -248,7 +248,7 @@ def sheet_table(c, m, use, y):
             c.setFont(BOLD, 7.8)
             c.drawString(cols[2] * mm, y, ' + '.join(p[0] for p in put))
             c.setFont(FONT, 7.5)
-            c.setFont(FONT, 7.2)
+            c.setFont(FONT, 6.2)
             c.drawString(cols[3] * mm, y, ', '.join(dxf_name((p[0], None, None, p[5], p[6])) for p in put))
             c.setFont(FONT, 7.5)
             c.drawString(cols[4] * mm, y, '%d' % sum(len(pieces(p[1], p[2])) for p in put))

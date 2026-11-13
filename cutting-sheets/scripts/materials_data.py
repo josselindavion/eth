@@ -176,6 +176,18 @@ def code_check(material):
     return sum(len(v) for v in seen.values()), dups, shared
 
 
+# file names of the templates (naming convention of the lab, user 13/11/2026):
+# ETH_<RD>x<TD>mm_<NAME>_<number of sheets of the module>_SHEET_<sheet>_<version>.dxf
+FILE_NAMES = {'SLOW78': 'SLOW78', 'MEDIUM66': 'INT66', 'HIGH66': 'FAST66', 'MH18': 'INTFAST36',
+              'A_LARGE': 'SLOWINTFAST_210'}
+VERSION = 'v20261113'
+
+
 def dxf_name(t):
-    """File name of the DXF of a template in the delivery folder: SLOW78-1_600x500mm.dxf"""
-    return '%s_%dx%dmm.dxf' % (base_tid(t[0]), t[3], t[4])
+    """File name of the DXF of a template (tuple with the template id first, RD and TD at 3 and 4), e.g.
+    SLOW78-2 -> ETH_600x500mm_SLOW78_2_SHEET_2_v20261113.dxf, HIGH66 -> ETH_600x500mm_FAST66_1_SHEET_1_v20261113.dxf"""
+    tid = base_tid(t[0])
+    mod = module_of(tid)
+    n = n_sheets(MODULE_ORDERS[mod][0])
+    k = int(tid.rsplit('-', 1)[1]) if tid != mod else 1
+    return 'ETH_%dx%dmm_%s_%d_SHEET_%d_%s.dxf' % (t[3], t[4], FILE_NAMES[mod], n, k, VERSION)

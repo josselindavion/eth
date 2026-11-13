@@ -182,7 +182,7 @@ def page_module(c, mod, u, tmp):
     parts = ('used for: ' + used).split(', ')
     lines = [', '.join(parts[k:k + 3]) for k in range(0, len(parts), 3)]
     lines = [t + (',' if k < len(lines) - 1 else '') for k, t in enumerate(lines)]
-    lines[-1] += '  ·  DXF: %s' % ', '.join(dxf_name(t) for t in ts)
+    lines.append('DXF: %s' % ', '.join(dxf_name(t) for t in ts))
     for k, t in enumerate(lines):
         c.drawString(15 * mm, PH - 29.5 * mm - k * 3.8 * mm, t)
     # content table (left)
