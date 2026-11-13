@@ -7,8 +7,9 @@ a combination of modules.
     py cutting-sheets/scripts/make_module_orders.py        -> cutting-sheets/orders/modules/MOD_<NAME>_<size>mm_WATERJET.yaml
 
 Changes of 12/11/2026 afternoon (user): every UT19 replaced by UT40, so medium and high rate have the same
-specimens; they stay separate templates (MEDIUM66 / HIGH66, MEDIUM54 / HIGH54) so that every specimen of a material
-keeps a unique notch code (index 4-6 medium, 7-9 high). SLOW70 removed. Clamping per module (see CLAMPS).
+specimens; they stay separate templates (MEDIUM66 / HIGH66) so that every specimen of a material
+keeps a unique notch code (index 4-6 medium, 7-9 high). SLOW70 removed; MEDIUM54 / HIGH54 (campaign B) removed
+on 13/11/2026 (not needed). Clamping per module (see CLAMPS).
 (A single MEDHIGH template for both rates was tried on 12/11 and dropped: same codes on the medium and high cuts.)
 
 Modules (specimens; shear 2 repeats, the others 3):
@@ -16,9 +17,6 @@ Modules (specimens; shear 2 repeats, the others 3):
                full L clamping 60 mm, edge margin 15 mm
     MEDIUM66   campaign A, medium: 48 tension-type (UT40) + 18 shear; 4 clamps 50 x 40, edge margin 5 mm
     HIGH66     campaign A, high: the same specimens with the high codes (7-9); same clamping
-    MEDIUM54   campaign B, medium: 48 tension-type (UT40) + 6 shear (SHMD 0/45/90; no SHLD, SHHD);
-               4 clamps 60 x 40, edge margin 10 mm
-    HIGH54     campaign B, high: the same specimens with the high codes (7-9); same clamping
     MH18       campaign C, medium + high on one sheet: 2 x (12 tension-type at 0 deg + 6 shear at 0 deg) = 36 (medium
                codes 4-6, high codes 7-9: both on the same sheet); full L clamping 60 mm, edge margin 15 mm
     A_LARGE    campaign A on one sheet of 900 x 1140 (large sheets): slow 78 + medium 66 + high 66 = 210 + 4 LASER
@@ -36,7 +34,6 @@ BASE = os.path.join(HERE, '..', 'orders', 'CAMPAIGN_600x500mm_WATERJET.yaml')
 ALL7 = (0, 15, 30, 45, 60, 75, 90)
 A3 = (0, 45, 90)
 SH_ALL = [(g, a) for g in ('SHLD', 'SHMD', 'SHHD') for a in A3]
-SH_B_FAST = [('SHMD', a) for a in A3]
 SH_C_FAST = [(g, 0) for g in ('SHLD', 'SHMD', 'SHHD')]
 FIRST = {'slow': 1, 'medium': 4, 'high': 7}
 
@@ -63,9 +60,6 @@ CLAMPS = {   # clamping block of each module: (YAML text, edge_margin)
             "                       #   at = centre of the clamp, in mm from the bottom-left corner along that edge;\n"
             "                       #   width = along the edge, depth = into the sheet (40 = depth of the L)\n"
             + single(L4, 50), 5),
-    'C60': ("clamps:                # single clamps of the L, 60 mm wide (user, 12/11/2026): 2 on the left edge, 2 on the\n"
-            "                       #   bottom edge; at = centre, width = along the edge, depth = into the sheet\n"
-            + single(L4, 60), 10),
     'LARGE': ("clamps:                # 7 single clamps 50 x 40 (user, 12/11/2026): 2 on each short side (left, right),\n"
               "                       #   spread at 300 and 600 mm; 3 on the long bottom side, spread at 285, 570, 855 mm\n"
               + single([('left', 300), ('left', 600), ('right', 300), ('right', 600), ('bottom', 285),
@@ -77,8 +71,6 @@ MODULES = {
     'SLOW78': ('campaign A, slow rate', part('slow', SH_ALL), 4, 78, '600x500', 'L60'),
     'MEDIUM66': ('campaign A, medium rate', part('medium', SH_ALL), 0, 66, '600x500', 'C50'),
     'HIGH66': ('campaign A, high rate', part('high', SH_ALL), 0, 66, '600x500', 'C50'),
-    'MEDIUM54': ('campaign B, medium rate (no SHLD, SHHD)', part('medium', SH_B_FAST), 0, 54, '600x500', 'C60'),
-    'HIGH54': ('campaign B, high rate (no SHLD, SHHD)', part('high', SH_B_FAST), 0, 54, '600x500', 'C60'),
     'MH18': ('campaign C, medium + high on one sheet',
              part('medium', SH_C_FAST, (0,), (0,)) + part('high', SH_C_FAST, (0,), (0,)), 0, 36, '600x500', 'L60'),
 }

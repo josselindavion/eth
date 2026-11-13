@@ -40,7 +40,7 @@ MATERIALS = [
 ]
 
 # module -> (order, RD, TD); its templates = the sheets of the order's plan (runs/<order>/ or output/<order>/)
-MODULE_ORDERS = {m: ('MOD_%s_600x500mm_WATERJET' % m, 600, 500) for m in ('SLOW78', 'MEDIUM66', 'HIGH66', 'MEDIUM54', 'HIGH54', 'MH18')}
+MODULE_ORDERS = {m: ('MOD_%s_600x500mm_WATERJET' % m, 600, 500) for m in ('SLOW78', 'MEDIUM66', 'HIGH66', 'MH18')}
 MODULE_ORDERS['A_LARGE'] = ('MOD_A_LARGE_900x1140mm_WATERJET', 900, 1140)
 PLAN_RD, PLAN_TD = 600, 500
 
