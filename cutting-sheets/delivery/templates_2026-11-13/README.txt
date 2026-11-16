@@ -2,6 +2,8 @@ Cutting templates, Mohr lab, ETH Zurich (waterjet)
 
 templates.pdf     every template: name, content (rate, type, angles, number), specimens drawn in colour,
                   rolling direction (RD = vertical on the plans)
+cutting_list.pdf  the list for the workshop: materials in the cutting order, thickness, cutting plan
+                  (DXF) and plan size of every sheet to cut
 instructions.pdf  for each material: which sheet gets which template, and which DXF file to cut
 dxf/              one DXF per template, sheet frame at the origin (bottom-left corner = clamp corner),
                   and a PDF with the same name (drawing of the sheet: RD, qualities, dimensions)
@@ -13,13 +15,13 @@ Sizes RD x TD in mm (RD = rolling direction, first value). Lay every template wi
 the sheet, in the bottom-left corner of the sheet.
 
 ETH_600x500mm_SLOW78_2_SHEET_1_v20261113.dxf
-    template SLOW78-1, 41 pieces, cut on: 2020_06_03A-3
+    template SLOW78-1, 41 pieces, cut on: 2020_06_03_A-3, 2026_11_16_A-1
 ETH_600x500mm_SLOW78_2_SHEET_2_v20261113.dxf
-    template SLOW78-2, 41 pieces, cut on: 2020_06_03A-5
+    template SLOW78-2, 41 pieces, cut on: 2020_06_03_A-5, 2026_11_16_A-2
 ETH_600x500mm_INT66_1_SHEET_1_v20261113.dxf
-    template MEDIUM66, 66 pieces, cut on: 2020_06_03A-1, 2023_02_28_D-1, 2023_02_28_A-1, 2023_02_28_C-1
+    template MEDIUM66, 66 pieces, cut on: 2020_06_03_A-1, 2023_02_28_D-1, 2023_02_28_A-1, 2023_02_28_C-1
 ETH_600x500mm_FAST66_1_SHEET_1_v20261113.dxf
-    template HIGH66, 66 pieces, cut on: 2020_06_03A-6, 2023_02_28_D-2, 2023_02_28_A-2, 2023_02_28_C-2
+    template HIGH66, 66 pieces, cut on: 2020_06_03_A-6, 2023_02_28_D-2, 2023_02_28_A-2, 2023_02_28_C-2
 ETH_600x500mm_INTFAST36_1_SHEET_1_v20261113.dxf
     template MH18, 36 pieces, cut on: 2025_11_25_B-1
 ETH_900x1140mm_SLOWINTFAST_210_1_SHEET_1_v20261113.dxf

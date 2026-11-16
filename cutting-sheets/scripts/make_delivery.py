@@ -4,11 +4,12 @@ make_delivery.py -- Delivery folder of the templates (user, 13/11/2026):
 
     <folder>/templates.pdf       every template: name, content, specimens drawn (colour plan), rolling direction
     <folder>/instructions.pdf    for each material: which sheet gets which template (and which DXF file)
+    <folder>/cutting_list.pdf    list for the workshop: materials in the cutting order, plan of every sheet to cut
     <folder>/dxf/ETH_<RD>x<TD>mm_<NAME>_<n>_SHEET_<k>_<version>.dxf   one DXF per template (lab naming convention,
                                  13/11/2026; a module on 2 sheets is split in 2 files) + a PDF with the same name
     <folder>/README.txt
 
-    py cutting-sheets/scripts/make_delivery.py cutting-sheets/delivery/templates_2026-11-13
+    py cutting-sheets/scripts/make_delivery.py cutting-sheets/delivery/templates_2026-11-13 [--pdf-only]
 
 The templates are the plans of the module orders (runs/MOD_*/; run them first). Each DXF is the sheet of the plan
 moved to the origin (bottom-left corner = clamp corner), checked after writing (one frame, same number of pieces).
@@ -27,16 +28,21 @@ from make_dxf_sheet_pdf import make as sheet_pdf             # noqa: E402
 from materials_data import MATERIALS, MODULE_ORDERS, assign, dxf_name, pieces, plan_dir, templates   # noqa: E402
 
 OUT = os.path.abspath(sys.argv[1])
+PDF_ONLY = '--pdf-only' in sys.argv                          # keep the DXF (and their PDFs) already in the folder
 DXF = os.path.join(OUT, 'dxf')
 os.makedirs(DXF, exist_ok=True)
-for f in os.listdir(DXF):                                   # start clean: old names go
-    os.remove(os.path.join(DXF, f))
+if not PDF_ONLY:
+    for f in os.listdir(DXF):                               # start clean: old names go
+        os.remove(os.path.join(DXF, f))
 
 # 1. one DXF per template
 names = []
 for mod in MODULE_ORDERS:
     for t in templates(mod):
         tid, order, idx, rd, td, entry = t
+        if PDF_ONLY:
+            names.append((dxf_name(t), tid, rd, td, len(pieces(order, idx))))
+            continue
         src = os.path.join(plan_dir(order), order + '.dxf')
         fx, fy, fx1, fy1 = sheetlib.frames(sheetlib.Drawing(src))[idx].bounds
         doc = ezdxf.readfile(src)
@@ -61,7 +67,8 @@ for mod in MODULE_ORDERS:
 # 2. the two PDFs
 py = sys.executable
 for script, name in (('make_module_templates_pdf.py', 'templates.pdf'),
-                     ('make_material_templates_pdf.py', 'instructions.pdf')):
+                     ('make_material_templates_pdf.py', 'instructions.pdf'),
+                     ('make_cutting_list_pdf.py', 'cutting_list.pdf')):
     subprocess.check_call([py, os.path.join(HERE, script), os.path.join(OUT, name)])
 
 # 3. README
@@ -75,6 +82,8 @@ with open(os.path.join(OUT, 'README.txt'), 'w', encoding='utf-8') as f:
     f.write('Cutting templates, Mohr lab, ETH Zurich (waterjet)\n\n'
             'templates.pdf     every template: name, content (rate, type, angles, number), specimens drawn in colour,\n'
             '                  rolling direction (RD = vertical on the plans)\n'
+            'cutting_list.pdf  the list for the workshop: materials in the cutting order, thickness, cutting plan\n'
+            '                  (DXF) and plan size of every sheet to cut\n'
             'instructions.pdf  for each material: which sheet gets which template, and which DXF file to cut\n'
             'dxf/              one DXF per template, sheet frame at the origin (bottom-left corner = clamp corner),\n'
             '                  and a PDF with the same name (drawing of the sheet: RD, qualities, dimensions)\n'

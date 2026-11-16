@@ -47,7 +47,7 @@ G_LINE = colors.Color(0.55, 0.55, 0.55)
 G_ROW = colors.Color(0.85, 0.85, 0.85)
 Q_COL = {3: colors.Color(0.17, 0.63, 0.17), 4: colors.Color(0.0, 0.62, 0.72), 5: colors.Color(0.16, 0.24, 0.80)}
 PW, PH = A4
-DATE = '13/11/2026'
+DATE = '16/11/2026'
 TITLES = {k: v[0] for k, v in list(MODULES.items()) + list(LARGE.items())}
 _PLANS = {}
 

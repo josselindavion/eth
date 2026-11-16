@@ -44,7 +44,7 @@ G_TEXT = colors.Color(0.40, 0.40, 0.40)
 G_ROW = colors.Color(0.85, 0.85, 0.85)
 G_HEAD = colors.Color(0.20, 0.20, 0.20)
 PW, PH = landscape(A4)
-DATE = '13/11/2026'
+DATE = '16/11/2026'
 ALL = dict(list(MODULES.items()) + list(LARGE.items()))
 ORDER_ALIAS = ['UT40', 'UT19', 'NT20', 'NT06', 'CHD48', 'MNAK_RECT_FULL', 'MNAK_RECT_HOLE', 'SHLD', 'SHMD', 'SHHD',
                'LASER']

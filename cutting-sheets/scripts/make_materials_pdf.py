@@ -147,7 +147,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont(FONT, 7)
     canvas.setFillColor(G_TEXT)
-    canvas.drawString(18 * mm, 10 * mm, 'Mohr lab, ETH Zurich  ·  12/11/2026')
+    canvas.drawString(18 * mm, 10 * mm, 'Mohr lab, ETH Zurich  ·  16/11/2026')
     canvas.restoreState()
 
 

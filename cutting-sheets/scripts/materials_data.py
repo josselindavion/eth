@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 materials_data.py -- The materials of the lab, their sheets and the MODULES cut on them (user's handwritten table,
-photo of 11/11/2026; names of 12/11/2026; modules per material of 12/11/2026, modular strategy of the supervisor).
+photo of 11/11/2026; names of 12/11/2026; modules per material of 12/11/2026, modular strategy of the supervisor;
+AAG111 added and cutting order of 16/11/2026).
 Shared by make_materials_pdf.py (inventory) and make_material_cuts_pdf.py (templates drawn on the real sheets).
 
 Sizes: RD x TD in mm, the first value is always the rolling direction (user, 11/11/2026). Sheet ID = material ID +
@@ -18,12 +19,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..')
 
 # (name, ID, thickness mm, campaign, sheets [(RD, TD, size text, note)], material note, modules)
-MATERIALS = [
-    ('DP980', '2020_06_03A', '1.0', 'A',
+MATERIALS = [            # in the cutting order (user, 16/11/2026)
+    ('DP980', '2020_06_03_A', '1.0', 'A',
      [(605, 505, '605 × 505', ''), (598, 502, '598 × 502', ''), (605, 501, '605 × 501', ''),
       (598, 500, '598 × 500', 'edges not straight'), (599, 507, '599 × 507', 'edges not straight'),
       (603, 502, '603 × 502', 'edges not straight'), (596, 500, '596 × 500', 'edges not straight')], '',
      ['SLOW78', 'MEDIUM66', 'HIGH66']),
+    ('RA980', '2022_05_04_D', '1.4', 'A (one large plan)', [(900, 1200, '900 × 1200', '')], '', ['A_LARGE']),
+    ('RA1200', '2022_05_04_E', '1.4', 'A (one large plan)', [(913, 1146, '913–915 × 1146', 'RD 913 to 915')], '',
+     ['A_LARGE']),
+    ('CR1200Y1500T-MS-UNCOATED', '2022_05_04_G', '1.4', 'A (one large plan)', [(916, 1267, '916 × 1267', '')], '',
+     ['A_LARGE']),
+    ('AAG111', '2026_11_16_A', '2.0', 'A slow', [(600, 500, '600 × 500', '')] * 2, '', ['SLOW78']),
     ('DC01', '2025_11_25_B', '2.0', 'C medium + high', [(599, 500, '599 × 500', ''), (None, None, 'custom size', '')],
      '', ['MH18']),
     ('S235JR', '2023_02_28_D', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '',
@@ -32,11 +39,6 @@ MATERIALS = [
      ['MEDIUM66', 'HIGH66']),
     ('S355MC', '2023_02_28_C', '3.0', 'A medium + high', [(600, 500, '600 × 500', '')] * 3, '',
      ['MEDIUM66', 'HIGH66']),
-    ('RA980', '2022_05_04_D', '1.4', 'A (one large plan)', [(900, 1200, '900 × 1200', '')], '', ['A_LARGE']),
-    ('RA1200', '2022_05_04_E', '1.4', 'A (one large plan)', [(913, 1146, '913–915 × 1146', 'RD 913 to 915')], '',
-     ['A_LARGE']),
-    ('CR1200Y1500T-MS-UNCOATED', '2022_05_04_G', '1.4', 'A (one large plan)', [(916, 1267, '916 × 1267', '')], '',
-     ['A_LARGE']),
 ]
 
 # module -> (order, RD, TD); its templates = the sheets of the order's plan (runs/<order>/ or output/<order>/)
