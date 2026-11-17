@@ -10,9 +10,7 @@ Uses generate_speckle_pattern() of speckle_generator.py (pitch 33 um). The image
 """
 import sys
 
-import _poisson_compat
-_poisson_compat.install()                                    # old scipy (lab PC: Python 3.7, scipy 1.7.3)
-from speckle_generator import generate_speckle_pattern       # noqa: E402
+from speckle_generator import generate_speckle_pattern
 
 a = sys.argv[1:]
 width = float(a[0]) if len(a) > 0 else 21
