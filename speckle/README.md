@@ -17,5 +17,8 @@ Parameters (Ruben): pitch 33 µm = pixel size, close to the minimum resolution o
 speckle size a multiple of the pitch (default 99 µm = 3 px); density = covered fraction (default 0.25). For engraving
 the array is converted to DXF.
 
+`show_speckle.py`: shows a pattern at once, nothing saved: `py show_speckle.py [width_mm] [height_mm] [speckle_um]
+[density]` (default 21 × 21 mm, 99 µm, 0.25).
+
 Needs numpy, scipy ≥ 1.15 (`qmc.PoissonDisk(..., rng=)`), Pillow. The `__main__` example saves into
 `./speckle_patterns/` (create the folder first).
