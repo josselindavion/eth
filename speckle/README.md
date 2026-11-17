@@ -20,5 +20,7 @@ the array is converted to DXF.
 `show_speckle.py`: shows a pattern at once, nothing saved: `py show_speckle.py [width_mm] [height_mm] [speckle_um]
 [density]` (default 21 × 21 mm, 99 µm, 0.25).
 
-Needs numpy, scipy ≥ 1.15 (`qmc.PoissonDisk(..., rng=)`), Pillow. The `__main__` example saves into
+Needs numpy, scipy ≥ 1.15 (`qmc.PoissonDisk(..., rng=)`), Pillow. Lab PC (Python 3.7, scipy 1.7.3, no PoissonDisk):
+`_poisson_compat.py` adds a small PoissonDisk (Bridson) when scipy's is missing or too old; `show_speckle.py` uses it
+(same result: density 0.249 for 0.25, every centre at least the radius apart). The `__main__` example saves into
 `./speckle_patterns/` (create the folder first).
