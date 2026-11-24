@@ -8,6 +8,7 @@ Speckle patterns engraved on the specimens for DIC (digital image correlation).
 | `speckle_settings.yaml` | presets per strain rate: `slow`, `int`, `fast` (pitch, speckle size, density); no camera setting |
 | `speckle_quality.py` | indicators: coverage, MIG (mean intensity gradient), speckle size (autocorrelation), entropy, and a virtual DIC test (known sub-pixel shifts measured back on subsets with a translation DIC: bias and RMS error) |
 | `compare_shapes.py` | compares the shapes for each preset: zooms, table and charts in `results/compare_shapes.pdf` |
+| `parameter_study.py` | best parameters per preset over several random draws: every shape × density (0.15-0.65) × 6 seeds, mean ± standard deviation of the DIC error, quadratic fit of the error against the density, Welch t-test against the best square, size sweep; `results/parameter_study.csv` and `.pdf` (`--quick` to test, `--replot` to redo the PDF from the CSV) |
 | `show_speckle.py` | shows a pattern at once, nothing saved: `py show_speckle.py [preset] [width_mm] [height_mm] [shape]` |
 
 Parameters (Ruben): pitch 33 µm = pixel size, close to the minimum resolution of the engraver (do not go below);
