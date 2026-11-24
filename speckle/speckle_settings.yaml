@@ -1,0 +1,13 @@
+# Speckle presets per strain rate (user, 24/11/2026). The camera is not set here: size and density are given directly.
+# pitch_um = pixel size of the engraver (Ruben: 33 um is close to its minimum resolution, do not go below);
+# size_um = speckle size (side of a square of the same area), a multiple of the pitch;
+# density = fraction of the area covered by speckles.
+# Starting values to confirm: slow = Ruben's pattern; int and fast bigger (high-speed cameras usually have fewer
+# pixels on the same field of view, so the speckles must be bigger to stay 3-5 camera pixels wide).
+
+pitch_um: 33
+
+presets:
+  slow: {size_um: 99,  density: 0.25}
+  int:  {size_um: 132, density: 0.25}
+  fast: {size_um: 198, density: 0.25}

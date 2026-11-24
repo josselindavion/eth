@@ -2,23 +2,19 @@
 
 Speckle patterns engraved on the specimens for DIC (digital image correlation).
 
-`speckle_generator.py`: received from Ruben Zwicker (Inspire AG) on 16/11/2026, kept as received.
-
-| Function | What it does |
+| File | What it does |
 |---|---|
-| `speckle_raster(mask, pitch_mm, size_um, density, seed)` | the pattern used: square speckles, centres by Poisson-disk sampling (blue noise, even spacing, no clusters) over the bounding box of `mask`, thinned at random to the target count, clipped to the mask; returns a bool array (True = engrave) |
-| `generate_speckle_pattern(width, height, pitch_um, speckle_size_um, density, seed)` | the same on a full rectangle (mm), as a PIL image, black speckles on white |
-| `speckle_px(pitch_mm, size_um)` | speckle side in whole pixels |
-| `calculate_black_pixel_density(img)` | measured fraction of black pixels |
-| `multiscale_blue_speckle(...)` | older variant: round dots of several sizes (octaves); not used |
-| `_blue_noise_samples`, `_poisson_radius_for_target_n` | older helpers (Mitchell best candidate); not used |
+| `speckle_generator.py` | generator of Ruben Zwicker (Inspire AG, 16/11/2026), cleaned on 24/11/2026 (unused functions and prints removed); `speckle_raster(mask, pitch_mm, size_um, density, seed, shape)`: blue-noise speckles (Poisson-disk centres, thinned to the target number), clipped to a mask, bool raster (True = engrave); `generate_speckle_pattern(...)` the same on a rectangle as an image; `preset(name)` reads a preset; shapes: `square` (Ruben's, same result for the same seed), `circle`, `rotated_square`, `ellipse` (aspect 2), `polygon` (irregular, 5-8 vertices), all with the area of the square |
+| `speckle_settings.yaml` | presets per strain rate: `slow`, `int`, `fast` (pitch, speckle size, density); no camera setting |
+| `speckle_quality.py` | indicators: coverage, MIG (mean intensity gradient), speckle size (autocorrelation), entropy, and a virtual DIC test (known sub-pixel shifts measured back on subsets with a translation DIC: bias and RMS error) |
+| `compare_shapes.py` | compares the shapes for each preset: zooms, table and charts in `results/compare_shapes.pdf` |
+| `show_speckle.py` | shows a pattern at once, nothing saved: `py show_speckle.py [preset] [width_mm] [height_mm] [shape]` |
 
 Parameters (Ruben): pitch 33 µm = pixel size, close to the minimum resolution of the engraver (do not go below);
-speckle size a multiple of the pitch (default 99 µm = 3 px); density = covered fraction (default 0.25). For engraving
-the array is converted to DXF.
+speckle size a multiple of the pitch. For engraving the raster is converted to DXF (at Inspire).
 
-`show_speckle.py`: shows a pattern at once, nothing saved: `py show_speckle.py [width_mm] [height_mm] [speckle_um]
-[density]` (default 21 × 21 mm, 99 µm, 0.25).
+Needs Python ≥ 3.10 with numpy, scipy ≥ 1.15, Pillow, PyYAML, matplotlib. Lab PC: `py -3.1` (Python 3.14):
 
-Needs numpy, scipy ≥ 1.15 (`qmc.PoissonDisk(..., rng=)`), Pillow. The `__main__` example saves into
-`./speckle_patterns/` (create the folder first).
+    py -3.1 -m pip install numpy scipy pillow pyyaml matplotlib
+    py -3.1 show_speckle.py
+    py -3.1 compare_shapes.py
