@@ -1,30 +1,56 @@
 """
-speckle_quality.py -- Quality of a speckle pattern for DIC (user, 24/11/2026).
+speckle_quality.py -- Quality of an engraved speckle pattern for DIC (user, 24-25/11/2026).
 
-The pattern (bool raster at the engraver pitch, True = speckle) is turned into a grey image as a camera would see it:
-speckles dark (0.1), background light (0.9), a slight blur (optics) and camera noise. Assumption: one camera pixel =
-one pattern pixel (no camera preset on purpose); every result is also given in um with the pitch.
-
-Indicators:
-    coverage      fraction of the area that is speckle (real density, overlaps counted once)
-    MIG           mean intensity gradient (grey levels per px): higher = sharper, more contrast = better DIC
-    speckle size  width of the autocorrelation peak at half height (px and um): the real speckle size seen by DIC
-    entropy       Shannon entropy of the grey levels (bits): spread of the grey levels
-    virtual test  known sub-pixel shifts imposed on the image (Fourier shift), measured back on many subsets with a
-                  translation DIC (Gauss-Newton, the core of a DIC code); bias and RMS of the error (px and um)
+1. Camera model. The engraved pattern (bool raster at the engraver pitch, 33 um; True = speckle) is seen by the camera
+   of the test: grey levels dark 0.1 / light 0.9, each camera pixel integrates the engraved raster under it (image
+   scale in um/px from Beerli et al. 2026, Table 1), optical blur (Gaussian, 0.6 camera px) and camera noise (Gaussian,
+   2 % of the grey range, independent on every image).
+2. DIC. The images are correlated subset by subset, as in VIC-2D: square subset (size from Beerli Table 2), first-order
+   (affine) shape function u(x, y) = u + ux.dx + uy.dy (same for v), Gauss-Newton on the sum of squared differences,
+   bicubic interpolation of the deformed image.
+3. Virtual tests (the "fake" deformations): the deformed image is made by moving the engraved pattern by a known
+   amount, then seen again by the camera with new noise, so the exact answer is known:
+       translation test: rigid shifts of 0.25 camera px in x and 0.5 camera px in y; error of the measured
+                         displacement (bias and RMS, in px and um) = matching precision of the pattern;
+       strain test:      uniform uniaxial stretch, exx = 1 %, eyy = -0.5 % (like a tensile test); error of the measured
+                         strain exx = ux of each subset (bias and standard deviation = "strain noise"), no strain filter.
+4. Pattern indicators, on the camera image of the undeformed pattern:
+       coverage   fraction of the engraved raster that is speckle (real density, overlaps counted once);
+       MIG        mean intensity gradient = mean |grad I| (grey levels per px): contrast of the speckle edges; the
+                  matching error of DIC goes roughly as noise / (MIG x subset size), so higher = better;
+       size       width at half height of the autocorrelation peak of the image (px and um): the speckle size the
+                  DIC really sees (blur and pixel integration included);
+       entropy    Shannon entropy of the grey-level histogram (bits): how spread the grey levels are.
 
     from speckle_quality import quality
-    q = quality(raster, pitch_um=33)
+    q = quality(raster, pitch_um=33, cam_um=33.5, subset_px=27)
 """
 import numpy as np
 from scipy import ndimage
 
 DARK, LIGHT = 0.1, 0.9
+BLUR_PX = 0.6
+NOISE = 0.02
+SHIFTS = ((0.25, 0.0), (0.0, 0.5))                         # (ux, uy) camera px
+STRAIN = (0.01, -0.005)
 
 
-def camera_image(raster, blur_px=0.6, noise=0.0, rng=None):
-    """Grey image (0-1) of a pattern as a camera would see it: dark speckles, light background, blur, noise."""
-    img = np.where(np.asarray(raster, bool), DARK, LIGHT).astype(float)
+def camera(raster, pitch_um, cam_um, warp=None, noise=NOISE, rng=None, blur_px=BLUR_PX, margin_px=0):
+    """Camera image (grey 0-1) of the engraved raster. warp(x, y) -> (X, Y): material point (um, reference) seen at the
+    camera point (x, y) (um); None = no deformation. The camera field is the raster area minus margin_px camera px."""
+    g = np.where(np.asarray(raster, bool), DARK, LIGHT).astype(float)
+    ratio = cam_um / pitch_um
+    if ratio > 1:                                            # pixel integration (box ~ Gaussian of sigma 0.42 px)
+        g = ndimage.gaussian_filter(g, 0.42 * ratio)
+    ny, nx = g.shape
+    h = int((ny * pitch_um) // cam_um) - 2 * margin_px
+    w = int((nx * pitch_um) // cam_um) - 2 * margin_px
+    yy, xx = np.mgrid[0:h, 0:w]
+    x = (xx + margin_px + 0.5) * cam_um                      # camera pixel centres in um
+    y = (yy + margin_px + 0.5) * cam_um
+    if warp is not None:
+        x, y = warp(x, y)
+    img = ndimage.map_coordinates(g, [y / pitch_um - 0.5, x / pitch_um - 0.5], order=1, mode='nearest')
     if blur_px > 0:
         img = ndimage.gaussian_filter(img, blur_px)
     if noise > 0:
@@ -34,86 +60,105 @@ def camera_image(raster, blur_px=0.6, noise=0.0, rng=None):
 
 
 def mig(img):
-    """Mean intensity gradient (grey levels per px)."""
     gy, gx = np.gradient(img)
     return float(np.mean(np.hypot(gx, gy)))
 
 
 def speckle_size(img):
-    """Width (px) at half height of the autocorrelation peak, mean of the x and y directions."""
+    """Width (px) at half height of the autocorrelation peak, mean of x and y."""
     f = img - img.mean()
     ac = np.fft.fftshift(np.real(np.fft.ifft2(np.abs(np.fft.fft2(f)) ** 2)))
     ac /= ac.max()
     cy, cx = np.array(ac.shape) // 2
     widths = []
     for prof in (ac[cy, cx:], ac[cy:, cx]):
-        k = int(np.argmax(prof < 0.5))                       # first sample under half height
-        if k == 0:
-            continue
-        x = k - 1 + (prof[k - 1] - 0.5) / (prof[k - 1] - prof[k])
-        widths.append(2 * x)
+        k = int(np.argmax(prof < 0.5))
+        if k > 0:
+            widths.append(2 * (k - 1 + (prof[k - 1] - 0.5) / (prof[k - 1] - prof[k])))
     return float(np.mean(widths)) if widths else float('nan')
 
 
 def entropy(img, bins=256):
-    """Shannon entropy (bits) of the grey levels."""
     h, _ = np.histogram(np.clip(img, 0, 1), bins=bins, range=(0, 1))
     p = h[h > 0] / float(h.sum())
     return float(-np.sum(p * np.log2(p)))
 
 
-def _dic_shift(ref, cur, y, x, half, iters=12):
-    """Translation (uy, ux) of the subset of ref centred at (y, x), size 2*half+1, found in cur: cur(p + u) = ref(p).
-    Gauss-Newton on the sum of squared differences, gradients of the reference (DIC, translation only)."""
-    sl = (slice(y - half, y + half + 1), slice(x - half, x + half + 1))
-    r = ref[sl]
+def dic_subset(ref, cur, yc, xc, half, iters=20):
+    """Affine DIC of the subset of ref centred at (yc, xc): p = (u, ux, uy, v, vx, vy) with cur(x + u(x)) = ref(x).
+    Gauss-Newton (forward additive, gradients of the reference). Returns p or None."""
+    dy, dx = np.mgrid[-half:half + 1, -half:half + 1].astype(float)
+    dx, dy = dx.ravel(), dy.ravel()
+    sl = (slice(yc - half, yc + half + 1), slice(xc - half, xc + half + 1))
+    r = ref[sl].ravel()
     gy, gx = np.gradient(ref)
-    gy, gx = gy[sl].ravel(), gx[sl].ravel()
-    H = np.array([[gy @ gy, gy @ gx], [gx @ gy, gx @ gx]])
-    if np.linalg.cond(H) > 1e8:
-        return np.array([np.nan, np.nan])
+    gx, gy = gx[sl].ravel(), gy[sl].ravel()
+    J = np.column_stack([gx, gx * dx, gx * dy, gy, gy * dx, gy * dy])
+    H = J.T @ J
+    if np.linalg.cond(H) > 1e10:
+        return None
     Hi = np.linalg.inv(H)
-    u = np.zeros(2)
-    m = half + 6                                             # window with a margin for the interpolation
-    win = cur[y - m:y + m + 1, x - m:x + m + 1]
+    p = np.zeros(6)
     for _ in range(iters):
-        w = ndimage.shift(win, -u, order=3, mode='nearest')[6:-6, 6:-6]
-        e = (w - r).ravel()
-        du = -Hi @ np.array([gy @ e, gx @ e])
-        u += du
-        if np.hypot(*du) < 1e-4:
+        X = xc + dx + p[0] + p[1] * dx + p[2] * dy
+        Y = yc + dy + p[3] + p[4] * dx + p[5] * dy
+        w = ndimage.map_coordinates(cur, [Y, X], order=3, mode='nearest')
+        dp = -Hi @ (J.T @ (w - r))
+        p += dp
+        if abs(dp[0]) < 1e-4 and abs(dp[3]) < 1e-4:
             break
-    return u
+    return p
 
 
-def virtual_test(raster, subset=31, shifts=(0.25, 0.5, 0.75), n_subsets=40, noise=0.02, blur_px=0.6, seed=0):
-    """Known shifts (in x and in y) imposed on the camera image, measured back with a translation DIC on n_subsets
-    subsets of subset x subset px. Returns (bias, rms) of the error in px (mean signed error, root mean square)."""
+def _grid(shape, half, n):
+    """About n subset centres on a regular grid, away from the borders."""
+    m = half + 6
+    k = max(2, int(round(np.sqrt(n))))
+    ys = np.linspace(m, shape[0] - m - 1, k).astype(int)
+    xs = np.linspace(m, shape[1] - m - 1, k).astype(int)
+    return [(y, x) for y in ys for x in xs]
+
+
+def virtual_tests(raster, pitch_um, cam_um, subset_px, n_subsets=36, seed=0):
+    """Translation and strain tests (see the module text). Returns a dict of errors."""
     rng = np.random.default_rng(seed)
-    clean = camera_image(raster, blur_px)
-    ref = clean + rng.normal(0, noise, clean.shape)
-    half = subset // 2
-    m = half + 10
-    ny, nx = clean.shape
-    pts = np.column_stack([rng.integers(m, ny - m, n_subsets), rng.integers(m, nx - m, n_subsets)])
-    errs = []
-    for s in shifts:
-        for d in ((0.0, s), (s, 0.0)):
-            cur = np.real(np.fft.ifft2(ndimage.fourier_shift(np.fft.fft2(clean), d)))
-            cur = cur + rng.normal(0, noise, cur.shape)
-            for y, x in pts:
-                u = _dic_shift(ref, cur, y, x, half)
-                errs.append(u - np.array(d))
-    e = np.array(errs)
-    e = e[np.isfinite(e).all(axis=1)]
-    return float(np.mean(e)), float(np.sqrt(np.mean(e ** 2)))
+    half = subset_px // 2
+    ref = camera(raster, pitch_um, cam_um, noise=NOISE, rng=rng, margin_px=4)
+    pts = _grid(ref.shape, half, n_subsets)
+    # translation test
+    err = []
+    for ux, uy in SHIFTS:
+        sx, sy = ux * cam_um, uy * cam_um
+        cur = camera(raster, pitch_um, cam_um, warp=lambda x, y: (x - sx, y - sy), rng=rng, margin_px=4)
+        for y, x in pts:
+            p = dic_subset(ref, cur, y, x, half)
+            if p is not None:
+                err.append((p[0] - ux, p[3] - uy))
+    e = np.array(err)
+    # strain test: x = X (1 + exx) about the centre (same for y)
+    exx, eyy = STRAIN
+    ny, nx = ref.shape
+    cx, cy = (nx / 2.0 + 4) * cam_um, (ny / 2.0 + 4) * cam_um
+    cur = camera(raster, pitch_um, cam_um, warp=lambda x, y: (cx + (x - cx) / (1 + exx), cy + (y - cy) / (1 + eyy)),
+                 rng=rng, margin_px=4)
+    se = []
+    for y, x in pts:
+        p = dic_subset(ref, cur, y, x, half)
+        if p is not None:
+            se.append(p[1])                                  # du/dX = exx
+    se = np.array(se)
+    return {'shift_bias_px': float(e.mean()), 'shift_rms_px': float(np.sqrt(np.mean(e ** 2))),
+            'shift_rms_um': float(np.sqrt(np.mean(e ** 2)) * cam_um),
+            'strain_bias': float(se.mean() - exx), 'strain_noise': float(se.std(ddof=1))}
 
 
-def quality(raster, pitch_um, subset=31, blur_px=0.6, noise=0.02, seed=0):
-    """Every indicator of a pattern: dict (see the module text)."""
+def quality(raster, pitch_um, cam_um, subset_px, seed=0):
+    """Every indicator of a pattern for a camera of cam_um um/px and a DIC subset of subset_px px: dict."""
     raster = np.asarray(raster, bool)
-    img = camera_image(raster, blur_px, noise, np.random.default_rng(seed))
-    size = speckle_size(camera_image(raster, blur_px))
-    bias, rms = virtual_test(raster, subset=subset, noise=noise, blur_px=blur_px, seed=seed)
-    return {'coverage': float(raster.mean()), 'mig': mig(img), 'speckle_px': size, 'speckle_um': size * pitch_um,
-            'entropy': entropy(img), 'bias_px': bias, 'rms_px': rms, 'rms_um': rms * pitch_um}
+    clean = camera(raster, pitch_um, cam_um, noise=0)
+    noisy = camera(raster, pitch_um, cam_um, rng=np.random.default_rng(seed))
+    size = speckle_size(clean)
+    q = {'coverage': float(raster.mean()), 'mig': mig(noisy), 'seen_px': size, 'seen_um': size * cam_um,
+         'entropy': entropy(noisy)}
+    q.update(virtual_tests(raster, pitch_um, cam_um, subset_px, seed=seed))
+    return q

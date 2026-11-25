@@ -1,13 +1,24 @@
-# Speckle presets per strain rate (user, 24/11/2026). The camera is not set here: size and density are given directly.
-# pitch_um = pixel size of the engraver (Ruben: 33 um is close to its minimum resolution, do not go below);
-# size_um = speckle size (side of a square of the same area), a multiple of the pitch;
-# density = fraction of the area covered by speckles.
-# Starting values to confirm: slow = Ruben's pattern; int and fast bigger (high-speed cameras usually have fewer
-# pixels on the same field of view, so the speckles must be bigger to stay 3-5 camera pixels wide).
+# Speckle settings per strain rate (user, 24-25/11/2026).
+#
+# pitch_um: pixel size of the engraver (Ruben Zwicker: 33 um is close to its minimum resolution, do not go below).
+#
+# Per preset:
+#   camera_um_per_px, subset_px, beerli_feature_px: the DIC setup of Beerli et al. 2026 (Table 1: image scale and
+#     pattern feature size; Table 2: subset size), for the NT, CH and UT specimens. Used only to evaluate a pattern as
+#     the camera of that test sees it (speckle_quality.py, parameter_study.py); they are not settings of the pattern.
+#       slow:  FLIR Blackfly S, 28 mm lens, 33.5 um/px, 2 Hz,       subset 27 px, spray paint ~8 px
+#       int:   Optronis Cyclone-5-700, 180 mm, 34 um/px, 1000 Hz, subset 27 px, spray paint ~8 px
+#       fast:  Photron SA-Z, 180 mm, 70 um/px, 100 kHz,          subset 17 px, thermographic paint ~4 px
+#     (other setups of Table 1: SH slow 7 um/px, SH int 10 um/px, UT and SH fast 50 um/px at 200 kHz)
+#   size_um, density: the engraved pattern. size_um = side of a square of the same area, a multiple of the pitch.
+#     Starting point: Beerli's feature size x image scale, rounded to the pitch: 8 x 33.5 = 268 -> 264 um (slow),
+#     8 x 34 = 272 -> 264 um (int), 4 x 70 = 280 -> 264 um (fast); density 0.25 (Ruben).
+#     Updated 25/11/2026 with the best cells of parameter_study.py (results/speckle_report.pdf): slow 132 um / 0.25,
+#     int 198 um / 0.35, fast 198 um / 0.45 (square speckles: no shape significantly better).
 
 pitch_um: 33
 
 presets:
-  slow: {size_um: 99,  density: 0.25}
-  int:  {size_um: 132, density: 0.25}
-  fast: {size_um: 198, density: 0.25}
+  slow: {camera_um_per_px: 33.5, subset_px: 27, beerli_feature_px: 8, size_um: 132, density: 0.25}
+  int:  {camera_um_per_px: 34.0, subset_px: 27, beerli_feature_px: 8, size_um: 198, density: 0.35}
+  fast: {camera_um_per_px: 70.0, subset_px: 17, beerli_feature_px: 4, size_um: 198, density: 0.45}

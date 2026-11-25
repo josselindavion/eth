@@ -3,7 +3,7 @@ speckle_generator.py -- Speckle patterns engraved on the specimens for DIC.
 
 From the generator of Ruben Zwicker (Inspire AG, 16/11/2026), cleaned on 24/11/2026: unused functions and prints
 removed, speckle shapes added (Ruben: "it could be interesting to investigate different shaped speckles"), strain-rate
-presets read from speckle_settings.yaml. With shape='square' the pattern is the same as Ruben's for the same seed.
+presets read from speckle_settings.yaml (pattern, and the DIC setup of Beerli et al. 2026 used to evaluate it). With shape='square' the pattern is the same as Ruben's for the same seed.
 
 The pattern is a raster at the pitch of the engraver (33 um, close to its minimum resolution): True = engrave.
 Speckle centres: Poisson-disk samples (blue noise: random but evenly spaced, no clusters, no holes) filling the bounding
@@ -34,6 +34,16 @@ def preset(name, path=os.path.join(HERE, 'speckle_settings.yaml')):
         cfg = yaml.safe_load(f)
     p = cfg['presets'][name]
     return {'pitch_um': float(cfg['pitch_um']), 'speckle_size_um': float(p['size_um']), 'density': float(p['density'])}
+
+
+def setup(name, path=os.path.join(HERE, 'speckle_settings.yaml')):
+    """Every value of a preset (pattern and DIC setup of Beerli et al. 2026) plus pitch_um: dict."""
+    import yaml
+    with open(path, encoding='utf-8') as f:
+        cfg = yaml.safe_load(f)
+    d = dict(cfg['presets'][name])
+    d['pitch_um'] = float(cfg['pitch_um'])
+    return d
 
 
 def speckle_px(pitch_mm, size_um):
